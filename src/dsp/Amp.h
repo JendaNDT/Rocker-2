@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <vector>
 
@@ -16,6 +17,26 @@ inline constexpr std::array<AmpParameters, 4> presets{{{0, 8, 52, 50, 56, 34, 68
                                                        {0, 48, 56, 62, 54, 47, 60, 60, 0, 9},
                                                        {1, 72, 51, 70, 57, 52, 54, 55, 25, 21},
                                                        {2, 90, 64, 38, 61, 58, 48, 50, 0, 6}}};
+// A recall is sticky until the audio thread consumes the entire parameter snapshot.
+class AmpCommand {
+  public:
+    static constexpr std::uint64_t enabledBit = std::uint64_t{1} << 63;
+    static constexpr std::uint64_t recallBit = std::uint64_t{1} << 62;
+    static constexpr std::uint64_t valueMask = recallBit - 1;
+    void publish(AmpParameters p, bool enabled, bool recall) noexcept {
+        const auto data = p.pack() | (enabled ? enabledBit : 0) | (recall ? recallBit : 0);
+        auto previous = word.load();
+        while (!word.compare_exchange_weak(previous, data | (previous & recallBit))) {
+        }
+    }
+    std::uint64_t consume() noexcept {
+        auto snapshot = word.load();
+        return (snapshot & recallBit) ? word.fetch_and(~recallBit) : snapshot;
+    }
+
+  private:
+    std::atomic<std::uint64_t> word{presets[1].pack() | enabledBit | recallBit};
+};
 class Amp {
   public:
     void prepare(int sampleRate);

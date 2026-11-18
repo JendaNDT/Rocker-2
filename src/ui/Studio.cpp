@@ -760,6 +760,15 @@ void Studio::inputPage(Rect area) {
     }
 }
 bool Studio::keyPressed(const KeyPress& key) {
+    if (page == Page::project && namingPreset && soundDeckOpen) {
+        if (key == KeyPress::escapeKey) {
+            namingPreset = false;
+            triggerAsyncUpdate();
+            return true;
+        }
+        if (dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()))
+            return false;
+    }
     if (page == Page::project) {
         if (!performance && (key == KeyPress::leftKey || key == KeyPress::rightKey)) {
             auto bar = song.grid.beatAt(view.cursor) / song.grid.beats;

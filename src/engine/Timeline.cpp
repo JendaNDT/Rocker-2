@@ -79,14 +79,9 @@ void Playback::updateMix(const Song& s) {
     for (size_t i = 0; i < strips.size(); ++i)
         strips[i]->audible.store(!s.tracks[i].mute && (!solo || s.tracks[i].solo));
 }
-namespace {
-constexpr std::uint64_t enabledBit = std::uint64_t(1) << 63;
-}
 void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
     auto& strip = *strips[track];
-    strip.command.store(sound.values.pack() | (sound.enabled ? enabledBit : 0));
-    if (recall)
-        ++strip.recalls;
+    strip.command.publish(sound.values, sound.enabled, recall);
 }
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
     for (auto& track : s.tracks) {
@@ -148,20 +143,20 @@ void Playback::Strip::read(float (&block)[2][256], int count, Frame at) const no
 void Playback::Strip::process(float* const* out, int outputs, int size, Frame at) noexcept {
     if (clips.empty())
         return;
-    const auto word = command.load();
-    const auto recall = recalls.load();
-    const bool wet = (word & enabledBit) != 0 && !amps.empty();
+    const auto snapshot = command.consume();
+    const auto word = snapshot & ~AmpCommand::recallBit;
+    const bool wet = (word & AmpCommand::enabledBit) != 0 && !amps.empty();
     const int delay = wet ? amps.front().delaySamples() : 0;
-    const bool restart = next != at || recall != previousRecall || ((applied ^ word) & enabledBit) != 0;
+    const bool restart = next != at || (snapshot & AmpCommand::recallBit) ||
+                         ((applied ^ word) & AmpCommand::enabledBit) != 0;
     if (wet && (restart || word != applied)) {
         for (auto& amp : amps) {
-            amp.configure(AmpParameters::unpack(word & ~enabledBit));
+            amp.configure(AmpParameters::unpack(word & AmpCommand::valueMask));
             if (restart)
                 amp.reset();
         }
     }
     applied = word;
-    previousRecall = recall;
     next = at + size;
     const bool heard = audible.load();
     // On start/seek feed the first delay samples before delivering output sample zero.

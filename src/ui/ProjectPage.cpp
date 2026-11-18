@@ -126,10 +126,11 @@ void Studio::field(const String& label, Rect r, String& value) {
     edit->setText(value, false);
     edit->onTextChange = [edit, &value] { value = edit->getText(); };
     edit->onReturnKey = [this] {
-        if (page == Page::newProject || page == Page::trackSettings)
+        if (page == Page::newProject || page == Page::trackSettings || namingPreset)
             for (auto* c : controls)
                 if (auto* b = dynamic_cast<Button*>(c);
-                    b && (b->getName() == cs::apply || b->getName() == cs::createSong)) {
+                    b && (b->getName() == cs::apply || b->getName() == cs::createSong ||
+                          b->getName() == cs::storePreset)) {
                     b->onClick();
                     break;
                 }

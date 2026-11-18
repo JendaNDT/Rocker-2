@@ -144,6 +144,34 @@ TEST_CASE("Playback advances guitar by the cabinet delay and preserves the first
         REQUIRE(error <= 0.000001f);
     }
 }
+TEST_CASE("A-20 switches the active track on the next block and recalls Crunch exactly") {
+    Session s;
+    auto& track = s.song.tracks[1];
+    track.solo = true;
+    s.song.clips.clear();
+    constexpr int length = 4096;
+    for (int i = 0; i < 3; ++i)
+        s.song.clips.push_back({String(i), track.id, "a", i * length, 0, length});
+    Playback player(s.song, s.library);
+    AudioBuffer<float> blocks[3];
+    for (int part = 0; part < 3; ++part) {
+        track.amp.values = presets[part == 1 ? 3 : 1];
+        player.setSound(1, track.amp, true);
+        player.setSound(1, track.amp, false); // A slider notification must preserve the pending recall.
+        auto& block = blocks[part];
+        block.setSize(2, length);
+        block.clear();
+        for (int i = 0; i < length; i += 128) {
+            float* out[]{block.getWritePointer(0, i), block.getWritePointer(1, i)};
+            player.mix(out, 2, 128, part * length + i);
+        }
+    }
+    // Compare the repeated phrase before the lookahead enters the next clip.
+    for (auto& block : blocks)
+        block.setSize(2, length - 256, true);
+    REQUIRE(difference(blocks[0], blocks[1]) > 0.01f);
+    REQUIRE(difference(blocks[0], blocks[2]) == 0);
+}
 TEST_CASE("M-05 trial covers ten minutes of sixteen tracks with eight complete amp chains") {
     Session s;
     Song trial;

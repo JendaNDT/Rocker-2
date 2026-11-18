@@ -2,7 +2,6 @@
 #include "dsp/Amp.h"
 #include "dsp/Pitch.h"
 #include <atomic>
-#include <bit>
 #include <optional>
 #include <vector>
 
@@ -17,11 +16,7 @@ class Live {
   public:
     void prepare(int sampleRate);
     void render(const float* const* in, int ni, float* const* out, int no, int frames) noexcept;
-    void setAmp(AmpParameters p, bool recall = true) {
-        parameters.store(p.pack());
-        if (recall)
-            ++recallCount;
-    }
+    void setAmp(AmpParameters p, bool recall = true) { parameters.publish(p, true, recall); }
     void selectInput(int index);
     void setTuner(bool active);
     void cue(double frequency, bool confirmation = false);
@@ -42,10 +37,8 @@ class Live {
   private:
     int rate = 48000, stride = 4;
     Amp amp;
-    std::atomic<std::uint64_t> parameters{presets[1].pack()};
+    AmpCommand parameters;
     std::uint64_t applied = 0;
-    std::atomic<unsigned> recallCount{0};
-    unsigned lastRecall = 0;
     Monitor previousMode = Monitor::off;
     std::atomic<int> cueCommand{0};
     bool reference = false, releasing = false;

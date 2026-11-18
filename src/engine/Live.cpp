@@ -133,15 +133,15 @@ void Live::render(const float* const* in, int ni, float* const* out, int no, int
         phase = state = Measurement::recording;
     }
     const auto mode = monitor.load();
-    const auto packed = parameters.load();
-    const auto sequence = recallCount.load();
-    const bool reset = sequence != lastRecall || (mode == Monitor::amp && previousMode != mode);
+    const auto snapshot = parameters.consume();
+    const auto packed = snapshot & AmpCommand::valueMask;
+    const bool reset =
+        (snapshot & AmpCommand::recallBit) || (mode == Monitor::amp && previousMode != mode);
     if (applied != packed || reset) {
         amp.configure(AmpParameters::unpack(packed));
         if (reset)
             amp.reset();
         applied = packed;
-        lastRecall = sequence;
     }
     previousMode = mode;
     const auto epoch = generation.load();

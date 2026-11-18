@@ -45,10 +45,8 @@ class Playback {
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
         std::atomic<bool> audible{true};
-        std::atomic<std::uint64_t> command{0};
-        std::atomic<unsigned> recalls{0};
+        AmpCommand command;
         std::uint64_t applied = 0;
-        unsigned previousRecall = 0;
         Frame next = -1;
         int channels = 1;
         void read(float (&block)[2][256], int count, Frame at) const noexcept;
