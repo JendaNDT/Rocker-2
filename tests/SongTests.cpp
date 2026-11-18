@@ -212,4 +212,43 @@ TEST_CASE("A-14 stalled disk buffers five seconds and marks a fifteen-second ove
         REQUIRE(Song::load(w.dir, damaged)->dropouts == s.dropouts);
     }
 }
+TEST_CASE("Sync diagnostic measures both ends of a ten minute virtual cable") {
+    Workspace w;
+    auto s = example();
+    s.grid.rate = 8000;
+    s.grid.bpm = 120;
+    Performance p(s, {}, 0, true, false, 0);
+    p.syncPulse = true;
+    const int delay = 177;
+    p.end = Frame(s.grid.rate) * 600 + delay;
+    REQUIRE(p.arm(s, w.dir, {"In 1", "In 2"}, delay, false));
+    std::array<float, 177> wire{};
+    std::array<float, 80> input{}, output{};
+    const float* in[]{nullptr, input.data()};
+    float* out[]{output.data()};
+    for (Frame pos = 0; pos < p.end; pos += 80) {
+        output.fill(0);
+        for (int i = 0; i < 80; ++i)
+            input[i] = -0.4f * wire[(pos + i) % delay];
+        p.process(in, 2, out, 1, 80);
+        for (int i = 0; i < 80; ++i)
+            wire[(pos + i) % delay] = output[i];
+        if (pos % 8000 == 0)
+            REQUIRE(p.drain());
+    }
+    REQUIRE(p.finished.load());
+    REQUIRE(p.drain());
+    p.finishDisk();
+    REQUIRE(recoverTake(s, w.dir, p.journal));
+    auto reader = waveReader(w.dir.getChildFile(s.assets.back().path));
+    REQUIRE(reader);
+    auto aligned = syncOffsets(*reader, s.grid, delay);
+    REQUIRE(aligned);
+    CHECK(aligned->first == 0);
+    CHECK(aligned->second == 0);
+    auto offset = syncOffsets(*reader, s.grid, delay - 4);
+    REQUIRE(offset);
+    CHECK(offset->first == 4);
+    CHECK(offset->second == 4);
+}
 } // namespace

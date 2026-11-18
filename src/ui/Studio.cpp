@@ -300,8 +300,17 @@ void Studio::show(Page value) {
         (page == Page::live || page == Page::amp) && (value == Page::live || value == Page::amp);
     if (!keepMonitor)
         link.audio.live.silence();
-    if (value == Page::live || value == Page::amp || value == Page::diagnostics || value == Page::tuner)
-        link.audio.live.selectInput(value == Page::diagnostics ? measurementInput : heardInput());
+    if (value == Page::live || value == Page::amp || value == Page::diagnostics ||
+        value == Page::tuner) {
+        int port = value == Page::diagnostics ? measurementInput : heardInput();
+        if (page == Page::project && (value == Page::amp || value == Page::tuner) &&
+            view.selected < (int)song.tracks.size()) {
+            int assigned = link.caps.inputs.indexOf(song.tracks[view.selected].inputs[0]);
+            if (assigned >= 0)
+                port = assigned;
+        }
+        link.audio.live.selectInput(port);
+    }
     if (value == Page::tuner) {
         if (page != Page::customTuning && page != Page::tuner)
             tunerReturn = page;
