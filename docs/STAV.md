@@ -2,6 +2,8 @@
 
 ## E0 — první zvuk
 
+Na Windows x64, Windows ARM64 a macOS prošlo sestavení i všech šest automatických zkoušek. GitHub uložil tři balíky s aplikací a tři sady po osmi snímcích. [Ověřený běh CI](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240)
+
 | Místní zkouška | Výsledek |
 |---|---|
 | Měřiče | Prošlo. Špička záporného vzorku, ticho, hranice −0,1 dBFS, podržení 1,5 s a ruční zrušení přebuzení zvlášť pro každý vstup. |

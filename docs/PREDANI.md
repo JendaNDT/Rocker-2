@@ -4,7 +4,15 @@
 
 Místní sestavení a šest automatických zkoušek prošlo. Otevři Zapojení, vyber zařízení, spusť tón a v dalším kroku brnkni. Vstup můžeš pojmenovat podle brnknutí nebo ručně. Aplikace si pamatuje nastavení počítače a jména vstupů.
 
-V návrhu změn otevři podrobnosti příslušné zkoušky. Dole v přehledu běhu najdeš balíky Rocker2-Windows-x64, Rocker2-Windows-ARM64, Rocker2-Mac a ke každému osm snímků. [Výsledky CI](https://github.com/JendaNDT/Rocker-2/pull/1/checks) · [Běhy s artefakty](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-0) · [Návod pro Jendu](../README.md)
+Na Windows x64, Windows ARM64 a macOS prošlo sestavení i všech šest automatických zkoušek. GitHub uložil tři balíky s aplikací a tři sady po osmi snímcích. [Ověřený běh CI](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240)
+
+| Počítač | Aplikace | Osm snímků PNG |
+|---|---|---|
+| Windows s Intelem nebo AMD | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14460738040) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14460867902) |
+| Windows na ARM | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14461900508) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14461422878) |
+| Mac s Apple Silicon | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14461735384) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14459414950) |
+
+[Návod pro Jendu](../README.md) · [Náhled úvodu](zkousky/E0/uvod.png) · [Náhled vstupů](zkousky/E0/vstupy.png)
 
 ## 2. Zbývá
 
