@@ -1,0 +1,57 @@
+name: Rocker 2
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-2025, name: Windows-x64, arch: x64}
+          - {os: windows-11-arm, name: Windows-ARM64, arch: ARM64}
+          - {os: macos-latest, name: Mac, arch: arm64}
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -A ${{ matrix.arch }}
+      - name: Configure macOS
+        if: runner.os == 'macOS'
+        run: cmake -S . -B build -G Xcode
+      - name: Build
+        run: cmake --build build --config Release --parallel 3
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -Type Directory pack
+          Copy-Item "build/Rocker2_artefacts/Release/Rocker 2.exe",LICENSE,assets/fonts/*-OFL.txt,build/_deps/juce-src/LICENSE.md,build/_deps/juce-src/modules/juce_audio_devices/native/asio/LICENSE.txt pack/
+          Compress-Archive -Path pack/* -DestinationPath Rocker2-${{ matrix.name }}.zip
+      - name: Package macOS
+        if: runner.os == 'macOS'
+        run: |
+          mkdir pack
+          cp -R "build/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
+          ditto -c -k --sequesterRsrc pack Rocker2-Mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rocker2-${{ matrix.name }}
+          path: Rocker2-*.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Snimky-${{ matrix.name }}
+          path: build/screenshots/*.png
+          if-no-files-found: error
