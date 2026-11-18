@@ -12,12 +12,16 @@ juce::String Settings::inputKey(const DeviceChoice& d, int channel) {
 }
 Settings Settings::load(const juce::File& file) {
     Settings result;
-    if (!file.existsAsFile() || file.getSize() > 4 * 1024 * 1024) return result;
+    if (!file.existsAsFile() || file.getSize() > 4 * 1024 * 1024)
+        return result;
     auto data = juce::JSON::parse(file);
-    if (!data.isObject()) return result;
+    if (!data.isObject())
+        return result;
     auto integer = [&](const char* key, int fallback, int low, int high) {
         auto v = data.getProperty(key, {});
-        return v.isInt() && static_cast<int>(v) >= low && static_cast<int>(v) <= high ? static_cast<int>(v) : fallback;
+        return v.isInt() && static_cast<int>(v) >= low && static_cast<int>(v) <= high
+                   ? static_cast<int>(v)
+                   : fallback;
     };
     auto string = [&](const char* key) {
         auto v = data.getProperty(key, {});
@@ -34,11 +38,13 @@ Settings Settings::load(const juce::File& file) {
     auto aliases = data.getProperty("aliases", {});
     if (auto* obj = aliases.getDynamicObject())
         for (auto& item : obj->getProperties())
-            if (item.value.isString()) result.aliases[item.name.toString()] = item.value.toString();
+            if (item.value.isString())
+                result.aliases[item.name.toString()] = item.value.toString();
     return result;
 }
 bool Settings::save(const juce::File& file) const {
-    if (file.getParentDirectory().createDirectory().failed()) return false;
+    if (file.getParentDirectory().createDirectory().failed())
+        return false;
     auto* object = new juce::DynamicObject;
     juce::var data(object);
     object->setProperty("schemaVersion", 1);
@@ -51,9 +57,10 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("rate", device.rate);
     auto* names = new juce::DynamicObject;
     object->setProperty("aliases", juce::var(names));
-    for (auto& [key, name] : aliases) names->setProperty(key, name);
+    for (auto& [key, name] : aliases)
+        names->setProperty(key, name);
     juce::TemporaryFile temp(file);
-    return temp.getFile().replaceWithText(juce::JSON::toString(data))
-        && temp.overwriteTargetFileWithTemporary();
+    return temp.getFile().replaceWithText(juce::JSON::toString(data)) &&
+           temp.overwriteTargetFileWithTemporary();
 }
-}
+} // namespace rocker

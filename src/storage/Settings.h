@@ -12,4 +12,4 @@ struct Settings {
     bool save(const juce::File&) const;
     static juce::String inputKey(const DeviceChoice&, int channel);
 };
-}
+} // namespace rocker

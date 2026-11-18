@@ -3,21 +3,24 @@
 #include <memory>
 
 namespace rocker {
-struct Reading { float peak, held; bool clipped; };
+struct Reading {
+    float peak, held;
+    bool clipped;
+};
 float decibels(float amplitude) noexcept;
 
 class Audio {
-public:
+  public:
     // The device must be stopped before changing the channel layout.
     void prepare(int inputs, int sampleRate);
     void playTone() noexcept { command.store(1); }
     void stopTone() noexcept { command.store(-1); }
     Reading read(int channel) const noexcept;
     void clearClip(int channel) noexcept;
-    void process(const float* const* inputs, int inputCount, float* const* outputs,
-                 int outputCount, int frames) noexcept;
+    void process(const float* const* inputs, int inputCount, float* const* outputs, int outputCount,
+                 int frames) noexcept;
 
-private:
+  private:
     struct Meter {
         float hold = 0;
         int remaining = 0;
@@ -28,4 +31,4 @@ private:
     int count = 0, rate = 48000, position = -1;
     std::atomic<int> command{0};
 };
-}
+} // namespace rocker

@@ -25,7 +25,7 @@ struct Ports {
     int defaultInput = 0, defaultOutput = 0;
 };
 class DeviceSystem {
-public:
+  public:
     virtual ~DeviceSystem() = default;
     virtual std::vector<Ports> scan() = 0;
     virtual bool open(DeviceChoice&, Capabilities&, Audio&) = 0;
@@ -36,9 +36,12 @@ std::unique_ptr<DeviceSystem> nativeDevices();
 
 // All device changes and reads of channel layout take place on the message thread.
 class Connection {
-public:
+  public:
     explicit Connection(DeviceSystem& s) : system(s) {}
-    ~Connection() { system.changed = {}; system.close(); }
+    ~Connection() {
+        system.changed = {};
+        system.close();
+    }
     void rescan(DeviceChoice preferred);
     bool select(DeviceChoice preferred);
     std::vector<Ports> ports;
@@ -46,7 +49,8 @@ public:
     Capabilities caps;
     Audio audio;
     bool online = false;
-private:
+
+  private:
     DeviceSystem& system;
 };
-}
+} // namespace rocker
