@@ -392,9 +392,10 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         REQUIRE(find<Button>(view, "Metal*"));
         fake.process({}, 4096);
         click(view, cs::savePreset);
-        auto* title = find<TextEditor>(view, cs::presetTitle);
-        REQUIRE(title);
-        title->setText(String(u8"Můj aparát"));
+        auto* presetEditor = find<TextEditor>(view, cs::presetTitle);
+        REQUIRE(presetEditor);
+        presetEditor->setText(String(u8"Můj aparát"), false);
+        presetEditor->onTextChange();
         click(view, cs::storePreset);
         REQUIRE(find<Button>(view, String(u8"Můj aparát")));
         REQUIRE(Settings::load(temp.file).guitarPresets.size() == 1);
@@ -413,7 +414,9 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
     Studio reopened(fake, temp.file);
     click(reopened, cs::resume);
     click(reopened, String(u8"Můj aparát"));
-    REQUIRE(find<Slider>(reopened, cs::drive)->getValue() == 64);
+    auto* reopenedDrive = find<Slider>(reopened, cs::drive);
+    REQUIRE(reopenedDrive);
+    CHECK(reopenedDrive->getValue() == 64);
     CHECK(reopened.currentPage() == Page::project);
     auto v = ViewState::load(File(Settings::load(temp.file).lastSong));
     CHECK(v.cursor == 4096);
