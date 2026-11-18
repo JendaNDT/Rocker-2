@@ -17,7 +17,7 @@ struct Capabilities {
     juce::Array<double> rates;
     juce::Array<int> buffers;
     int outputChannels = 0;
-    int inputLatency=0, outputLatency=0;
+    int inputLatency = 0, outputLatency = 0;
 };
 struct Ports {
     Driver driver;

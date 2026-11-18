@@ -212,9 +212,11 @@ Studio::Studio(DeviceSystem& sys, File path)
     viewport.setViewedComponent(&rows, false);
     viewport.setScrollBarsShown(true, false);
     addChildComponent(viewport);
-    tunings=Tuning::factory();
-    tunings.insert(tunings.end(),settings.tunings.begin(),settings.tunings.end());
-    for (int i=0;i<(int)tunings.size();++i) if (tunings[i].name==settings.tuningName) tuningIndex=i;
+    tunings = Tuning::factory();
+    tunings.insert(tunings.end(), settings.tunings.begin(), settings.tunings.end());
+    for (int i = 0; i < (int)tunings.size(); ++i)
+        if (tunings[i].name == settings.tuningName)
+            tuningIndex = i;
     resetTuning();
     devices.changed = [this] { refresh(true); };
     refresh(false);
@@ -283,12 +285,17 @@ void Studio::finish() {
 void Studio::show(Page value) {
     activityBeforePluck.clear();
     link.audio.stopTone();
-    const bool keepMonitor=(page==Page::live || page==Page::amp) && (value==Page::live || value==Page::amp);
-    if (!keepMonitor) link.audio.live.silence();
-    if (value==Page::live || value==Page::amp || value==Page::diagnostics || value==Page::tuner) link.audio.live.selectInput(heardInput());
-    if (value==Page::tuner) {
-        if (page!=Page::customTuning && page!=Page::tuner) tunerReturn=page;
-        resetTuning(); link.audio.live.setTuner(true);
+    const bool keepMonitor =
+        (page == Page::live || page == Page::amp) && (value == Page::live || value == Page::amp);
+    if (!keepMonitor)
+        link.audio.live.silence();
+    if (value == Page::live || value == Page::amp || value == Page::diagnostics || value == Page::tuner)
+        link.audio.live.selectInput(value == Page::diagnostics ? measurementInput : heardInput());
+    if (value == Page::tuner) {
+        if (page != Page::customTuning && page != Page::tuner)
+            tunerReturn = page;
+        resetTuning();
+        link.audio.live.setTuner(true);
     }
     page = value;
     answer = -1;
@@ -301,7 +308,8 @@ void Studio::status(String value) {
     triggerAsyncUpdate();
 }
 void Studio::timerCallback() {
-    if (page>=Page::live) pollLive();
+    if (page >= Page::live)
+        pollLive();
     if (page == Page::inputs) {
         identifyGuitar();
         for (auto* c : rows.getChildren())
@@ -346,15 +354,57 @@ void Studio::paint(Graphics& g) {
     g.setColour(s::line);
     g.fillRect(0, s::header, getWidth(), s::hairline);
     g.fillRect(0, getHeight() - s::footer, getWidth(), s::hairline);
-    if (page==Page::tuner && !needleArea.isEmpty()) {
-        auto band=needleArea.withSizeKeepingCentre(needleArea.getWidth(),s::grid);
-        g.setColour(s::line); g.fillRect(band);
-        auto centre=band.getCentreX();
-        g.setColour(s::ready); g.fillRect(centre-s::stroke,needleArea.getY(),2*s::stroke,needleArea.getHeight());
-        if (readingHz>0) {
-            int x=centre+juce::roundToInt(std::clamp(cents,-50.,50.)/50*(band.getWidth()/2-s::grid));
-            g.setColour(std::abs(cents)<=5?s::ready:s::warning);
-            g.fillEllipse((float)(x-s::gap/2),(float)(band.getCentreY()-s::gap/2),s::gap,s::gap);
+    if (page == Page::live) {
+        auto drawMeter = [&](Rect r, float value, float held, bool clipped) {
+            auto track = r.withSizeKeepingCentre(r.getWidth(), s::grid * 2);
+            auto position = [&](float amplitude) {
+                return juce::roundToInt(track.getWidth() *
+                                        std::clamp((decibels(amplitude) + 60.f) / 60.f, 0.f, 1.f));
+            };
+            g.setColour(s::line);
+            g.fillRect(track);
+            g.setColour(clipped ? s::clipping : s::ready);
+            g.fillRect(track.withWidth(position(value)));
+            if (held > 0) {
+                g.setColour(s::chalk);
+                g.fillRect(
+                    track.withX(track.getX() + std::min(position(held), track.getWidth() - s::stroke))
+                        .withWidth(s::stroke));
+            }
+        };
+        auto in = link.audio.read(heardInput());
+        drawMeter(inputBar, in.peak, in.held, in.clipped);
+        drawMeter(outputBar, link.audio.live.outputPeak.load(), 0, false);
+        auto icon = routeSymbol.toFloat();
+        g.setColour(s::guitar);
+        if (!icon.isEmpty()) {
+            auto centre = icon.getCentre();
+            if (guitarSource == 0 || guitarSource == 3) {
+                auto plug = icon.reduced(s::grid).withTrimmedRight(s::grid);
+                g.drawRect(plug, s::stroke);
+                g.drawLine(plug.getRight(), centre.y, icon.getRight(), centre.y, s::stroke);
+            }
+            if (guitarSource > 0) {
+                if (guitarSource == 3)
+                    icon.translate(s::icon + s::gap, 0);
+                g.drawRect(icon, s::stroke);
+                g.drawEllipse(icon.reduced(s::grid), s::stroke);
+            }
+        }
+    }
+    if (page == Page::tuner && !needleArea.isEmpty()) {
+        auto band = needleArea.withSizeKeepingCentre(needleArea.getWidth(), s::grid);
+        g.setColour(s::line);
+        g.fillRect(band);
+        auto centre = band.getCentreX();
+        g.setColour(s::ready);
+        g.fillRect(centre - s::stroke, needleArea.getY(), 2 * s::stroke, needleArea.getHeight());
+        if (readingHz > 0) {
+            int x = centre + juce::roundToInt(std::clamp(needleCents, -50., 50.) / 50 *
+                                              (band.getWidth() / 2 - s::grid));
+            g.setColour(std::abs(cents) <= 5 ? s::ready : s::warning);
+            g.fillEllipse((float)(x - s::gap / 2), (float)(band.getCentreY() - s::gap / 2), s::gap,
+                          s::gap);
         }
     }
     for (const auto& item : textLines) {
@@ -370,21 +420,22 @@ void Studio::text(String value, Rect r, int size, Colour ink, bool mono, bool bo
         f.setExtraKerningFactor(s::tracking);
     textLines.push_back({std::move(value), r, f, ink, right});
 }
-void Studio::button(const String& name, Rect r, Handler handler, int look, String key) {
+Button* Studio::button(const String& name, Rect r, Handler handler, int look, String key) {
     auto* b = new Action(name, look, std::move(key), skin);
     controls.add(b);
     addAndMakeVisible(b);
     b->setBounds(r);
     b->onClick = std::move(handler);
+    return b;
 }
 void Studio::combo(const String& title, Rect r, const StringArray& items, int selectedIndex,
                    std::function<void(int)> change, bool mono) {
-    text(title, r.removeFromLeft(std::min(s::labelWidth,r.getWidth()*2/5)), s::body, s::muted);
+    text(title, r.removeFromLeft(std::min(s::labelWidth, r.getWidth() * 2 / 5)), s::body, s::muted);
     auto* box = new ComboBox;
     controls.add(box);
     addAndMakeVisible(box);
     box->setName(title);
-    box->setBounds(r.withWidth(std::min(s::fieldWidth,r.getWidth())));
+    box->setBounds(r.withWidth(std::min(s::fieldWidth, r.getWidth())));
     if (mono) {
         box->getProperties().set("number", true);
         box->lookAndFeelChanged();
@@ -400,7 +451,11 @@ void Studio::combo(const String& title, Rect r, const StringArray& items, int se
 }
 void Studio::rebuild() {
     controls.clear();
-    dynamicLines.clear(); needleArea={};
+    dynamicLines.clear();
+    needleArea = {};
+    inputBar = {};
+    outputBar = {};
+    routeSymbol = {};
     textLines.clear();
     panels.clear();
     viewport.setVisible(false);
@@ -421,20 +476,19 @@ void Studio::rebuild() {
          false, false, true);
     if (page == Page::home)
         makeHome(area);
-    else if (page<=Page::inputs)
+    else if (page <= Page::inputs)
         makeWizard(area);
-    else livePages(area);
+    else
+        livePages(area);
     repaint();
 }
 void Studio::makeHome(Rect area) {
     auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
     button(cs::setup, footer.removeFromLeft(s::nameWidth), [this] { show(Page::device); });
     footer.removeFromLeft(s::gap);
-    button(
-        cs::tuner, footer.removeFromLeft(s::nameWidth), [this] { toggleTuner(); }, tunerButton,
-        "T");
+    button(cs::tuner, footer.removeFromLeft(s::nameWidth), [this] { toggleTuner(); }, tunerButton, "T");
     footer.removeFromLeft(s::gap);
-    button(cs::livePage,footer.removeFromLeft(s::clipWidth),[this]{show(Page::live);},primary);
+    button(cs::livePage, footer.removeFromLeft(s::clipWidth), [this] { show(Page::live); }, primary);
     text(message, footer.reduced(s::inset, 0), s::body, message == cs::saved ? s::ready : s::warning,
          false, false, true);
     area.reduce(0, s::gutter);
@@ -625,7 +679,10 @@ void Studio::inputPage(Rect area) {
     }
     if (!link.caps.inputs.isEmpty()) {
         options.removeFromRight(s::gap);
-        button(cs::source,options.removeFromRight(s::clipWidth),[this]{show(Page::live);});
+        button(cs::source, options.removeFromRight(s::clipWidth), [this] {
+            finish();
+            show(Page::live);
+        });
     }
     text(cs::clipHelp, options, s::caption, s::muted);
     if (link.caps.inputs.isEmpty()) {
@@ -649,13 +706,16 @@ void Studio::inputPage(Rect area) {
     }
 }
 bool Studio::keyPressed(const KeyPress& key) {
-    if (page!=Page::customTuning && !key.getModifiers().isAnyModifierKeyDown()
-        && CharacterFunctions::toUpperCase((juce_wchar)key.getKeyCode())=='T'
-        && !dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent())) {
-        toggleTuner(); return true;
+    if (page != Page::customTuning && !key.getModifiers().isAnyModifierKeyDown() &&
+        CharacterFunctions::toUpperCase((juce_wchar)key.getKeyCode()) == 'T' &&
+        !dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent())) {
+        toggleTuner();
+        return true;
     }
-    if (page>=Page::live && key==KeyPress::escapeKey) {
-        show(page==Page::tuner?tunerReturn:(page==Page::customTuning?Page::tuner:Page::home)); return true;
+    if (page >= Page::live && key == KeyPress::escapeKey) {
+        show(page == Page::tuner ? tunerReturn
+                                 : (page == Page::customTuning ? Page::tuner : Page::home));
+        return true;
     }
     if (page != Page::home) {
         if (key == KeyPress::escapeKey) {

@@ -33,7 +33,7 @@ void Audio::clearClip(int channel) noexcept {
 void Audio::process(const float* const* inputs, int inputCount, float* const* outputs, int outputCount,
                     int frames) noexcept {
     juce::ScopedNoDenormals denormals;
-    const auto start=std::chrono::steady_clock::now();
+    const auto start = std::chrono::steady_clock::now();
     for (int c = 0; c < count; ++c) {
         auto& m = meters[c];
         const float* samples = c < inputCount ? inputs[c] : nullptr;
@@ -71,10 +71,11 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
         if (++position == 3 * rate)
             position = -1;
     }
-    live.render(inputs,inputCount,outputs,outputCount,frames);
-    if (frames>0) {
-        const auto elapsed=std::chrono::duration<float>(std::chrono::steady_clock::now()-start).count();
-        live.cpuPercent.store(0.95f*live.cpuPercent.load()+0.05f*elapsed*100*rate/frames);
+    live.render(inputs, inputCount, outputs, outputCount, frames);
+    if (frames > 0) {
+        const auto elapsed =
+            std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
+        live.cpuPercent.store(0.95f * live.cpuPercent.load() + 0.05f * elapsed * 100 * rate / frames);
     }
 }
 } // namespace rocker

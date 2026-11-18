@@ -39,7 +39,7 @@ jobs:
           print(result.stdout)
           if result.returncode:
               detail = result.stdout[-6000:].replace("%", "%25").replace("\n", "%0A").replace("\r", "%0D")
-              print(f"::error title=E0::{detail}")
+              print(f"::error title=StudioSuite::{detail}")
           raise SystemExit(result.returncode)
       - name: Package Windows
         if: runner.os == 'Windows'

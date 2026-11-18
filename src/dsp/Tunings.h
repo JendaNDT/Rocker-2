@@ -10,4 +10,4 @@ struct Tuning {
     static juce::String noteName(int note);
     int nearest(double hz) const;
 };
-}
+} // namespace rocker

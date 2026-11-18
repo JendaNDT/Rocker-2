@@ -30,7 +30,8 @@ class FakeDevice final : public DeviceSystem {
         caps.rates = {static_cast<double>(rate)};
         caps.buffers = {64, 128, 256};
         caps.outputChannels = outputs;
-        caps.inputLatency=121; caps.outputLatency=252;
+        caps.inputLatency = 121;
+        caps.outputLatency = 252;
         d.rate = rate;
         if (!caps.buffers.contains(d.buffer))
             d.buffer = 128;
