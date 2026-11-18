@@ -12,3 +12,16 @@
 | Brnknutí a více nástrojů | Po stisku Najít vstup kytary sledujeme aktivitu nad −36 dBFS. Při souběhu nabídneme ruční pojmenování. Rozpoznání celé soupravy patří do E9 a volba zdroje kytary do E1 podle 04. | Při více aktivních vstupech hádat podle nejhlasitějšího. |
 
 Přednost má fungující uložené zapojení. Pro první otevření se preferuje 48 kHz a 128 vzorků, pokud je ovladač nabízí. Výchozí buffer pro hraní přes aparát určí H-01.
+
+## E1 · hraní do sluchátek
+
+| Otázka | Volba a důvod | Alternativa |
+|---|---|---|
+| E0 stále čeká na přijetí | Na Jendův pokyn začíná E1 z posledního ověřeného sestavení E0. Návrh E1 směřuje do větve etapa-0 a obsahuje pouze přírůstek. Ruční poslech E0 je otevřený. | Po sloučení E0 přesměrovat návrh E1 do main. |
+| Původ zvuku reproboxu | Rocker při otevření zvukovky vypočte původní krátkou impulsní odezvu pro její frekvenci. Pásmo kytarového reproduktoru, zdvih středů a útlum vysokých středů jsou popsané přímo v Amp.cpp. Koeficienty vznikají ze vzorce, celý tento kód a odezva patří pod AGPLv3 projektu. | Po poslechovém srovnání přidat měřenou odezvu s doloženou licencí. |
+| Výpočet výšky tónu | Použili jsme vlastní implementaci YIN s upřesněním délky periody. Detekce probíhá mimo zvukové vlákno. Kritéria přesnosti a odolnosti jsou podle A-16 včetně Drop B. | Dokument 01 zmiňuje algoritmus McLeod. Můžeme jej porovnat při potížích s konkrétní kytarou. |
+| První poslech a kalibrace | Zapojení začne s vypnutým odposlechem. Přechod na ladičku nebo měření jej vypne. Kabelový test hledá návrat do půl sekundy a odmítne slabou shodu. Uchovává poslední úspěch pro daný ovladač, vstupní a výstupní zařízení, frekvenci a buffer. | Zapnout odposlech automaticky až po výslovném potvrzení vhodného zapojení. |
+| Klik při H-01 | Hráč v E1 použije externí metronom. Klik studia přibude s transportem v E2 podle dokumentu 04. Výchozí buffer se rozhodne podle H-01. | H-01 zopakovat také s klikem studia v E2. |
+| Zpoždění a zdroje | Údaj s aparátem zahrnuje přibližné zpoždění digitálních filtrů. Kabel změří celou cestu zvukovkou bez aparátu. Bluetooth se rozpoznává ze známých označení výstupu, skryté bezdrátové propojení zvukovka aplikaci nemusí sdělit. | U nejasného výstupu ověřit kabelové propojení se zvukovkou. |
+
+[Zdroj impulsní odezvy](../src/dsp/Amp.cpp) · [Licence projektu](../LICENSE)

@@ -1,62 +1,55 @@
-# Předání E0
+# Předání E1 · kytara do sluchátek
 
 ## 1. Hotovo
 
-Místní sestavení a šest automatických zkoušek prošlo. Otevři Zapojení, vyber zařízení, spusť tón a v dalším kroku brnkni. Vstup můžeš pojmenovat podle brnknutí nebo ručně. Aplikace si pamatuje nastavení počítače a jména vstupů.
+Vyzkoušej **Hraj → Přímo do zvukovky → Se zvukem**, potom **Zvuk kytary → Crunch**. **T** otevře ladičku s devíti laděními a vlastními strunami. **Diagnostika → Změřit zpoždění** uloží úspěšnou kalibraci a při návratu ke stejnému zařízení, frekvenci a bufferu ji znovu zobrazí. Měřiče ukazují vstup i poslechový výstup. [Návod pro Jendu](../README.md)
 
-Na Windows x64, Windows ARM64 a macOS prošlo sestavení i všech šest automatických zkoušek. GitHub uložil tři balíky s aplikací a tři sady po osmi snímcích. [Ověřený běh CI](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240)
-
-| Počítač | Aplikace | Osm snímků PNG |
-|---|---|---|
-| Windows s Intelem nebo AMD | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14460738040) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14460867902) |
-| Windows na ARM | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14461900508) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14461422878) |
-| Mac s Apple Silicon | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14461735384) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240/artifacts/14459414950) |
-
-[Návod pro Jendu](../README.md) · [Náhled úvodu](zkousky/E0/uvod.png) · [Náhled vstupů](zkousky/E0/vstupy.png)
+Místně prošlo 12 automatických zkoušek. Z GitHubu vyber zelený běh pro etapa-1, otevři Artifacts a vyber Rocker2 pro svůj počítač nebo Snimky s 18 obrázky. [Běhy s aplikacemi a snímky pro E1](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-1) · [Hraní](zkousky/E1/hrani.png) · [Ladička](zkousky/E1/ladicka.png)
 
 ## 2. Zbývá
 
-Podmínkou přijetí E0 je poslech L / P / oba ve sluchátkách a odezva měřiče na skutečném Windows. Výsledek závisí na ovladači, přístupu k mikrofonu a zapojení zvukovky. [Přehled zkoušek a vybavení](STAV.md)
+K přijetí E1 chybí kabelové měření M-01 a hraní H-01 na kamarádově sestavě. Tovární volba 128 vzorků slouží pro první spuštění u zařízení, které ji podporuje. Konečný výchozí buffer určí hodnocení hráče. Také první poslech E0 zůstává otevřený. [Stav zkoušek](STAV.md)
 
 ## 3. Ruční zkoušky
 
-| Kde | Výsledek |
+| Zkouška | Výsledek |
 |---|---|
-| Windows, výběr ASIO, tón, kytara a přebuzení | čeká na Jendu — čeká na ruční zkoušku |
-| Mac s Jendovou zvukovkou a CoreAudio | čeká na Jendu — čeká na ruční zkoušku |
-| Mikrofon notebooku, volitelně | čeká na Jendu — čeká na ruční zkoušku |
-| Náčrty a osm PNG | čeká na Jendu |
+| E0 · ASIO, CoreAudio, tón, měřiče a odpojení | čeká na Jendu · čeká na ruční zkoušku |
+| E1 · Crunch, Drop D / B, zvuk brány a přímý odposlech | čeká na Jendu · čeká na ruční zkoušku |
+| M-01 · pět opakování pro každý dostupný režim | čeká na Jendu · čeká na ruční zkoušku |
+| H-01 · slepé hodnocení riffu při různých bufferech | čeká na Jendu a hráče · čeká na ruční zkoušku |
+| Kontrola čitelnosti a rozmístění na Jendově obrazovce | čeká na Jendu |
 
-Pošli typ počítače, název zvukovky a ovladače, frekvenci, buffer a co jsi slyšel ve třech sekundách tónu. U měřiče stačí číslo vstupu a zda šla značka po ubrání GAIN smazat. Zprávu do záznamu zapíše vývojář.
+Postup, tabulka pro čísla a význam známek jsou přímo v návodu. Výsledky může Jenda poslat zprávou. [M-01 a H-01](../README.md)
 
 ## 4. Rozhodnutí
 
-Původ dokumentu 05, repozitář, ARM64, zvětšení, prázdný úvod a náhradní zapojení jsou vysvětlené v [ROZHODNUTI.md](ROZHODNUTI.md).
+Impulsní odezva reproboxu pochází z vlastního výpočtu. Pro H-01 použij externí metronom. E1 navazuje na otevřený návrh E0. Pokud i přes ASIO hraní ruší, zapiš konkrétní měření a s Jendou vyber přímý odposlech zvukovky s aparátem při přehrávání. [Rozhodnutí E1](ROZHODNUTI.md)
 
-## 5. Prompt pro etapu E1
+## 5. Prompt pro etapu E2
 
-Jsi hlavní vývojář Rockeru 2. Jenda rozhoduje, hraje, zkouší a schvaluje. Ty píšeš kód, testy a dokumentaci. Jenda nemá upravovat kód.
+Jsi hlavní vývojář Rockeru 2, českého domácího studia pro Windows. Jenda a jeho kamarád hrají, zkoušejí a schvalují. Ty píšeš kód, testy a dokumentaci. Začni plánem do deseti bodů.
 
 ### Podklady
 
-Přečti celé dokumenty 01–05 v docs, STAV.md, ROZHODNUTI.md a toto předání. Zkontroluj E0 a zapiš výsledky, které Jenda poslal. Rozsah E1 je v dokumentu 04. Začni plánem do deseti bodů.
+Přečti celé dokumenty 01–05, STAV.md, ROZHODNUTI.md a PREDANI.md. E2 je vymezená dokumentem 04. Zkontroluj výsledky E0 a E1 a doplň všechna měření od Jendy. Nezaměňuj čísla simulace za měření zvukovky.
 
 ### Závazné podmínky
 
-**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Původní repozitář neměň. Neotvírej jeho vizuální komponenty, navigaci, styly ani snímky. Používej komponenty JUCE s vlastním kreslením a společnými tokeny. Rozhraní česky na jednom místě, kód a komentáře anglicky. Bez účtu, sítě za běhu a telemetrie. Licence AGPLv3, licence přibalených písem a legálně šiřitelná impulsní odezva reproboxu s doloženým původem. Zachovej C++20, JUCE 9.0.5, Catch2, ASIO, režimy Windows Audio i CoreAudio. Ve zvukovém zpětném volání platí 02 / 4.3. Nabídka odpovídá skutečnému vybavení.
+**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Původní Rocker neměň ani neprohlížej jeho vzhled, navigaci či styly. C++20, JUCE 9.0.5, vlastní zvukové jádro, Catch2, české texty na jednom místě, anglický kód a komentáře. JUCE komponenty s vlastním kreslením a společnými tokeny, AGPLv3 a licence vložených písem. Provoz offline, bez účtu a telemetrie. Zachovej ASIO, režimy Windows Audio i CoreAudio. V callbacku žádné alokace, zámky, soubory nebo logování. Výběr zdrojů podle skutečného vybavení. Zapiš odchylky a alternativy do ROZHODNUTI.md a řekni je Jendovi.
 
-### Úkol E1 — kytara do sluchátek
+### Úkol
 
-1. Odposlech vstupu Se zvukem / Čistě / Vypnuto. Panel Co slyším pro živé vstupy a sluchátka, stopy přijdou v E2.
-2. Brána se Změř ticho, tři typy zkreslení s převzorkováním, korekce, reprobox s impulsní odezvou a hlasitost. Předvolby Čistý, Crunch, Lead a Metal.
-3. Ladička na T, tovární i vlastní ladění podle 01 / 4.3, referenční tón a potvrzení jen do sluchátek. Vyzkoušej Drop B a Drop D.
-4. Volba zdroje kytary přímo / kombo s mikrofonem / linka / obojí podle počtu vstupů.
-5. První Kontrola sestavy v Diagnostice ukáže ovladač, vstupy, zpoždění a procesor. Změřit zpoždění použije smyčkový kabel a uloží kalibraci pro zařízení, frekvenci a buffer. Bez kabelu ukáže označený odhad. Přidej varování pro Bluetooth.
+1. Skladba podle 02 / kap. 5 s jedním dílem. Přidat, pojmenovat a nastavit stopy, druh a vstup, připravit k nahrávání, Ztlumit a Sólo.
+2. Tempo, metrum, vyťukání tempa, odpočet a klik jen do sluchátek. Přehrávání a nahrávání při poslechu stop s kompenzací zpoždění. Kytara se ukládá čistě i při odposlechu přes Crunch.
+3. Časová osa, pravítko taktů, průběhy a ukazatel. Stavový pás, červený rám při nahrávání a Pohled zdálky s taktem a odpočtem.
+4. Atomické automatické uložení, zobrazeni.json, Pokračovat na stejném místě. Deník záchrany, obnova po pádu a zákaz spánku při nahrávání.
+5. Diagnostika → Zkouška souhry pro M-02. Vnitřní offline render pro A-06.
 
 ### Ověření
 
-A-16 prověří přesnost ladičky, A-20 shodu výstupu aparátu po opakované změně předvolby. Zachovej zkoušky E0 a A-17 i PNG nových obrazovek. Sestav a otestuj Windows x64, ARM64 a Mac. Jendovi připrav postup pro kabelové měření M-01 a hraní H-01. Při měření začni s výstupem na minimum. Předveď Crunch ve sluchátkách, údaj zpoždění a naladění Drop D. Naměřenou hodnotu a hodnocení hráče zapiš podle 03. Výchozí buffer určí H-01. Pokud hraní ruší i s ASIO, zapiš rozhodnutí podle 03 / Pořadí zkoušek, včetně možnosti přímého odposlechu.
+Zachovej E0/E1, A-17, snímky a sestavení Windows x64, Windows ARM64 i macOS. Proveď A-03, A-04, A-06 až A-09, A-14 a A-15. Připrav Jendovi M-02 s kabelem, H-02 s kytarou přes bicí, M-04 po ukončení úlohy a H-10 po restartu. Předveď osm taktů bicích při 112 BPM, přehrání s kytarou, znovuotevření a záchranu nahrávky. Při přetrvávajícím selhání M-02 nebo A-07 po opravě zastav, zdokumentuj výsledek a s Jendou rozhodni o přechodu na Tracktion Engine. M-01, H-01, M-02 a H-02 musejí být provedené před pokračováním za E3.
 
 ### Předání
 
-Pracuj ve větvi etapa-1 po malých commitech. Otevři český pull request s odkazy na běh, balíky a snímky. Aktualizuj STAV.md, ROZHODNUTI.md a PREDANI.md ve stejném pořadí s promptem pro E2 podle 04. U každé zkoušky napiš skutečný výsledek. Co vyžaduje zvukovku nebo hráče, označ „čeká na ruční zkoušku“. Poslední zprávu Jendovi napiš na 5–10 řádků.
+Pracuj ve větvi etapa-2 po malých commitech. Otevři český pull request s odkazem na ověřený běh, aplikace a snímky. Aktualizuj STAV.md a ROZHODNUTI.md. PREDANI.md má pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E3 podle 04. Neověřené hraní označ „čeká na ruční zkoušku“. Závěr pro Jendu česky na 5–10 řádků.
