@@ -100,6 +100,8 @@ class Native final : public DeviceSystem,
             choice.rate = juce::roundToInt(device->getCurrentSampleRate());
             choice.buffer = device->getCurrentBufferSizeSamples();
             processor.prepare(caps.inputs.size(), choice.rate);
+            caps.inputLatency=device->getInputLatencyInSamples();
+            caps.outputLatency=device->getOutputLatencyInSamples();
             audio = &processor;
             device->start(this);
             if (device->isPlaying())

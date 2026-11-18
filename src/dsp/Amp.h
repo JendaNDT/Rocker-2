@@ -19,12 +19,12 @@ public:
     void configure(AmpParameters);
     void reset() noexcept;
     float process(float) noexcept;
-    int delaySamples() const noexcept { return static_cast<int>(cabinet.size()/2)+7; }
+    int delaySamples() const noexcept { return static_cast<int>(cabinet.size()/2)+3; }
 private:
-    using HalfBand = std::array<float,15>;
-    float oversample(float,int) noexcept;
-    HalfBand filter{}, up{}, down{};
-    int upHead=0,downHead=0,head=0,rate=48000;
+    using Branch = std::array<float,3>;
+    Branch upEven{},upOdd{},downEven{},downOdd{};
+    float previousOdd=0;
+    int head=0,rate=48000;
     std::vector<float> cabinet, history;
     AmpParameters params=presets[0];
     float gain=1,level=1,threshold=0,env=0,gate=0,release=0,attack=0;
