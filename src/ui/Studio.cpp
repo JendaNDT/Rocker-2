@@ -390,9 +390,10 @@ bool Studio::keyPressed(const KeyPress& key) {
         if (key==KeyPress::escapeKey) {finish();return true;}
         return false;
     }
+    if (key==KeyPress::returnKey) { status(cs::coming(2)); return true; }
     switch (key.getKeyCode()) {
         case 'R': case 'U': status(cs::coming(8)); return true;
-        case 'N': case KeyPress::returnKey: status(cs::coming(2)); return true;
+        case 'N': status(cs::coming(2)); return true;
         case 'T': status(cs::coming(1)); return true;
         default: return false;
     }
