@@ -3,6 +3,8 @@
 #include <cmath>
 #include <numbers>
 #include <limits>
+#include <chrono>
+#include <juce_audio_basics/juce_audio_basics.h>
 
 namespace rocker {
 static_assert(std::atomic<float>::is_always_lock_free && std::atomic<int>::is_always_lock_free &&
@@ -13,6 +15,7 @@ float decibels(float value) noexcept {
 void Audio::prepare(int inputs, int sampleRate) {
     count = inputs;
     rate = sampleRate;
+    live.prepare(rate);
     position = -1;
     command = 0;
     meters = std::make_unique<Meter[]>(count);
@@ -29,6 +32,8 @@ void Audio::clearClip(int channel) noexcept {
 }
 void Audio::process(const float* const* inputs, int inputCount, float* const* outputs, int outputCount,
                     int frames) noexcept {
+    juce::ScopedNoDenormals denormals;
+    const auto start = std::chrono::steady_clock::now();
     for (int c = 0; c < count; ++c) {
         auto& m = meters[c];
         const float* samples = c < inputCount ? inputs[c] : nullptr;
@@ -65,6 +70,12 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
             outputs[1][i] = value;
         if (++position == 3 * rate)
             position = -1;
+    }
+    live.render(inputs, inputCount, outputs, outputCount, frames);
+    if (frames > 0) {
+        const auto elapsed =
+            std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
+        live.cpuPercent.store(0.95f * live.cpuPercent.load() + 0.05f * elapsed * 100 * rate / frames);
     }
 }
 } // namespace rocker

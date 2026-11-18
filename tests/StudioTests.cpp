@@ -2,6 +2,8 @@
 #include "ui/Studio.h"
 #include "ui/Strings.h"
 #include <catch2/catch_test_macros.hpp>
+#include <numbers>
+#include <cmath>
 using namespace rocker;
 using namespace juce;
 
@@ -28,6 +30,17 @@ void click(Studio& view, const String& name) {
     REQUIRE(b->isEnabled());
     b->onClick();
     view.resized();
+}
+void chooseItem(Studio& view, const String& title, int index) {
+    auto* box = find<ComboBox>(view, title);
+    REQUIRE(box);
+    REQUIRE(index < box->getNumItems());
+    box->setSelectedItemIndex(index, sendNotificationSync);
+    view.resized();
+}
+void tick() {
+    Thread::sleep(60);
+    Timer::callPendingTimersSynchronously();
 }
 void fits(const Studio& view) {
     auto errors = view.layoutErrors();
@@ -99,10 +112,38 @@ TEST_CASE("A-17 real screen layouts and snapshots") {
         click(view, cs::finish);
         fits(view);
         snapshot(view, "00-uvod", pixels);
-        for (auto& name : {cs::song, cs::record, cs::resume, cs::library, cs::tuner}) {
+        for (auto& name : {cs::song, cs::record, cs::resume, cs::library}) {
             click(view, name);
             fits(view);
         }
+        click(view, cs::livePage);
+        chooseItem(view, cs::listen, 2);
+        fake.process({std::vector<float>(512, 0.3f)}, 512);
+        tick();
+        fits(view);
+        snapshot(view, "04-co-slysim", pixels);
+        click(view, cs::ampPage);
+        fits(view);
+        snapshot(view, "05-aparat", pixels);
+        click(view, cs::tuner);
+        chooseItem(view, cs::tuning, 1);
+        for (int frame = 0; frame < 6; ++frame) {
+            std::vector<float> notes(4096);
+            for (int i = 0; i < 4096; ++i)
+                notes[i] = 0.3f * std::sin(2 * std::numbers::pi * Pitch::frequency(38) *
+                                           (4096 * frame + i) / fake.rate);
+            fake.process({notes}, 4096);
+            tick();
+        }
+        fits(view);
+        snapshot(view, "06-ladicka", pixels);
+        click(view, cs::custom);
+        fits(view);
+        snapshot(view, "07-vlastni-ladeni", pixels);
+        click(view, cs::diagnostics);
+        fits(view);
+        snapshot(view, "08-diagnostika", pixels);
+        click(view, cs::home);
     }
     for (int key : {'t', 'T', 'r', 'n', 'u'})
         CHECK(view.keyPressed(KeyPress(key)));
@@ -192,4 +233,75 @@ TEST_CASE("A pluck names the active input even if it ends between UI updates") {
     view.resized();
     REQUIRE(find<TextEditor>(view, cs::channel(1))->getText() == cs::guitar);
     CHECK(find<TextEditor>(view, cs::channel(0))->getText().isEmpty());
+}
+
+TEST_CASE("Guitar routing, custom tuning and cable calibration survive normal UI workflows") {
+    CHECK(cs::latencyRating(10) == cs::good);
+    CHECK(cs::latencyRating(10.01) == cs::usable);
+    CHECK(cs::latencyRating(15) == cs::usable);
+    CHECK(cs::latencyRating(15.01) == cs::slow);
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    {
+        Studio view(fake, temp.file);
+        click(view, cs::home);
+        click(view, cs::livePage);
+        chooseItem(view, cs::source, 3);
+        REQUIRE(find<ComboBox>(view, cs::ampIn)->getNumItems() == 1);
+        chooseItem(view, cs::listeningTo, 1);
+        auto* modes = find<ComboBox>(view, cs::listen);
+        REQUIRE(modes);
+        CHECK(modes->getNumItems() == 2);
+        chooseItem(view, cs::listen, 1);
+        CHECK(fake.process({{0.5f}, {-0.25f}}, 1)[0][0] == -0.25f);
+        click(view, cs::diagnostics);
+        REQUIRE(fake.active->live.monitor == Monitor::off);
+        chooseItem(view, cs::input, 1);
+        click(view, cs::measure);
+        const int delay = 411;
+        std::vector<float> wire(delay, 0);
+        for (int pos = 0; pos < fake.rate; pos += 64) {
+            test::FakeDevice::Block input(2, std::vector<float>(64));
+            for (int i = 0; i < 64; ++i)
+                input[1][i] = wire[(pos + i) % delay];
+            auto output = fake.process(input, 64);
+            for (int i = 0; i < 64; ++i)
+                wire[(pos + i) % delay] = output[0][i];
+        }
+        for (int i = 0; i < 10 && Settings::load(temp.file).latency.empty(); ++i)
+            tick();
+        auto saved = Settings::load(temp.file);
+        auto key = Settings::calibrationKey(saved.device);
+        REQUIRE(saved.latency.contains(key));
+        CHECK(saved.latency.at(key).samples == delay);
+        CHECK(saved.latency.at(key).correction() == 38);
+        auto other = saved.device;
+        other.buffer *= 2;
+        CHECK_FALSE(saved.latency.contains(Settings::calibrationKey(other)));
+        view.resized();
+        fits(view);
+        click(view, cs::measure);
+        fake.process({}, fake.rate);
+        tick();
+        view.resized();
+        CHECK(Settings::load(temp.file).latency.at(key).samples == delay);
+        click(view, cs::tuner);
+        click(view, cs::custom);
+        auto enter = [&](const String& label, const String& value) {
+            auto* field = find<TextEditor>(view, label);
+            REQUIRE(field);
+            field->setText(value, false);
+            field->onTextChange();
+        };
+        enter(cs::tuningName, String(u8"Jendův baryton"));
+        enter(cs::userNotes, "B1 F#2 B2 E3 G#3 C#4");
+        click(view, cs::saveTuning);
+        REQUIRE(view.currentPage() == Page::tuner);
+        REQUIRE(find<ComboBox>(view, cs::tuning)->getText() == String(u8"Jendův baryton"));
+    }
+    Studio reopened(fake, temp.file);
+    click(reopened, cs::tuner);
+    REQUIRE(find<ComboBox>(reopened, cs::tuning)->getText() == String(u8"Jendův baryton"));
+    REQUIRE(Settings::load(temp.file).tunings.at(0).notes == Tuning::parse("B1 F#2 B2 E3 G#3 C#4"));
 }

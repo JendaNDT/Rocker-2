@@ -10,6 +10,10 @@ juce::File Settings::location() {
 juce::String Settings::inputKey(const DeviceChoice& d, int channel) {
     return juce::String(static_cast<int>(d.driver)) + "/" + juce::String(channel) + "/" + d.input;
 }
+juce::String Settings::calibrationKey(const DeviceChoice& d) {
+    juce::Array<juce::var> parts{(int)d.driver, d.input, d.output, d.rate, d.buffer};
+    return juce::JSON::toString(juce::var(parts), true);
+}
 Settings Settings::load(const juce::File& file) {
     Settings result;
     if (!file.existsAsFile() || file.getSize() > 4 * 1024 * 1024)
@@ -40,6 +44,25 @@ Settings Settings::load(const juce::File& file) {
         for (auto& item : obj->getProperties())
             if (item.value.isString())
                 result.aliases[item.name.toString()] = item.value.toString();
+    result.tuningName = string("tuningName");
+    auto tuningList = data.getProperty("tunings", {});
+    if (auto* list = tuningList.getArray())
+        for (const auto& item : *list) {
+            auto name = item.getProperty("name", {}).toString().trim().substring(0, 48);
+            auto notes = Tuning::parse(item.getProperty("notes", {}).toString());
+            if (name.isNotEmpty() && !notes.empty())
+                result.tunings.push_back({name, std::move(notes)});
+        }
+    auto measurements = data.getProperty("calibrations", {});
+    if (auto* obj = measurements.getDynamicObject())
+        for (auto& entry : obj->getProperties())
+            if (entry.value.isObject()) {
+                auto samples = entry.value.getProperty("samples", {}),
+                     reported = entry.value.getProperty("reported", {});
+                if (samples.isInt() && reported.isInt() && (int)samples >= 0 && (int)samples <= 500000 &&
+                    (int)reported >= 0 && (int)reported <= 500000)
+                    result.latency[entry.name.toString()] = {(int)samples, (int)reported};
+            }
     return result;
 }
 bool Settings::save(const juce::File& file) const {
@@ -59,6 +82,26 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("aliases", juce::var(names));
     for (auto& [key, name] : aliases)
         names->setProperty(key, name);
+    object->setProperty("tuningName", tuningName);
+    juce::Array<juce::var> list;
+    for (auto& tuning : tunings) {
+        auto* entry = new juce::DynamicObject;
+        list.add(juce::var(entry));
+        entry->setProperty("name", tuning.name);
+        juce::StringArray notes;
+        for (int note : tuning.notes)
+            notes.add(Tuning::noteName(note));
+        entry->setProperty("notes", notes.joinIntoString(" "));
+    }
+    object->setProperty("tunings", juce::var(list));
+    auto* measurements = new juce::DynamicObject;
+    object->setProperty("calibrations", juce::var(measurements));
+    for (auto& [key, calibration] : latency) {
+        auto* record = new juce::DynamicObject;
+        measurements->setProperty(key, juce::var(record));
+        record->setProperty("samples", calibration.samples);
+        record->setProperty("reported", calibration.reported);
+    }
     juce::TemporaryFile temp(file);
     return temp.getFile().replaceWithText(juce::JSON::toString(data)) &&
            temp.overwriteTargetFileWithTemporary();

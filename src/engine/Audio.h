@@ -1,4 +1,5 @@
 #pragma once
+#include "Live.h"
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -14,6 +15,7 @@ float decibels(float amplitude) noexcept;
 class Audio {
   public:
     // The device must be stopped before changing the channel layout.
+    Live live;
     void prepare(int inputs, int sampleRate);
     void playTone() noexcept { command.store(1); }
     void stopTone() noexcept { command.store(-1); }

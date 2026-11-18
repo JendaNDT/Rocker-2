@@ -1,5 +1,22 @@
 # Stav Rockeru 2
 
+## E1 · kytara do sluchátek
+
+Na Windows x64, Windows ARM64 i macOS prošlo sestavení a všech 12 automatických zkoušek. Každý počítač vytvořil balík s aplikací a 18 snímků. [Ověřený běh](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014)
+
+| Automatická zkouška | Výsledek |
+|---|---|
+| A-16 | Při 44,1 / 48 / 96 kHz všechny půltóny od B1 po E4, rozladění +7,5 centu. Čistý tón se vešel do ±1 centu, tón s přidanými harmonickými a šumem do ±3 centů. |
+| A-20 | Na stejném vstupu se Crunch po přepnutí na Metal i po dalších předvolbách vrátil k bitově shodnému výstupu při různých velikostech bloků. |
+| Směrování | Čistý poslech čte pouze vybraný vstup, oba kanály sluchátek mají stejný signál. Referenční a potvrzovací tón se nepřimíchaly do vstupu. Změř ticho nastavil práh po dvou sekundách. |
+| Kabel v simulaci | Pět pokusů na každé ze tří frekvencí našlo známých 373 vzorků i s obrácenou polaritou a útlumem. Bez návratu signálu měření selhalo. Samostatná zkouška přes obrazovku Diagnostika uložila 411 vzorků a korekci +38. Neúspěšný další pokus výsledek zachoval. |
+| Ladění a nastavení | Devět továrních ladění, Drop D / B, neplatné názvy tónů, dva různé vstupy a vlastní ladění s českým názvem po novém otevření. |
+| A-17 a snímky | Devět obrazovek ve dvou velikostech, včetně ladičky s hrajícím D2. Simulovaná zvukovka dodala signál pro měřiče. |
+
+Při spuštění skutečné aplikace na místním Linuxu bez zvukovky se otevřelo okno 1280 × 720. Klávesa T zobrazila ladičku s radou, kde vybrat vstup. Další stisk vrátil průvodce Zapojení.
+
+**M-01 a H-01 čekají na ruční zkoušku.** Čísla ze simulace výše slouží k ověření výpočtu. Jendova zvukovka, sluchátka, procesor, buffer, pět měření a hodnocení riffu zatím čekají na první zápis. Pro hraní ještě nebyl schválen výchozí buffer. [Postup a tabulka pro měření](../README.md) · [Náhled hraní](zkousky/E1/hrani.png) · [Náhled ladičky](zkousky/E1/ladicka.png)
+
 ## E0 — první zvuk
 
 Na Windows x64, Windows ARM64 a macOS prošlo sestavení i všech šest automatických zkoušek. GitHub uložil tři balíky s aplikací a tři sady po osmi snímcích. [Ověřený běh CI](https://github.com/JendaNDT/Rocker-2/actions/runs/44374946240)

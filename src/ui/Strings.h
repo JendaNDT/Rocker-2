@@ -64,4 +64,57 @@ inline juce::String frequency(double hz) {
     return juce::String(hz / 1000, std::fmod(hz, 1000) == 0 ? 0 : 1).replaceCharacter('.', ',') + " kHz";
 }
 inline juce::String channel(int n) { return juce::String(input) + " " + juce::String(n + 1); }
+inline const juce::StringArray tuningNames = {"Standard",   "Drop D", "Drop C", "Drop B", "Eb standard",
+                                              "D standard", "Open G", "Open D", "DADGAD"};
+inline const juce::StringArray pitchNames = {"C",  "C#", "D",  "D#", "E",  "F",
+                                             "F#", "G",  "G#", "A",  "A#", "B"};
+inline const juce::StringArray presetNames = {juce::String(u8"Čistý"), juce::String("Crunch"),
+                                              juce::String("Lead"), juce::String("Metal")};
+inline const juce::StringArray sources = {
+    juce::String(u8"Přímo do zvukovky"), juce::String(u8"Kombo s mikrofonem"),
+    juce::String(u8"Linka z komba / multiefektu"), juce::String(u8"Čistá kytara i kombo")};
+inline const juce::StringArray monitors = {juce::String("Vypnuto"), juce::String(u8"Čistě"),
+                                           juce::String("Se zvukem")};
+inline const juce::StringArray shapes = {juce::String(u8"Měkké"), juce::String(u8"Nesymetrické"),
+                                         juce::String(u8"Tvrdé")};
+inline const juce::String
+    livePage = u8"Hraj",
+    hear = u8"Co slyším", ampPage = u8"Zvuk kytary", diagnostics = u8"Diagnostika",
+    source = u8"Zdroj kytary", directIn = u8"Vstup kytary", ampIn = u8"Vstup komba",
+    listen = u8"Odposlech", preset = u8"Předvolba", headphones = u8"Ve sluchátkách",
+    monitorOff = u8"Živý odposlech je vypnutý.", drySignal = u8"Čistý vstup",
+    wetSignal = u8"Kytara přes aparát",
+    directHelp = u8"Pro hraní přes aparát nastav DIRECT / MONITOR na zvukovce na PLAYBACK nebo USB.",
+    comboHelp = u8"Kombo slyšíš z místnosti nebo přes přímý odposlech zvukovky.",
+    bluetooth = u8"Bluetooth může přidat přes 100 ms. Pro hraní použij sluchátka s kabelem.",
+    outputLevel = u8"Úroveň výstupu", delay = u8"Zpoždění ve sluchátkách",
+    estimated = u8"Odhad ovladače", measured = u8"Změřeno kabelem",
+    unknown = u8"Ovladač údaj neposkytl.", good = u8"dobré", usable = u8"použitelné", slow = u8"ruší",
+    noise = u8"Změř ticho", quiet = u8"Dvě sekundy nehraj. Brána změří šum vybraného vstupu.",
+    gateSet = u8"Práh brány je nastaven.", gate = u8"Brána", drive = u8"Zkreslení",
+    shape = u8"Druh zkreslení", bass = "Basy", middle = u8"Středy", treble = u8"Výšky", presence = "Jas",
+    volume = "Hlasitost", cabinet = u8"Reprobox · vestavěná impulsní odezva", tuning = u8"Ladění",
+    string = u8"Struna", automatic = u8"Podle tónu", ref = u8"Referenční tón",
+    custom = u8"Vlastní ladění", saveTuning = u8"Uložit ladění", tuningName = u8"Název ladění",
+    notesHint = u8"Struny od nejhlubší, např. D2 A2 D3 G3 B3 E4 (B = H).",
+    badTuning = u8"Zadej vlastní název a 1 až 12 tónů s oktávou v rozsahu F1 až D6.",
+    waiting = u8"Brnkni na jednu strunu.", inTune = u8"Naladěno", flat = u8"Přitáhni", sharp = u8"Povol",
+    tunedStrings = u8"Naladěné struny", rig = u8"Kontrola sestavy", processor = u8"Procesor",
+    load = u8"Zátěž zvukového vlákna", measure = u8"Změřit zpoždění",
+    measuring = u8"Měřím návrat signálu…", delta = u8"Korekce", samples = u8" vz.",
+    cableHelp =
+        u8"Stáhni výstup na minimum. Propoj levý linkový výstup se vstupem. Vypni DIRECT MONITOR.",
+    cableGain = u8"Opatrně přidej výstup. Po měření odpoj kabel, teprve potom zapni odposlech.",
+    noReturn = u8"Signál se nevrátil dostatečně čistě. Zkontroluj kabel, vstup a hlasitost a zkus "
+               u8"měření znovu.",
+    needIO = u8"Vyber vstup i výstup v Zapojení.",
+    notMeasured = u8"Pro toto zapojení zatím chybí měření.", io = u8"Vstupy / výstupy",
+    directOption = u8"Při rušivém zpoždění vypni odposlech zde a použij DIRECT na zvukovce.",
+    dbUnit = " dBFS", latencyUnit = " ms", percentUnit = " %", centUnit = u8" centů",
+    customSaved = u8"Ladění je uložené.", soundOn = u8"Zapnout odposlech",
+    soundOff = u8"Vypnout odposlech", ampDelay = u8"včetně aparátu", userNotes = u8"Tóny strun",
+    openSetup = u8"Zařízení", listeningTo = u8"Poslechový vstup";
+inline const juce::String& latencyRating(double milliseconds) {
+    return milliseconds <= 10 ? good : (milliseconds <= 15 ? usable : slow);
+}
 } // namespace rocker::cs
