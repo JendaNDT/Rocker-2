@@ -2,6 +2,8 @@
 
 Domácí studio pro kytaru a bicí. V etapě E1 můžeš hrát do sluchátek přes kytarový aparát, naladit struny a změřit zpoždění svojí zvukovky. Aplikace běží bez internetu a účtu. Nahrávání bicích a kytary přijde v E2.
 
+Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hotové aplikace. Během vývoje se každá etapa ověřuje automaticky.
+
 ## Stažení a spuštění
 
 1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-1**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E1](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-1)

@@ -15,7 +15,7 @@ Na Windows x64, Windows ARM64 i macOS prošlo sestavení a všech 12 automatick�
 
 Při spuštění skutečné aplikace na místním Linuxu bez zvukovky se otevřelo okno 1280 × 720. Klávesa T zobrazila ladičku s radou, kde vybrat vstup. Další stisk vrátil průvodce Zapojení.
 
-**M-01 a H-01 čekají na ruční zkoušku.** Čísla ze simulace výše slouží k ověření výpočtu. Jendova zvukovka, sluchátka, procesor, buffer, pět měření a hodnocení riffu zatím čekají na první zápis. Pro hraní ještě nebyl schválen výchozí buffer. [Postup a tabulka pro měření](../README.md) · [Náhled hraní](zkousky/E1/hrani.png) · [Náhled ladičky](zkousky/E1/ladicka.png)
+**M-01 a H-01 čekají na ruční zkoušku po vydání hotové aplikace.** Čísla ze simulace výše slouží k ověření výpočtu. Jendova zvukovka, sluchátka, procesor, buffer, pět měření a hodnocení riffu zatím čekají na první zápis. Pro hraní ještě nebyl schválen výchozí buffer. [Postup a tabulka pro měření](../README.md) · [Náhled hraní](zkousky/E1/hrani.png) · [Náhled ladičky](zkousky/E1/ladicka.png)
 
 ## E0 — první zvuk
 
@@ -33,11 +33,11 @@ Na Windows x64, Windows ARM64 a macOS prošlo sestavení i všech šest automati
 
 Výsledky cílových počítačů jsou uvedené jednotlivě u návrhu změn. [Výsledky CI](https://github.com/JendaNDT/Rocker-2/pull/1/checks) · [Běhy s balíky a snímky](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-0)
 
-## Čeká na ruční zkoušku
+## Ruční zkoušky E0 po vydání hotové aplikace
 
 - Windows a fyzická zvukovka s ovladačem ASIO nebo Windows Audio. Poslech tří částí tónu, kytara ve vstupu 1, přebuzení, změna bufferu a odpojení USB.
 - Mac, CoreAudio a Jendova zvukovka, stejný poslech a práce s gainem.
 - Volitelně mikrofon notebooku a varování u jeho skutečného názvu.
 - Jendovo porovnání úvodu a Zapojení s 01 / 5.7 a 4.1.
 
-Podmínkou přijetí E0 je Jendovo potvrzení tónu a měřiče na Windows. Měření zpoždění patří do E1. [Kontrolní seznam](../README.md)
+Jenda ověří tón, měřiče i zpoždění na vydané aplikaci. [Kontrolní seznam](../README.md)

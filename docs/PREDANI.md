@@ -16,23 +16,23 @@ Na Windows x64, Windows ARM64 i macOS prošlo sestavení a všech 12 automatick�
 
 ## 2. Zbývá
 
-K přijetí E1 chybí kabelové měření M-01 a hraní H-01 na kamarádově sestavě. Tovární volba 128 vzorků slouží pro první spuštění u zařízení, které ji podporuje. Konečný výchozí buffer určí hodnocení hráče. Také první poslech E0 zůstává otevřený. [Stav zkoušek](STAV.md)
+Po vydání hotové aplikace proběhne kabelové měření M-01 a hraní H-01 na kamarádově sestavě. Tovární volba 128 vzorků slouží pro první spuštění u zařízení, které ji podporuje. Konečný výchozí buffer určí hodnocení hráče. Také první poslech E0 zůstává otevřený. [Stav zkoušek](STAV.md)
 
-## 3. Ruční zkoušky
+## 3. Ruční zkoušky po vydání hotové aplikace
 
 | Zkouška | Výsledek |
 |---|---|
-| E0 · ASIO, CoreAudio, tón, měřiče a odpojení | čeká na Jendu · čeká na ruční zkoušku |
-| E1 · Crunch, Drop D / B, zvuk brány a přímý odposlech | čeká na Jendu · čeká na ruční zkoušku |
-| M-01 · pět opakování pro každý dostupný režim | čeká na Jendu · čeká na ruční zkoušku |
-| H-01 · slepé hodnocení riffu při různých bufferech | čeká na Jendu a hráče · čeká na ruční zkoušku |
-| Kontrola čitelnosti a rozmístění na Jendově obrazovce | čeká na Jendu |
+| E0 · ASIO, CoreAudio, tón, měřiče a odpojení | čeká na ruční zkoušku po vydání |
+| E1 · Crunch, Drop D / B, zvuk brány a přímý odposlech | čeká na ruční zkoušku po vydání |
+| M-01 · pět opakování pro každý dostupný režim | čeká na ruční zkoušku po vydání |
+| H-01 · slepé hodnocení riffu při různých bufferech | čeká na ruční zkoušku po vydání |
+| Kontrola čitelnosti a rozmístění na Jendově obrazovce | čeká na ruční zkoušku po vydání |
 
 Postup, tabulka pro čísla a význam známek jsou přímo v návodu. Výsledky může Jenda poslat zprávou. [M-01 a H-01](../README.md)
 
 ## 4. Rozhodnutí
 
-Impulsní odezva reproboxu pochází z vlastního výpočtu. Pro H-01 použij externí metronom. E1 navazuje na otevřený návrh E0. Pokud i přes ASIO hraní ruší, zapiš konkrétní měření a s Jendou vyber přímý odposlech zvukovky s aparátem při přehrávání. [Rozhodnutí E1](ROZHODNUTI.md)
+Impulsní odezva reproboxu pochází z vlastního výpočtu. Pro H-01 použij externí metronom. E0 a E1 jsou sloučené v hlavní větvi. Pokud i přes ASIO hraní ruší, zapiš konkrétní měření a s Jendou vyber přímý odposlech zvukovky s aparátem při přehrávání. [Rozhodnutí E1](ROZHODNUTI.md)
 
 ## 5. Prompt pro etapu E2
 
@@ -40,7 +40,7 @@ Jsi hlavní vývojář Rockeru 2, českého domácího studia pro Windows. Jenda
 
 ### Podklady
 
-Přečti celé dokumenty 01–05, STAV.md, ROZHODNUTI.md a PREDANI.md. E2 je vymezená dokumentem 04. Zkontroluj výsledky E0 a E1 a doplň všechna měření od Jendy. Nezaměňuj čísla simulace za měření zvukovky.
+Přečti celé dokumenty 01–05, STAV.md, ROZHODNUTI.md a PREDANI.md. E2 je vymezená dokumentem 04. Zkontroluj výsledky automatických zkoušek E0 a E1. Ruční zkoušky připrav k provedení až po vydání hotové aplikace.
 
 ### Závazné podmínky
 
@@ -56,8 +56,8 @@ Přečti celé dokumenty 01–05, STAV.md, ROZHODNUTI.md a PREDANI.md. E2 je vym
 
 ### Ověření
 
-Zachovej E0/E1, A-17, snímky a sestavení Windows x64, Windows ARM64 i macOS. Proveď A-03, A-04, A-06 až A-09, A-14 a A-15. Připrav Jendovi M-02 s kabelem, H-02 s kytarou přes bicí, M-04 po ukončení úlohy a H-10 po restartu. Předveď osm taktů bicích při 112 BPM, přehrání s kytarou, znovuotevření a záchranu nahrávky. Při přetrvávajícím selhání M-02 nebo A-07 po opravě zastav, zdokumentuj výsledek a s Jendou rozhodni o přechodu na Tracktion Engine. M-01, H-01, M-02 a H-02 musejí být provedené před pokračováním za E3.
+Zachovej E0/E1, A-17, snímky a sestavení Windows x64, Windows ARM64 i macOS. Proveď A-03, A-04, A-06 až A-09, A-14 a A-15. Připrav Jendovi M-02 s kabelem, H-02 s kytarou přes bicí, M-04 po ukončení úlohy a H-10 po restartu. Předveď osm taktů bicích při 112 BPM, přehrání s kytarou, znovuotevření a záchranu nahrávky. Pokud při vývoji ani po opravě neprojde A-07, zdokumentuj výsledek a s Jendou rozhodni o dalším postupu podle dokumentu 04. Souhru na skutečné zvukovce posuď při M-02 po vydání. Pokud tehdy měření odhalí problém, zapiš ho a řeš s Jendou.
 
 ### Předání
 
-Pracuj ve větvi etapa-2 po malých commitech. Otevři český pull request s odkazem na ověřený běh, aplikace a snímky. Aktualizuj STAV.md a ROZHODNUTI.md. PREDANI.md má pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E3 podle 04. Neověřené hraní označ „čeká na ruční zkoušku“. Závěr pro Jendu česky na 5–10 řádků.
+Pracuj ve větvi etapa-2 po malých commitech. Otevři český pull request s odkazem na ověřený běh, aplikace a snímky. Aktualizuj STAV.md a ROZHODNUTI.md. PREDANI.md má pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E3 podle 04. Neprovedené ruční kontroly označ „čeká na ruční zkoušku po vydání“. Závěr pro Jendu česky na 5–10 řádků.

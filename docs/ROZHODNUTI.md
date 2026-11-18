@@ -25,3 +25,9 @@ Přednost má fungující uložené zapojení. Pro první otevření se preferuj
 | Zpoždění a zdroje | Údaj s aparátem zahrnuje přibližné zpoždění digitálních filtrů. Kabel změří celou cestu zvukovkou bez aparátu. Bluetooth se rozpoznává ze známých označení výstupu, skryté bezdrátové propojení zvukovka aplikaci nemusí sdělit. | U nejasného výstupu ověřit kabelové propojení se zvukovkou. |
 
 [Zdroj impulsní odezvy](../src/dsp/Amp.cpp) · [Licence projektu](../LICENSE)
+
+<a id="termin-rucnich-zkousek"></a>
+
+## Termín ručních zkoušek
+
+Jenda rozhodl, že veškeré ruční testování proběhne až po vydání hotové aplikace. Týká se poslechu, měření na skutečné zvukovce, hraní i kontroly vzhledu. Původní plán rozděloval tyto zkoušky mezi etapy a vyžadoval čtyři výsledky před pokračováním za E3. Během vývoje budou postupy připravené a každá neprovedená zkouška ponese stav „čeká na ruční zkoušku po vydání“. Automatické testy a sestavení běží v každé etapě. Po vydání zapíšeme skutečně naměřené hodnoty a zkušenosti hráče.

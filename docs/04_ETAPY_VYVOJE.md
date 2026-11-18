@@ -10,7 +10,7 @@ Podklady: 01 (funkce a vzhled), 02 (architektura), 03 (zkoušky A, M a H).
 
 1. CI na `windows-2025` i `macos` projde: sestavení, všechny testy a snímky obrazovek.
 2. Jsou napsané automatické zkoušky A uvedené u etapy a procházejí.
-3. Zkoušky M a H uvedené u etapy jsou provedené a zapsané (03 / Záznam výsledku). Pokud je nelze provést hned (kamarád není k dispozici), etapa je **„hotová podmíněně“** a zkouška se zapíše do `docs/STAV.md` jako dluh. **Výjimka:** M-01, H-01, M-02 a H-02 dluhem být nesmí, bez nich se nepokračuje za E3.
+3. V každé etapě připravíme postup pro ruční zkoušky a v `docs/STAV.md` uvedeme „čeká na ruční zkoušku po vydání“. Jenda a hráč provedou všechna měření M, hraní H a další ruční kontroly až po vydání hotové aplikace. Platí to i pro M-01, H-01, M-02 a H-02. Ve všech níže uvedených podmínkách dokončení patří ruční část k ověření po vydání. Vývoj dalších etap a vydání mohou pokračovat po splnění průběžných automatických zkoušek a ostatních vývojových úkolů. [Rozhodnutí o termínu zkoušek](ROZHODNUTI.md#termin-rucnich-zkousek)
 4. Rozhraní odpovídá návrhu v dokumentu 01, kapitola 5. Barvy, písma a rozměry jdou jen přes designové tokeny a snímky obrazovek jsou přiložené. **Vzhled je od nuly, bez inspirace původním Rockerem.**
 5. Jsou aktualizované soubory `docs/STAV.md` (co funguje), `docs/PREDANI.md` (předávka další relaci) a `docs/ROZHODNUTI.md` (každá odchylka od dokumentů 01–03 a její důvod).
 6. Jenda dostal česky psaný **kontrolní seznam pro ruční vyzkoušení** (co stáhnout, co zapojit, co stisknout a co má slyšet a vidět).
