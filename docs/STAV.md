@@ -1,5 +1,20 @@
 # Stav Rockeru 2
 
+## E3 · změna zvuku po nahrání
+
+Kytarová stopa zpracuje při přehrávání kopii nastavení uloženou ve skladbě. Ve spodní desce lze přepnout aparát, změnit parametry a uložit vlastní předvolbu. Zachování zdrojového WAV, poloha vůči bicím a stejné nastavení po obnovení skladby mají automatické zkoušky. [Snímek](zkousky/E3/zvuk-kytary.png) · [Sestavení a výsledky pro jednotlivé systémy](https://github.com/JendaNDT/Rocker-2/pull/4)
+
+| Zkouška | Co se ověřuje |
+|---|---|
+| A-05 | Dvě stereo kytary, bicí a doznívající efekty. Reálná cesta přes zvukové jádro s bloky 64, 128, 512 a 1024 se porovnává s WAV v obou kanálech. Tolerance vůči WAV je 0,0000005 plné úrovně, takže rozdíl mezi libovolnými dvěma výsledky může být nejvýše −120 dBFS. Dva soubory z renderu musí být bitově shodné. |
+| A-20 | Změna při nepřerušeném přehrávání a návrat na Crunch. Znovuotevření změněného zvuku, vlastní předvolba odstraněná z knihovny, čistý zdroj nahrávky a posun o latenci aparátu. |
+| A-17 a provoz jádra | Panel při přehrávání ve dvou velikostech. Na Macu zahrnuje kontrola zvukového vlákna také přehrávání s aktivními aparáty. |
+| Příprava M-05 | Automat ověřuje délku, počet stop, osm aparátů a zvuk do posledního bloku. Skutečný běh má v Diagnostice vlastní spuštění a výsledek. |
+
+Na vývojovém Linuxu s procesorem AMD EPYC 9V74 zpracoval Release deset minut této skladby (48 kHz, blok 128, 16 stop, osm aparátů) za 39,75 s, průměrně 6,62 % dostupného času. Šlo o výpočet bez zvukového zařízení. Výpadky ovladače ani provoz na baterii toto měření nepokrývá.
+
+**H-03 i M-05 čekají na ruční zkoušku po vydání.** [Postup pro hráče a měření výkonu](../README.md)
+
 ## E2 · nahrávání a návrat ke skladbě
 
 Nová skladba, odpočet a nahrávání jsou dostupné z úvodu. Kontrola v rozhraní prošla cestou od osmi taktů bicích přes samostatnou čistou kytaru až po zavření a opětovné otevření na uloženém vzorku. [Postup pro Jendu](../README.md) · [Výsledky pro jednotlivé systémy](https://github.com/JendaNDT/Rocker-2/pull/3/checks)

@@ -1,49 +1,47 @@
-# Předání E2 · bicí, kytara a návrat ke skladbě
+# Předání E3 · zvuk nahrané kytary
 
 ## 1. Hotovo
 
-Nová skladba otevře stopy Bicí a Kytara. Vstup a příprava k nahrávání se nastavují pro každou stopu. R spustí záznam s volitelným odpočtem. Ve sluchátkách může hrát klik, předchozí stopy a živá kytara přes aparát. Každá připravená stopa dostane čistou mono nebo stereo nahrávku. Kliknutím do pravítka lze vybrat místo, od kterého začne další průchod. Pokračovat obnoví skladbu i pohled. [Postup pro hráče](../README.md)
+Otevři skladbu se zaznamenanou kytarou, spusť přehrávání a klikni na štítek zvuku u stopy. Ve spodní desce vyber Metal a vrať se na Crunch. Posun jezdce přidá hvězdičku. Přes **Uložit jako předvolbu** si zvuk pojmenuješ i pro další skladby. **Pokračovat** obnoví nastavení jednotlivých stop. Předvolba může z knihovny zmizet a skladba si ponechá všechny její hodnoty.
 
-Automatické zkoušky, sestavení pro oba druhy Windows a Mac a soubory ke stažení jsou uvedené u návrhu E2. [Sestavení, výsledky a snímky](https://github.com/JendaNDT/Rocker-2/pull/3) · [Časová osa](zkousky/E2/skladba.png) · [Pohled zdálky](zkousky/E2/zdalky.png)
+Návrh E3 odkazuje na ověřený běh pro Windows x64, Windows ARM64 a Mac, tři aplikace i jejich snímky. [Výsledky a soubory ke stažení](https://github.com/JendaNDT/Rocker-2/pull/4) · [Spodní deska Zvuk kytary](zkousky/E3/zvuk-kytary.png) · [Podrobný postup](../README.md)
 
 ## 2. Zbývá
 
-Doplnit skutečná měření a hodnocení hráče po vydání. Fyzická souhra, záchrana na kamarádově počítači a konečný výběr výchozího bufferu zůstávají otevřené. Zvuk kytarového aparátu při přehrávání nahrané stopy je úkol E3. [Stav projektu](STAV.md)
+Sloučení E2 a navazující E3 do hlavní větve. Kvalitu jednotlivých zvuků a výkon kamarádova notebooku posoudí hráč po vydání. V Diagnostice lze spustit desetiminutovou skladbu s šestnácti stopami a vybrat až osm aparátů. Dostupnost počítadla výpadků závisí na ovladači zvukovky.
 
-## 3. Ruční zkoušky po vydání
+## 3. Ruční zkoušky
 
 | Zkouška | Stav |
 |---|---|
-| M-02 · skutečná smyčka, deset minut, restart a změna bufferu | čeká na ruční zkoušku po vydání |
-| H-02 · osm taktů bicích a kytary, poté pět minut | čeká na ruční zkoušku po vydání |
-| M-04 · ukončení skutečného nahrávání ve Správci úloh | čeká na ruční zkoušku po vydání |
-| H-10 · pokračování po restartu počítače | čeká na ruční zkoušku po vydání |
-| Zvukovka, sluchátka, M-01 a H-01 z předchozích etap | čeká na ruční zkoušku po vydání |
+| H-03 · poslech čtyř předvoleb, přepnutí během hry a návrat do skladby | čeká na ruční zkoušku po vydání |
+| M-05 · síť a baterie, ASIO 128, nejvyšší zátěž a výpadky | čeká na ruční zkoušku po vydání |
+| Poslech, kabelová měření, hraní a obnova na skutečném vybavení z E0–E2 | čeká na ruční zkoušku po vydání |
 
 ## 4. Rozhodnutí
 
-První díl se podle nahrávky prodlouží. Přeplnění desetisekundové fronty ukončí záznam a místo výpadku dostane značku. Diagnostika měří v dočasné skladbě. [Důvody a alternativy](ROZHODNUTI.md)
+Starší skladba se otevře s původním čistým zvukem. Nová přímo připojená kytara má Crunch. Ozvěna a dozvuk sdílejí nastavení při hraní, přehrávání a renderu. [Podrobnosti a alternativy](ROZHODNUTI.md#e3--zvuk-kytary-ve-skladbě)
 
-## 5. Prompt pro etapu E3
+## 5. Prompt pro etapu E4
 
-Jsi hlavní vývojář českého domácího studia Rocker 2. Jenda rozhoduje a schvaluje, ty píšeš kód, testy a dokumentaci. Začni krátkým plánem.
+Jsi hlavní vývojář českého domácího studia Rocker 2. Jenda rozhoduje, zkouší po vydání a schvaluje. Ty píšeš kód, testy a dokumentaci.
 
 ### Podklady
 
-Přečti dokumenty 01–05, STAV.md, ROZHODNUTI.md a toto předání. Rozsah E3 určuje 04. Ověř E2, zejména desetiminutový záznam přes přehrávanou stopu a znovuotevření skladby.
+Přečti dokumenty 01–05, STAV.md, ROZHODNUTI.md a toto předání. Rozsah E4 určuje dokument 04. Začni krátkým plánem a ověř, která větev obsahuje přezkoušenou E3.
 
 ### Závazné podmínky
 
-**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Původní repozitář neměň ani neotvírej jeho snímky, navigaci či styly. C++20, JUCE 9.0.5, vlastní zvukové jádro, Catch2, vlastní kreslení JUCE a společné designové tokeny. České texty v jednom místě, anglický kód a komentáře. Provoz offline, AGPLv3 a licence písem. V callbacku platí 02 / 4.3. Nabídka závisí na vybavení. Ruční zkoušky až po vydání hotové aplikace.
+**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Použij vlastní kreslení komponent JUCE a společné tokeny. Původní repozitář neměň. C++20, JUCE 9.0.5, provoz offline, české texty na jednom místě, anglický kód a komentáře, AGPLv3 a licence písem. Zvukové vlákno dodržuje 02 / 4.3. Zachovej čisté WAV, obnovu po pádu i zvuk stop. Ruční zkoušky proběhnou po vydání hotové aplikace.
 
 ### Úkol
 
-Při přehrávání kytarové stopy použij její aparát s kompenzací zpoždění. Zachovej čistý zdroj WAV. Doplň ozvěnu a deterministický dozvuk. Otevři Zvuk kytary ve spodní desce, název zvuku ukaž v hlavě stopy. Parametry předvolby zkopíruj do skladby. Přidej Uložit jako předvolbu a hvězdičku po ruční změně.
+Vytvoř režim **Stříhej** podle 01 / 5.4. Přidej výběr taktů klikáním na jejich čísla, rozstřižení klávesou X, přesun s přichycením k mřížce a volný přesun s Alt. Podporuj kopii, smazání, zopakování pomocí D, tažení okrajů s lupou a přiblížení. Přidej Zpět, Znovu a návrat k uložené verzi skladby.
 
 ### Ověření
 
-Přepni nahranou kytaru z Crunch na Metal a zpět, ulož skladbu a znovu ji otevři. Proveď A-05 pro aparát, A-20 i předchozí testy E0–E2. Ověř shodu zvuku při přehrávání a vnitřním renderu, souhru s bicími a znovuotevření. Sestav Windows x64, ARM64 a Mac a ulož snímky. Pro H-03 připrav poslech čtyř předvoleb a hodnocení použitelnosti. Pro M-05 připrav první měření výkonu. Obě ruční zkoušky označ jako čekající po vydání.
+Automaticky předveď vystřižení taktů 5–6, přesun na takt 9, zopakování a návrat přes Ctrl+Z. V A-01 proveď 1 000 náhodných úprav a porovnej JSON výchozího i konečného stavu po úplném Zpět a Znovu. Proveď A-17 pro režim Stříhej a znovu všechny testy E0–E3 na obou druzích Windows a na Macu. Připrav pro Jendu postup přesného střihu po vydání.
 
 ### Předání
 
-Pracuj ve větvi etapa-3 po malých commitech, otevři český pull request s odkazy na sestavení a snímky. Aktualizuj STAV.md, ROZHODNUTI.md a PREDANI.md v pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E4 podle 04. Napiš Jendovi česky na 5–10 řádků.
+Pracuj ve větvi etapa-4 po malých commitech. Otevři český pull request se snímky a odkazy na ověřené sestavení. Aktualizuj STAV.md, ROZHODNUTI.md a PREDANI.md v pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E5 podle dokumentu 04. Jendovi napiš česky na 5–10 řádků.
