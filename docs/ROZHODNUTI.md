@@ -31,3 +31,15 @@ Přednost má fungující uložené zapojení. Pro první otevření se preferuj
 ## Termín ručních zkoušek
 
 Jenda rozhodl, že veškeré ruční testování proběhne až po vydání hotové aplikace. Týká se poslechu, měření na skutečné zvukovce, hraní i kontroly vzhledu. Původní plán rozděloval tyto zkoušky mezi etapy a vyžadoval čtyři výsledky před pokračováním za E3. Během vývoje budou postupy připravené a každá neprovedená zkouška ponese stav „čeká na ruční zkoušku po vydání“. Automatické testy a sestavení běží v každé etapě. Po vydání zapíšeme skutečně naměřené hodnoty a zkušenosti hráče.
+
+## E2 · první nahraná skladba
+
+| Otázka | Volba a důvod | Alternativa |
+|---|---|---|
+| Délka a tempo | První díl má osm taktů. Delší záznam jej prodlouží na celý takt. Změnu tempa či metra po nahrávání potvrzuje hráč na obrazovce s upozorněním. | Rozdělení mezi více dílů patří do etapy s aranžováním. |
+| Uložení a obnova | Každý připravený vstup nebo stereo pár má soubor float WAV. Společný deník vzniká před spuštěním záznamu. Po úspěšném uložení klipů se odstraní. Záchrana využívá stejné vložení klipů při běžném zastavení i po pádu. | Samostatný import zbylých WAV by potřeboval ruční umístění na časovou osu. |
+| Zaseknutý disk | Fronta má deset sekund na stopu. Při zaplnění Rocker ukončí průchod, dokončí zapsatelné vzorky a označí místo výpadku na časové ose. | Pokračování se zaznamenanou mezerou by vyžadovalo odlišit přerušené úseky jednoho pokusu. |
+| Čtení nahrávek | Soubory WAV se mapují do paměti. Pracovní vlákno načítá stránky před ukazatelem. Při otevření se vypočítá obálka průběhu po 256 vzorcích. | Samostatná mezipaměť náhledů na disku může zkrátit otevírání dlouhých projektů. |
+| Zkouška souhry | Diagnostika použije dočasnou skladbu, skutečný výstup a stejnou záznamovou cestu jako nahrávání. Po změření posunu na začátku a konci dočasné soubory uklidí. | Měření v otevřené skladbě by vyžadovalo přidat a následně odstranit zkušební stopy. |
+
+M-02, H-02, M-04 i H-10 proběhnou na vydané aplikaci podle Jendova rozhodnutí.

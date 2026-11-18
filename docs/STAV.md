@@ -1,5 +1,23 @@
 # Stav Rockeru 2
 
+## E2 · nahrávání a návrat ke skladbě
+
+Nová skladba, odpočet a nahrávání jsou dostupné z úvodu. Kontrola v rozhraní prošla cestou od osmi taktů bicích přes samostatnou čistou kytaru až po zavření a opětovné otevření na uloženém vzorku. [Postup pro Jendu](../README.md) · [Výsledky pro jednotlivé systémy](https://github.com/JendaNDT/Rocker-2/pull/3/checks)
+
+| Automatická zkouška | Co se porovnává |
+|---|---|
+| A-03 | Diakritika, stopy, klipy, převod staršího schématu a uložení pohledu. Při poškozeném popisu se vyhledá čitelná verze. |
+| A-04 | Deset minut kliku při 112 BPM. Každý nástup odpovídá přesnému vzorku odvozenému od pořadí doby. |
+| A-06 | Dva vyrenderované WAV při různém nastavení kliku a odpočtu jsou bitově shodné. |
+| A-07 | Simulovaný vstup má zpoždění 211 vzorků a výstup 173. Návraty impulsů po deseti minutách sedí na původních pozicích. |
+| A-08 | Po 20 sekundách je násilně ukončen proces zapisující rostoucí vzorky. Jiný proces ověřuje alespoň 19 sekund souvislého WAV, původní polohu a dokončení obnovy. |
+| A-09 | Proces je 1 000krát ukončen při střídavém zápisu dvou stavů. Po každém ukončení musí být skladba kompletní. |
+| A-14 | Pětisekundové pozastavení disku zachová všechny vzorky. Při patnáctisekundovém pozastavení je po vyčerpání fronty uložen čas výpadku. |
+| A-15 | Na Macu prochází stejná desetiminutová zkouška pod RealtimeSanitizerem a ThreadSanitizerem, včetně ladicího sestavení. Výsledek je v krocích kontroly na GitHubu. |
+| A-17 | Snímky založení skladby, dvou nahraných stop a Pohledu zdálky při nahrávání včetně velikosti 1920 × 1080 při 150 %. |
+
+Místně prošly automatické kontroly nahrávání, obnovy a ukládání. **M-02, H-02, M-04 a H-10 čekají na ruční zkoušku po vydání.** Naměřené zpoždění konkrétní zvukovky ani výsledek hraní od Jendy zatím nemáme.
+
 ## E1 · kytara do sluchátek
 
 Na Windows x64, Windows ARM64 i macOS prošlo sestavení a všech 12 automatických zkoušek. Každý počítač vytvořil balík s aplikací a 18 snímků. [Ověřený běh](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014)
