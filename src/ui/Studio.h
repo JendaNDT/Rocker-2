@@ -106,6 +106,13 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int firstTrack = 0;
     std::map<juce::String, std::deque<std::pair<Frame, float>>> liveWaves;
     Rect inputMeter;
+    bool soundDeckOpen = false, namingPreset = false;
+    juce::String presetDraft;
+    juce::Component::SafePointer<juce::Button> soundBadge;
+    double pendingSoundSave = 0;
+    void openTrackSound(int index);
+    void trackSoundDeck(Rect);
+    void applyTrackSound(bool recall);
     void newProject();
     void openProject(juce::File);
     void finishProject();

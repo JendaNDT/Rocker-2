@@ -61,10 +61,13 @@ void Studio::newProject() {
     show(Page::newProject);
 }
 void Studio::saveSong() {
+    pendingSoundSave = 0;
     if (projectDir != File{} && !song.save(projectDir))
         status(cs::writeError);
 }
 void Studio::finishProject() {
+    if (pendingSoundSave) saveSong();
+    soundDeckOpen = namingPreset = false;
     if (performance)
         stopProject();
     if (projectDir != File{} && song.title.isNotEmpty()) {
@@ -136,14 +139,15 @@ void Studio::configureSongMonitor() {
     if (view.selected < 0 || view.selected >= (int)song.tracks.size())
         return;
     auto& t = song.tracks[view.selected];
+    if (t.kind != "kytara") soundDeckOpen = namingPreset = false;
     int port = link.caps.inputs.indexOf(t.inputs[0]);
     if (port < 0)
         return;
     live.selectInput(port);
-    live.setAmp(sound);
+    live.setAmp(t.amp.values);
     if (projectMonitor == 2 && (laptop || t.kind != "kytara"))
         projectMonitor = 0;
-    live.monitor = static_cast<Monitor>(projectMonitor);
+    live.monitor = projectMonitor == 2 && !t.amp.enabled ? Monitor::clean : static_cast<Monitor>(projectMonitor);
 }
 Frame Studio::playPosition() const { return performance ? performance->cursor.load() : view.cursor; }
 void Studio::toggleDistant() {
@@ -266,6 +270,7 @@ void Studio::projectTick() {
     if (performance && (page == Page::project || diagnosing))
         repaint();
     auto now = Time::getMillisecondCounterHiRes();
+    if (pendingSoundSave && now >= pendingSoundSave) saveSong();
     if (page == Page::project && now - lastArchive > 300000) {
         if (!song.archive(projectDir))
             status(cs::writeError);
@@ -367,6 +372,7 @@ void Studio::projectPage(Rect area) {
                         fresh.tuning = tunings[tuningIndex].name;
                         for (int i = 0; i < 2; ++i) {
                             Track t{Uuid().toString(), cs::trackKinds[i], kinds[i]};
+                            t.amp.enabled = t.kind == "kytara" && (guitarSource == 0 || guitarSource == 3);
                             for (int c = 0; c < link.caps.inputs.size(); ++c) {
                                 auto alias = settings.aliases.find(Settings::inputKey(link.current, c));
                                 if (alias != settings.aliases.end() &&
@@ -397,6 +403,7 @@ void Studio::projectPage(Rect area) {
                         song.tracks.push_back({Uuid().toString()});
                     auto& t = song.tracks[view.selected];
                     t.name = draftTrack.trim();
+                    if (t.kind != kinds[draftKind]) t.amp.enabled = kinds[draftKind] == "kytara" && (guitarSource == 0 || guitarSource == 3);
                     t.kind = kinds[draftKind];
                     t.inputs.clear();
                     for (int i = 0; i < draftChannels && draftPort + i < link.caps.inputs.size(); ++i)
@@ -480,10 +487,14 @@ void Studio::projectPage(Rect area) {
             show(Page::home);
         });
     }
-    auto foot = area.removeFromBottom(s::songDeck);
+    auto foot = area.removeFromBottom(soundDeckOpen ? s::soundDeck : s::songDeck);
     panels.push_back(foot);
     foot.reduce(s::inset, s::gap);
     auto notice = area.removeFromBottom(s::button);
+    if (soundDeckOpen) {
+        inputMeter = {};
+        trackSoundDeck(foot);
+    } else {
     auto upper = row(foot);
     text(cs::hear.toUpperCase(), cell(upper, s::nameWidth), s::section, s::muted);
     text(cs::toRecord.toUpperCase(), cell(upper, s::labelWidth), s::section, s::muted);
@@ -504,7 +515,7 @@ void Studio::projectPage(Rect area) {
     }
     if (projectMonitor > 0 && view.selected < (int)song.tracks.size())
         heard.add(song.tracks[view.selected].name + " / " +
-                  (projectMonitor == 2 ? cs::presetNames[presetIndex] : cs::monitors[1]));
+                  (projectMonitor == 2 && song.tracks[view.selected].amp.enabled ? song.tracks[view.selected].amp.name : cs::monitors[1]));
     text(limit(skin.font(s::body), heard.isEmpty() ? cs::monitors[0] : heard.joinIntoString(" + "),
                s::nameWidth),
          cell(info, s::nameWidth));
@@ -527,8 +538,10 @@ void Studio::projectPage(Rect area) {
             configureSongMonitor();
             triggerAsyncUpdate();
         });
-        button(cs::ampPage, cell(controlsRow, s::clipWidth), [this] { show(Page::amp); });
+        if (song.tracks[view.selected].kind == "kytara")
+            button(cs::ampPage, cell(controlsRow, s::clipWidth), [this] { openTrackSound(view.selected); });
         button(cs::tuner, cell(controlsRow, s::levelWidth), [this] { toggleTuner(); });
+    }
     }
     auto disk = notice.removeFromRight(s::labelWidth);
     const int channels = std::max(
@@ -565,7 +578,12 @@ void Studio::projectPage(Rect area) {
                 }
             },
             i == view.selected ? 1 : 0);
-        text(limit(skin.font(s::caption), t.inputs.joinIntoString(" + "), head.getWidth()), head,
+        if (t.kind == "kytara") {
+            const auto label = t.amp.enabled ? t.amp.name + (t.amp.modified ? "*" : "") : cs::bypass;
+            auto* badge = button(limit(skin.font(s::body, false, true), label, head.getWidth() - 2*s::inset), head,
+                                 [this, i] { openTrackSound(i); });
+            if (i == view.selected) soundBadge = badge;
+        } else text(limit(skin.font(s::caption), t.inputs.joinIntoString(" + "), head.getWidth()), head,
              s::caption, s::muted);
     }
     if (!song.tracks.empty()) {

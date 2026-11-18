@@ -333,7 +333,7 @@ void Studio::status(String value) {
 }
 void Studio::timerCallback() {
     projectTick();
-    if (page >= Page::live && page <= Page::customTuning)
+    if ((page >= Page::live && page <= Page::customTuning) || (page == Page::project && soundDeckOpen))
         pollLive();
     if (page == Page::inputs) {
         identifyGuitar();
@@ -478,6 +478,7 @@ void Studio::combo(const String& title, Rect r, const StringArray& items, int se
 }
 void Studio::rebuild() {
     controls.clear();
+    soundBadge = nullptr;
     dynamicLines.clear();
     needleArea = {};
     inputBar = {};

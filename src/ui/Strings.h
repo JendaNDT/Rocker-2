@@ -78,6 +78,9 @@ inline const juce::StringArray monitors = {juce::String("Vypnuto"), juce::String
 inline const juce::StringArray shapes = {juce::String(u8"Měkké"), juce::String(u8"Nesymetrické"),
                                          juce::String(u8"Tvrdé")};
 inline const juce::String
+    echo = u8"Ozvěna", room = u8"Dozvuk", eq = u8"Korekce", speaker = u8"Reprobox", builtInCab = u8"Vestavěná IR",
+    savePreset = u8"Uložit jako předvolbu", presetTitle = u8"Název předvolby", storePreset = u8"Uložit předvolbu",
+    nameTaken = u8"Zvol nový název předvolby.", bypass = u8"Bez aparátu", useAmp = u8"Zapnout aparát",
     livePage = u8"Hraj",
     hear = u8"Co slyším", ampPage = u8"Zvuk kytary", diagnostics = u8"Diagnostika",
     source = u8"Zdroj kytary", directIn = u8"Vstup kytary", ampIn = u8"Vstup komba",
