@@ -124,7 +124,7 @@ inline const juce::String
     newTrack = u8"Přidat stopu", trackEdit = u8"Nastavit stopu", trackName = u8"Název stopy",
     trackKind = u8"Druh stopy", channels = u8"Kanály", noSong = u8"Zatím tu žádná skladba není.",
     recordSong = u8"Nahrávat", playSong = u8"Přehrát", stopSong = u8"Zastavit", atStart = u8"Na začátek",
-    far = u8"Zdálky", normal = u8"Zpět k časové ose", bars = u8"Takty", verse = u8"Sloka",
+    distantView = u8"Zdálky", normal = u8"Zpět k časové ose", bars = u8"Takty", verse = u8"Sloka",
     arm = u8"Připravit", disarm = u8"Připraveno", mute = u8"Ztlumit", solo = u8"Sólo",
     songClick = u8"Klik", countIn = u8"Odpočet", enabled = u8"Zapnuto", disabled = u8"Vypnuto",
     missingInputs = u8"Vyber vstup u každé připravené stopy.",

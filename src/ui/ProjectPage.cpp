@@ -446,7 +446,7 @@ void Studio::projectPage(Rect area) {
         });
     }
     auto tools = row(area);
-    button(cs::far, cell(tools, s::compactButton), [this] { toggleDistant(); });
+    button(cs::distantView, cell(tools, s::compactButton), [this] { toggleDistant(); });
     if (!performance) {
         button(cs::newTrack, cell(tools, s::levelWidth), [this] { editTrack(true); });
         if (!song.tracks.empty())

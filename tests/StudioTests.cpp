@@ -365,7 +365,7 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         click(view, cs::useProject);
         click(view, cs::recordSong);
         feed(true);
-        click(view, cs::far);
+        click(view, cs::distantView);
         fits(view);
         for (int pixels : {1280, 1920})
             snapshot(view, "11-zdalky", pixels);
