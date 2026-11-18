@@ -4,7 +4,7 @@
 #include <functional>
 
 namespace rocker {
-enum class Page { home, device, tone, inputs, live, amp, tuner, diagnostics, customTuning };
+enum class Page { home, device, tone, inputs, live, amp, tuner, diagnostics, customTuning, newProject, project, trackSettings, rescue };
 class Theme final : public juce::LookAndFeel_V4 {
   public:
     Theme();
@@ -19,7 +19,8 @@ class Theme final : public juce::LookAndFeel_V4 {
 };
 class Studio final : public juce::Component, private juce::Timer, private juce::AsyncUpdater {
   public:
-    Studio(DeviceSystem&, juce::File);
+    Studio(DeviceSystem&, juce::File,juce::File songLibrary={});
+    void mouseDown(const juce::MouseEvent&) override;
     ~Studio() override;
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -74,6 +75,35 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void combo(const juce::String&, Rect, const juce::StringArray&, int selected,
                std::function<void(int)> change, bool mono = false);
     void choose(DeviceChoice);
+    juce::File libraryRoot,projectDir,diagnosticDir;
+    Song song,diagnosticSong;
+    AudioLibrary library;
+    ViewState view;
+    std::unique_ptr<Performance> performance;
+    juce::String draftTitle,draftTempo="112",draftTrack;
+    int draftBeats=4,draftUnit=4, draftKind=0, draftPort=0, draftChannels=1;
+    bool editingTempo=false,diagnosing=false;
+    int projectMonitor=0;
+    double lastTap=0,lastArchive=0;
+    Rect timelineArea, ruler;
+    std::vector<Rect> lanes;
+    int firstTrack=0;
+    void newProject();
+    void openProject(juce::File);
+    void finishProject();
+    void projectPage(Rect);
+    void paintProject(juce::Graphics&);
+    void startProject(bool);
+    void stopProject();
+    void projectTick();
+    void saveSong();
+    void editTrack(bool);
+    void configureSongMonitor();
+    void syncTest();
+    void finishSync(Performance&);
+    void field(const juce::String&,Rect,juce::String&);
+    Frame playPosition() const;
+    void toggleDistant();
     Page tunerReturn = Page::home;
     int measurementInput = 0, guitarSource = 0, primaryInput = 0, secondaryInput = 1, presetIndex = 1;
     bool hearSecond = false;

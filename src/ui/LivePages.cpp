@@ -247,6 +247,7 @@ void Studio::livePages(Rect area) {
             pages[i] == page ? 1 : 0);
         footer.removeFromLeft(s::gap);
     }
+    if(projectDir!=File{} && song.title.isNotEmpty())button(cs::useProject,area.removeFromBottom(s::button).withWidth(s::nameWidth),[this]{show(Page::project);});
     area.reduce(0, s::gutter);
     const String title = page == Page::live           ? cs::hear
                          : page == Page::amp          ? cs::ampPage
@@ -551,13 +552,16 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
+    if(diagnosing){button(cs::stopSong,row(area).withWidth(s::nameWidth),[this]{stopProject();});return;}
     if (link.online && link.caps.outputChannels > 0 && !link.caps.inputs.isEmpty() &&
         link.audio.live.measurement() == Measurement::idle) {
         combo(cs::input, row(area), inputNames(), measurementInput, [this](int i) {
             measurementInput = i;
             link.audio.live.selectInput(i);
         });
-        button(cs::measure, row(area).withWidth(s::nameWidth), [this] {
+        auto actions=row(area);
+        button(cs::syncTitle,actions.removeFromRight(s::nameWidth),[this]{syncTest();});
+        button(cs::measure, actions.withWidth(s::nameWidth), [this] {
             if (link.audio.live.startMeasurement())
                 status(cs::measuring);
         });

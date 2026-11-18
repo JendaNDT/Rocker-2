@@ -44,6 +44,7 @@ Settings Settings::load(const juce::File& file) {
         for (auto& item : obj->getProperties())
             if (item.value.isString())
                 result.aliases[item.name.toString()] = item.value.toString();
+    result.lastSong=string("lastSong");
     result.tuningName = string("tuningName");
     auto tuningList = data.getProperty("tunings", {});
     if (auto* list = tuningList.getArray())
@@ -82,6 +83,7 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("aliases", juce::var(names));
     for (auto& [key, name] : aliases)
         names->setProperty(key, name);
+    object->setProperty("lastSong",lastSong);
     object->setProperty("tuningName", tuningName);
     juce::Array<juce::var> list;
     for (auto& tuning : tunings) {
