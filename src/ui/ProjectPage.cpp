@@ -1,5 +1,6 @@
 #include "Studio.h"
 #include "Strings.h"
+#include <numeric>
 #if JUCE_WINDOWS
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -38,7 +39,9 @@ void preventSleep(bool active) {
         assertion = kIOPMNullAssertionID;
     }
 #endif
+#if JUCE_WINDOWS || JUCE_MAC
     Desktop::setScreenSaverEnabled(!active);
+#endif
 }
 String limit(const Font& f, String value, int width) {
     if (GlyphArrangement::getStringWidth(f, value) <= width)
@@ -85,6 +88,11 @@ void Studio::openProject(File dir) {
         return;
     }
     song = *loaded;
+    for (int i = 0; i < (int)tunings.size(); ++i)
+        if (tunings[i].name == song.tuning) {
+            tuningIndex = i;
+            break;
+        }
     const bool complete = library.load(song, dir);
     view = ViewState::load(dir);
     view.selected = jlimit(0, std::max(0, (int)song.tracks.size() - 1), view.selected);
@@ -202,6 +210,7 @@ void Studio::startProject(bool record) {
         }
         preventSleep(true);
     }
+    liveWaves.clear();
     performance = std::move(p);
     link.audio.timeline.attach(*performance);
     status({});
@@ -237,6 +246,23 @@ void Studio::projectTick() {
         stopProject();
         return;
     }
+    if (performance && performance->recording && !diagnosing && !view.distant) {
+        auto frame = playPosition();
+        if (frame >= performance->start)
+            for (const auto& t : song.tracks)
+                if (t.armed && !t.inputs.isEmpty()) {
+                    auto& peaks = liveWaves[t.id];
+                    if (peaks.empty() || peaks.back().first != frame) {
+                        peaks.emplace_back(frame,
+                                           link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak);
+                        while (!peaks.empty() &&
+                               peaks.front().first < frame - song.grid.beat(view.zoom * song.grid.beats))
+                            peaks.pop_front();
+                    }
+                }
+    }
+    if (page == Page::project && !performance)
+        repaint(inputMeter);
     if (performance && (page == Page::project || diagnosing))
         repaint();
     auto now = Time::getMillisecondCounterHiRes();
@@ -424,7 +450,7 @@ void Studio::projectPage(Rect area) {
     if (!performance) {
         button(cs::newTrack, cell(tools, s::levelWidth), [this] { editTrack(true); });
         if (!song.tracks.empty())
-            button(cs::trackEdit, cell(tools, s::levelWidth), [this] { editTrack(false); });
+            button(cs::trackEdit, cell(tools, s::clipWidth), [this] { editTrack(false); });
         button(cs::projectSetup, cell(tools, s::clipWidth), [this] {
             editingTempo = true;
             draftTitle = song.title;
@@ -461,19 +487,36 @@ void Studio::projectPage(Rect area) {
     auto upper = row(foot);
     text(cs::hear.toUpperCase(), cell(upper, s::nameWidth), s::section, s::muted);
     text(cs::toRecord.toUpperCase(), cell(upper, s::labelWidth), s::section, s::muted);
-    text(cs::delay, upper, s::caption, s::muted);
+    text(cs::delay, cell(upper, s::fieldWidth), s::caption, s::muted);
+    text(cs::input, upper, s::caption, s::muted);
     auto info = row(foot);
-    text((performance ? cs::headphoneTracks : cs::monitors[projectMonitor]) +
-             (performance && view.click ? " + " + cs::songClick : String{}),
+    StringArray heard;
+    if (performance) {
+        const bool solo =
+            std::any_of(song.tracks.begin(), song.tracks.end(), [](auto& t) { return t.solo; });
+        for (auto& t : song.tracks)
+            if (!t.mute && (!solo || t.solo) &&
+                std::any_of(song.clips.begin(), song.clips.end(),
+                            [&](auto& c) { return c.track == t.id; }))
+                heard.add(t.name);
+        if (view.click || playPosition() < performance->start)
+            heard.add(cs::songClick);
+    }
+    if (projectMonitor > 0 && view.selected < (int)song.tracks.size())
+        heard.add(song.tracks[view.selected].name + " / " +
+                  (projectMonitor == 2 ? cs::presetNames[presetIndex] : cs::monitors[1]));
+    text(limit(skin.font(s::body), heard.isEmpty() ? cs::monitors[0] : heard.joinIntoString(" + "),
+               s::nameWidth),
          cell(info, s::nameWidth));
     StringArray armed;
     for (auto& t : song.tracks)
         if (t.armed)
-            armed.add(t.name);
+            armed.add(t.inputs.joinIntoString(" + ") + String(u8" → ") + t.name);
     text(limit(skin.font(s::body), armed.isEmpty() ? cs::noneArmed : armed.joinIntoString(", "),
                s::labelWidth),
          cell(info, s::labelWidth));
-    text(latencyLabel(), info);
+    text(latencyLabel(), cell(info, s::fieldWidth));
+    inputMeter = info;
     if (!performance && view.selected < (int)song.tracks.size()) {
         auto controlsRow = row(foot);
         auto modes = cs::monitors;
@@ -487,9 +530,18 @@ void Studio::projectPage(Rect area) {
         button(cs::ampPage, cell(controlsRow, s::clipWidth), [this] { show(Page::amp); });
         button(cs::tuner, cell(controlsRow, s::levelWidth), [this] { toggleTuner(); });
     }
+    auto disk = notice.removeFromRight(s::labelWidth);
+    const int channels = std::max(
+        1, std::accumulate(song.tracks.begin(), song.tracks.end(), 0, [](int n, const Track& t) {
+            return n + (t.armed ? std::max(1, t.inputs.size()) : 0);
+        }));
+    text(cs::availableSpace + "  " +
+             String(projectDir.getBytesFreeOnVolume() / (3600. * 4 * channels * song.grid.rate), 1) +
+             " h",
+         disk, s::caption, s::muted, true, false, true);
     text(message, notice, s::caption, s::warning);
     ruler = row(area);
-    text(cs::bars, ruler.withWidth(s::trackHead), s::section, s::muted);
+    text(cs::verse + "   /   " + cs::bars, ruler.withWidth(s::trackHead), s::body, s::guitar);
     auto trackCommands = area.removeFromBottom(s::button);
     timelineArea = area;
     lanes.clear();
@@ -516,22 +568,25 @@ void Studio::projectPage(Rect area) {
         text(limit(skin.font(s::caption), t.inputs.joinIntoString(" + "), head.getWidth()), head,
              s::caption, s::muted);
     }
-    if (!performance && !song.tracks.empty()) {
+    if (!song.tracks.empty()) {
         auto r = trackCommands;
-        button(
-            cs::disarm, cell(r, s::levelWidth),
-            [this] {
-                auto& t = song.tracks[view.selected];
-                t.armed = !t.armed;
-                saveSong();
-                triggerAsyncUpdate();
-            },
-            song.tracks[view.selected].armed ? 1 : 0);
+        if (!performance)
+            button(
+                song.tracks[view.selected].armed ? cs::disarm : cs::arm, cell(r, s::levelWidth),
+                [this] {
+                    auto& t = song.tracks[view.selected];
+                    t.armed = !t.armed;
+                    saveSong();
+                    triggerAsyncUpdate();
+                },
+                song.tracks[view.selected].armed ? 1 : 0);
         button(
             cs::mute, cell(r, s::compactButton),
             [this] {
                 auto& t = song.tracks[view.selected];
                 t.mute = !t.mute;
+                if (performance)
+                    performance->playback.updateMix(song);
                 saveSong();
                 triggerAsyncUpdate();
             },
@@ -541,6 +596,8 @@ void Studio::projectPage(Rect area) {
             [this] {
                 auto& t = song.tracks[view.selected];
                 t.solo = !t.solo;
+                if (performance)
+                    performance->playback.updateMix(song);
                 saveSong();
                 triggerAsyncUpdate();
             },
@@ -548,13 +605,14 @@ void Studio::projectPage(Rect area) {
         StringArray names;
         for (auto& t : song.tracks)
             names.add(t.name);
-        combo(cs::audioTracks, cell(r, s::fieldWidth), names, view.selected, [this](int i) {
-            view.selected = i;
-            projectMonitor = 0;
-            configureSongMonitor();
-            view.save(projectDir);
-            triggerAsyncUpdate();
-        });
+        if (!performance || !performance->recording)
+            combo(cs::audioTracks, cell(r, s::fieldWidth), names, view.selected, [this](int i) {
+                view.selected = i;
+                projectMonitor = 0;
+                configureSongMonitor();
+                view.save(projectDir);
+                triggerAsyncUpdate();
+            });
     }
 }
 
@@ -592,6 +650,25 @@ void Studio::paintProject(Graphics& g) {
     g.setColour(s::chalk);
     g.setFont(skin.font(s::heading, true));
     g.drawText(state + "   " + clock, statusArea, Justification::centredRight);
+    auto sub = statusArea.removeFromBottom(s::caption + s::grid);
+    g.setFont(skin.font(s::caption, true));
+    g.setColour(s::muted);
+    g.drawText(String(song.grid.bpm, 1) + " BPM   " + String(song.grid.beats) + "/" +
+                   String(song.grid.unit) + "   " +
+                   String(std::max<Frame>(pos, 0) / (song.grid.rate * 60)) + ":" +
+                   String((std::max<Frame>(pos, 0) / song.grid.rate) % 60).paddedLeft('0', 2),
+               sub, Justification::centredRight);
+    if (view.selected < (int)song.tracks.size()) {
+        auto& t = song.tracks[view.selected];
+        auto barArea = inputMeter.withHeight(s::grid * 2).withCentre(inputMeter.getCentre());
+        float peak =
+            t.inputs.isEmpty() ? 0 : link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak;
+        g.setColour(s::line);
+        g.fillRect(barArea);
+        g.setColour(peak >= 0.98855f ? s::clipping : s::ready);
+        g.fillRect(barArea.withWidth(
+            roundToInt(barArea.getWidth() * std::clamp((decibels(peak) + 60.f) / 60.f, 0.f, 1.f))));
+    }
     const Frame bar = beat / song.grid.beats;
     const Frame first = bar / view.zoom * view.zoom;
     auto axis = ruler.withTrimmedLeft(s::trackHead);
@@ -632,10 +709,7 @@ void Studio::paintProject(Graphics& g) {
                     source = std::clamp(source, c.offset, c.offset + c.length - 1);
                     int width = std::min<Frame>(c.offset + c.length - source,
                                                 std::max<Frame>(1, (last - begin) / axis.getWidth()));
-                    float peak = 0;
-                    auto* samples = cache->second->getReadPointer(0, (int)source);
-                    for (int j = 0; j < width; j += std::max(1, width / 32))
-                        peak = std::max(peak, std::abs(samples[j]));
+                    float peak = cache->second->peak(source, width);
                     float height = std::max(1.f, std::min(1.f, peak) * bounds.getHeight() / 2);
                     g.drawVerticalLine(px, bounds.getCentreY() - height, bounds.getCentreY() + height);
                 }
@@ -646,6 +720,15 @@ void Studio::paintProject(Graphics& g) {
                                 .reduced(0, s::grid);
             g.setColour(s::record.withAlpha(s::selectionOpacity));
             g.fillRect(recorded);
+            g.setColour(ink);
+            if (auto it = liveWaves.find(t.id); it != liveWaves.end())
+                for (const auto& [frame, peak] : it->second) {
+                    if (frame < begin || frame >= last)
+                        continue;
+                    const float height = std::max(1.f, std::min(1.f, peak) * recorded.getHeight() / 2);
+                    g.drawVerticalLine(x(frame), recorded.getCentreY() - height,
+                                       recorded.getCentreY() + height);
+                }
         }
     }
     for (auto mark : song.dropouts)

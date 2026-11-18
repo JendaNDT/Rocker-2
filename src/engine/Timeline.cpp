@@ -5,7 +5,10 @@ namespace rocker {
 using namespace juce;
 static_assert(std::atomic<Frame>::is_always_lock_free && std::atomic<Performance*>::is_always_lock_free);
 CaptureQueue::CaptureQueue(int capacity, int channels) : buffer(channels, capacity) { buffer.clear(); }
-int CaptureQueue::available() const noexcept { return (int)(written.load() - read.load()); }
+bool CaptureQueue::hasRoom(int frames) const noexcept {
+    return frames <= buffer.getNumSamples() - (written.load(std::memory_order_relaxed) -
+                                               read.load(std::memory_order_acquire));
+}
 bool CaptureQueue::push(const float* l, const float* r, int count) noexcept {
     auto w = written.load(std::memory_order_relaxed);
     const int cap = buffer.getNumSamples();
@@ -47,44 +50,79 @@ bool AudioLibrary::load(const Song& s, const File& dir) {
     for (auto& a : s.assets) {
         if (data.contains(a.id))
             continue;
-        auto reader = waveReader(dir.getChildFile(a.path));
+        auto wave = std::make_shared<MappedWave>();
+        wave->reader.reset(WavAudioFormat().createMemoryMappedReader(dir.getChildFile(a.path)));
+        auto* reader = wave->reader.get();
         if (!reader || reader->sampleRate != s.grid.rate || reader->lengthInSamples < a.length ||
-            a.length > std::numeric_limits<int>::max()) {
+            reader->numChannels != (unsigned)a.channels || !reader->usesFloatingPointData ||
+            reader->bitsPerSample != 32 || !reader->mapEntireFile()) {
             ok = false;
             continue;
         }
-        auto buffer = std::make_shared<AudioBuffer<float>>(a.channels, (int)a.length);
-        if (!reader->read(buffer.get(), 0, (int)a.length, 0, true, true)) {
-            ok = false;
-            continue;
+        wave->peaks.reserve((size_t)((a.length + MappedWave::bin - 1) / MappedWave::bin));
+        for (Frame pos = 0; pos < a.length; pos += MappedWave::bin) {
+            Range<float> peaks[2];
+            reader->readMaxLevels(pos, std::min<Frame>(MappedWave::bin, a.length - pos), peaks,
+                                  a.channels);
+            float peak = 0;
+            for (int ch = 0; ch < a.channels; ++ch)
+                peak = std::max({peak, std::abs(peaks[ch].getStart()), std::abs(peaks[ch].getEnd())});
+            wave->peaks.push_back(peak);
         }
-        data[a.id] = buffer;
+        data[a.id] = wave;
     }
     return ok;
 }
-Playback::Playback(const Song& s, const AudioLibrary& lib) {
+void Playback::updateMix(const Song& s) {
     const bool solo = std::any_of(s.tracks.begin(), s.tracks.end(), [](auto& t) { return t.solo; });
+    for (size_t i = 0; i < s.tracks.size(); ++i)
+        audible[i].store(!s.tracks[i].mute && (!solo || s.tracks[i].solo));
+}
+Playback::Playback(const Song& s, const AudioLibrary& lib)
+    : audible(std::make_unique<std::atomic<bool>[]>(s.tracks.size())) {
+    updateMix(s);
     for (auto& c : s.clips) {
         auto t = std::find_if(s.tracks.begin(), s.tracks.end(),
                               [&](auto& track) { return track.id == c.track; });
         auto it = lib.data.find(c.asset);
-        if (t != s.tracks.end() && !t->mute && (!solo || t->solo) && it != lib.data.end())
-            clips.push_back({it->second, c.position, c.offset, c.length});
+        if (t != s.tracks.end() && it != lib.data.end())
+            clips.push_back(
+                {it->second, c.position, c.offset, c.length, (size_t)(t - s.tracks.begin())});
+    }
+}
+float MappedWave::peak(Frame start, int length) const noexcept {
+    float result = 0;
+    for (auto i = (size_t)(start / bin); i < peaks.size() && i <= (size_t)((start + length - 1) / bin);
+         ++i)
+        result = std::max(result, peaks[i]);
+    return result;
+}
+void Playback::prefetch(Frame from, Frame to) const {
+    for (auto& c : clips) {
+        for (Frame i = std::max(from, c.at); i < std::min(to, c.at + c.length); i += 512)
+            c.wave->reader->touchSample(c.offset + i - c.at);
     }
 }
 void Playback::mix(float* const* out, int no, int size, Frame at) const noexcept {
+    alignas(float) float block[2][256];
+    int* raw[]{reinterpret_cast<int*>(block[0]), reinterpret_cast<int*>(block[1])};
     for (const auto& c : clips) {
-        Frame from = std::max(at, c.at), to = std::min(at + size, c.at + c.length);
-        if (to <= from)
+        if (!audible[c.trackIndex].load(std::memory_order_relaxed))
             continue;
-        for (int channel = 0; channel < std::min(no, 2); ++channel)
-            if (out[channel]) {
-                auto* dst = out[channel] + (from - at);
-                auto* src = c.wave->getReadPointer(std::min(channel, c.wave->getNumChannels() - 1),
-                                                   (int)(c.offset + from - c.at));
-                for (Frame i = 0; i < to - from; ++i)
-                    dst[i] += src[i];
-            }
+        const Frame to = std::min(at + size, c.at + c.length);
+        auto& reader = *c.wave->reader;
+        for (Frame pos = std::max(at, c.at); pos < to;) {
+            int count = (int)std::min<Frame>(256, to - pos);
+            reader.readSamples(raw, (int)reader.numChannels, 0, c.offset + pos - c.at, count);
+            for (int ch = 0; ch < std::min(2, no); ++ch)
+                if (out[ch]) {
+                    float* destination = out[ch] + (pos - at);
+                    const float* source = block[std::min(ch, (int)reader.numChannels - 1)];
+                    for (int i = 0; i < count; ++i)
+                        destination[i] += source[i];
+                }
+            pos += count;
+        }
     }
 }
 bool renderSong(const Song& song, const AudioLibrary& library, const File& destination) {
@@ -114,6 +152,20 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
     nextBeat = count ? clock : grid.beat(beatIndex);
     if (nextBeat < clock)
         nextBeat = grid.beat(++beatIndex);
+    if (!playback.empty()) {
+        playback.prefetch(start, start + 2 * grid.rate);
+        readAhead = std::thread([this] {
+            Frame warmed = start + 2 * grid.rate;
+            while (!stopping.load()) {
+                auto from = cursor.load();
+                if (from + grid.rate > warmed) {
+                    playback.prefetch(std::max(from, warmed), from + 2 * grid.rate);
+                    warmed = from + 2 * grid.rate;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        });
+    }
 }
 Performance::~Performance() { finishDisk(); }
 bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, int delay,
@@ -172,6 +224,8 @@ bool Performance::drain() {
 }
 void Performance::finishDisk() {
     stopping = true;
+    if (readAhead.joinable())
+        readAhead.join();
     if (worker.joinable())
         worker.join();
     for (auto& t : takes)
@@ -187,6 +241,12 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
         float* outputs[]{no > 0 && out[0] ? out[0] + skip : nullptr,
                          no > 1 && out[1] ? out[1] + skip : nullptr};
         playback.mix(outputs, std::min(2, no), n - skip, clock + skip);
+        for (auto& t : takes)
+            if (!t.queue->hasRoom(n - skip)) {
+                drop = clock + skip;
+                finished = true;
+                return;
+            }
         for (auto& t : takes) {
             auto channel = [&](int c) { return c >= 0 && c < ni && in[c] ? in[c] + skip : nullptr; };
             if (!t.queue->push(channel(t.left), channel(t.right), n - skip)) {

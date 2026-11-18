@@ -9,28 +9,39 @@ class CaptureQueue {
     CaptureQueue(int capacity, int channels);
     bool push(const float* left, const float* right, int count) noexcept;
     bool drain(juce::AudioFormatWriter&, int rate);
-    int available() const noexcept;
+    bool hasRoom(int frames) const noexcept;
 
   private:
     juce::AudioBuffer<float> buffer;
     std::atomic<Frame> read{0}, written{0};
     Frame flushed = 0;
 };
+struct MappedWave {
+    static constexpr int bin = 256;
+    std::unique_ptr<juce::MemoryMappedAudioFormatReader> reader;
+    std::vector<float> peaks;
+    float peak(Frame start, int length) const noexcept;
+};
 struct AudioLibrary {
-    std::map<juce::String, std::shared_ptr<const juce::AudioBuffer<float>>> data;
+    std::map<juce::String, std::shared_ptr<const MappedWave>> data;
     bool load(const Song&, const juce::File&);
 };
 struct PlaybackClip {
-    std::shared_ptr<const juce::AudioBuffer<float>> wave;
+    std::shared_ptr<const MappedWave> wave;
     Frame at, offset, length;
+    size_t trackIndex;
 };
 class Playback {
   public:
     Playback(const Song&, const AudioLibrary&);
+    void updateMix(const Song&);
+    void prefetch(Frame from, Frame to) const;
+    bool empty() const { return clips.empty(); }
     void mix(float* const*, int outputs, int size, Frame at) const noexcept;
 
   private:
     std::vector<PlaybackClip> clips;
+    std::unique_ptr<std::atomic<bool>[]> audible;
 };
 bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination);
 struct Take {
@@ -61,7 +72,7 @@ class Performance {
 
   private:
     std::vector<Take> takes;
-    std::thread worker;
+    std::thread worker, readAhead;
     std::atomic<bool> stopping{false};
     Frame nextBeat, beatIndex;
     int clickAge = -1;

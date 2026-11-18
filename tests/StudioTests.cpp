@@ -330,7 +330,7 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         click(view, cs::trackEdit);
         chooseItem(view, cs::input, 0);
         click(view, cs::apply);
-        click(view, cs::disarm);
+        click(view, cs::arm);
         click(view, cs::recordSong);
         BeatGrid grid;
         const int total = (int)grid.beat(36) + 384;
@@ -355,7 +355,7 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         click(view, cs::trackEdit);
         chooseItem(view, cs::input, 1);
         click(view, cs::apply);
-        click(view, cs::disarm);
+        click(view, cs::arm);
         chooseItem(view, cs::listen, 2);
         click(view, cs::recordSong);
         feed(true);

@@ -8,7 +8,11 @@ class Window final : public juce::DocumentWindow {
         setUsingNativeTitleBar(true);
         setResizable(true, false);
         setResizeLimits(style::minWidth, style::minHeight, style::maxWindow, style::maxWindow);
-        setContentOwned(new Studio(devices, Settings::location(),juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile("Rocker 2").getChildFile("Skladby")), true);
+        setContentOwned(new Studio(devices, Settings::location(),
+                                   juce::File::getSpecialLocation(juce::File::userHomeDirectory)
+                                       .getChildFile("Rocker 2")
+                                       .getChildFile("Skladby")),
+                        true);
         centreWithSize(getWidth(), getHeight());
         setVisible(true);
         getContentComponent()->grabKeyboardFocus();

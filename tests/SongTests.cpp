@@ -83,7 +83,15 @@ TEST_CASE("A-06 offline mix ignores headphones and count-in settings") {
     auto samples = std::make_shared<AudioBuffer<float>>(1, 4000);
     samples->clear();
     samples->setSample(0, 329, 0.75f);
-    lib.data["a"] = samples;
+    auto source = w.dir.getChildFile("Zvuk/source.wav");
+    REQUIRE(source.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(source, s.grid.rate, 1);
+    REQUIRE(writer);
+    REQUIRE(writer->writeFromAudioSampleBuffer(*samples, 0, samples->getNumSamples()));
+    writer.reset();
+    s.assets.push_back({"a", "Zvuk/source.wav", samples->getNumSamples(), 1});
+    samples.reset();
+    REQUIRE(lib.load(s, w.dir));
     s.clips = {{"c", "dr", "a", 0, 0, 4000}};
     MemoryBlock previous;
     for (bool click : {false, true}) {
@@ -119,7 +127,15 @@ TEST_CASE("A-07 A-15 ten minute dry overdub with independent input and output de
         audio->setSample(0, pos, 0.5f);
     }
     AudioLibrary lib;
-    lib.data["source"] = audio;
+    auto source = w.dir.getChildFile("Zvuk/source.wav");
+    REQUIRE(source.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(source, s.grid.rate, 1);
+    REQUIRE(writer);
+    REQUIRE(writer->writeFromAudioSampleBuffer(*audio, 0, audio->getNumSamples()));
+    writer.reset();
+    s.assets.push_back({"source", "Zvuk/source.wav", audio->getNumSamples(), 1});
+    audio.reset();
+    REQUIRE(lib.load(s, w.dir));
     s.clips = {{"source-clip", "dr", "source", 0, 0, duration}};
     Performance p(s, lib, 0, true, false, 0);
     REQUIRE(p.arm(s, w.dir, {"In 1", "In 2"}, 211 + 173));

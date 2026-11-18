@@ -117,6 +117,35 @@ inline const juce::String
 inline const juce::String& latencyRating(double milliseconds) {
     return milliseconds <= 10 ? good : (milliseconds <= 15 ? usable : slow);
 }
-inline const juce::String createSong=u8"Vytvořit skladbu", chooseSong=u8"Skladba", titleSong=u8"Název skladby", untitled=u8"Nová skladba",tempo="Tempo (BPM)",meter=u8"Metrum",tap=u8"Naťukat tempo",apply=u8"Potvrdit",newTrack=u8"Přidat stopu",trackEdit=u8"Nastavit stopu",trackName=u8"Název stopy",trackKind=u8"Druh stopy",channels=u8"Kanály",noSong=u8"Zatím tu žádná skladba není.",recordSong=u8"Nahrávat",playSong=u8"Přehrát",stopSong=u8"Zastavit",atStart=u8"Na začátek",far=u8"Zdálky",normal=u8"Zpět k časové ose",bars=u8"Takty",verse=u8"Sloka",arm=u8"Připravit",disarm=u8"Připraveno",mute=u8"Ztlumit",solo=u8"Sólo",songClick=u8"Klik",countIn=u8"Odpočet",enabled=u8"Zapnuto",disabled=u8"Vypnuto",missingInputs=u8"Vyber vstup u každé připravené stopy.",rateMismatch=u8"V Zapojení nastav frekvenci skladby.",stateStop=u8"Zastaveno",statePlay=u8"Přehrávání",stateRecord=u8"NAHRÁVÁNÍ",bar=u8"Takt",toRecord=u8"Co nahrávám",noneArmed=u8"Žádná připravená stopa",projectSetup=u8"Tempo a metrum",savedSong=u8"Uloženo",badTempo=u8"Zadej tempo od 30 do 300 BPM a název skladby.",restore=u8"Obnovit",rescueTitle=u8"Obnovení skladby",rescueTake=u8"Na disku je nedokončená nahrávka. Přidat čitelný zvuk na původní místo?",rescueVersion=u8"Popis skladby nelze přečíst. Otevřít poslední čitelnou verzi?",badProject=u8"Skladbu se nepodařilo otevřít.",partialProject=u8"Některý klip nebo zvukový soubor se nepodařilo načíst.",recovered=u8"Nahrávka je obnovená.",dropout=u8"Výpadek zápisu",editTempoWarning=u8"Skladba obsahuje zvuk. Potvrzením přesuneš mřížku taktů.",syncTitle=u8"Zkouška souhry",syncRunning=u8"Zkouška souhry běží · 10 minut",syncBad=u8"Impulsy se nevrátily dostatečně silně.",syncFirst=u8"Začátek",syncLast=u8"Konec",syncPass=u8"Souhra vyhovuje.",syncFail=u8"Zkontroluj kalibraci a zapojení.",headphoneTracks=u8"Přehrávání stop", noDeviceSong=u8"Nejdřív vyber zvukovku v Zapojení.", useProject=u8"Zpět do skladby", inputMono=u8"Jeden vstup",inputPair=u8"Dva sousední vstupy",prepared=u8"Stopy připravené k nahrávání",audioTracks=u8"Stopy",availableSpace=u8"Volno na disku";
-inline const juce::StringArray trackKinds{juce::String(u8"Bicí"),juce::String("Kytara"),juce::String(u8"Jiná")};
+inline const juce::String
+    createSong = u8"Vytvořit skladbu",
+    chooseSong = u8"Skladba", titleSong = u8"Název skladby", untitled = u8"Nová skladba",
+    tempo = "Tempo (BPM)", meter = u8"Metrum", tap = u8"Naťukat tempo", apply = u8"Potvrdit",
+    newTrack = u8"Přidat stopu", trackEdit = u8"Nastavit stopu", trackName = u8"Název stopy",
+    trackKind = u8"Druh stopy", channels = u8"Kanály", noSong = u8"Zatím tu žádná skladba není.",
+    recordSong = u8"Nahrávat", playSong = u8"Přehrát", stopSong = u8"Zastavit", atStart = u8"Na začátek",
+    far = u8"Zdálky", normal = u8"Zpět k časové ose", bars = u8"Takty", verse = u8"Sloka",
+    arm = u8"Připravit", disarm = u8"Připraveno", mute = u8"Ztlumit", solo = u8"Sólo",
+    songClick = u8"Klik", countIn = u8"Odpočet", enabled = u8"Zapnuto", disabled = u8"Vypnuto",
+    missingInputs = u8"Vyber vstup u každé připravené stopy.",
+    rateMismatch = u8"V Zapojení nastav frekvenci skladby.", stateStop = u8"Zastaveno",
+    statePlay = u8"Přehrávání", stateRecord = u8"NAHRÁVÁNÍ", bar = u8"Takt", toRecord = u8"Co nahrávám",
+    noneArmed = u8"Žádná připravená stopa", projectSetup = u8"Tempo a metrum", savedSong = u8"Uloženo",
+    badTempo = u8"Zadej tempo od 30 do 300 BPM a název skladby.", restore = u8"Obnovit",
+    rescueTitle = u8"Obnovení skladby",
+    rescueTake = u8"Na disku je nedokončená nahrávka. Přidat čitelný zvuk na původní místo?",
+    rescueVersion = u8"Popis skladby nelze přečíst. Otevřít poslední čitelnou verzi?",
+    badProject = u8"Skladbu se nepodařilo otevřít.",
+    partialProject = u8"Některý klip nebo zvukový soubor se nepodařilo načíst.",
+    recovered = u8"Nahrávka je obnovená.", dropout = u8"Výpadek zápisu",
+    editTempoWarning = u8"Skladba obsahuje zvuk. Potvrzením přesuneš mřížku taktů.",
+    syncTitle = u8"Zkouška souhry", syncRunning = u8"Zkouška souhry běží · 10 minut",
+    syncBad = u8"Impulsy se nevrátily dostatečně silně.", syncFirst = u8"Začátek", syncLast = u8"Konec",
+    syncPass = u8"Souhra vyhovuje.", syncFail = u8"Zkontroluj kalibraci a zapojení.",
+    headphoneTracks = u8"Přehrávání stop", noDeviceSong = u8"Nejdřív vyber zvukovku v Zapojení.",
+    useProject = u8"Zpět do skladby", inputMono = u8"Jeden vstup", inputPair = u8"Dva sousední vstupy",
+    prepared = u8"Stopy připravené k nahrávání", audioTracks = u8"Stopy",
+    availableSpace = u8"Volno na disku";
+inline const juce::StringArray trackKinds{juce::String(u8"Bicí"), juce::String("Kytara"),
+                                          juce::String(u8"Jiná")};
 } // namespace rocker::cs

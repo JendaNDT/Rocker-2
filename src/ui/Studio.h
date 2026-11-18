@@ -2,9 +2,24 @@
 #include "storage/Settings.h"
 #include "Tokens.h"
 #include <functional>
+#include <deque>
 
 namespace rocker {
-enum class Page { home, device, tone, inputs, live, amp, tuner, diagnostics, customTuning, newProject, project, trackSettings, rescue };
+enum class Page {
+    home,
+    device,
+    tone,
+    inputs,
+    live,
+    amp,
+    tuner,
+    diagnostics,
+    customTuning,
+    newProject,
+    project,
+    trackSettings,
+    rescue
+};
 class Theme final : public juce::LookAndFeel_V4 {
   public:
     Theme();
@@ -19,7 +34,7 @@ class Theme final : public juce::LookAndFeel_V4 {
 };
 class Studio final : public juce::Component, private juce::Timer, private juce::AsyncUpdater {
   public:
-    Studio(DeviceSystem&, juce::File,juce::File songLibrary={});
+    Studio(DeviceSystem&, juce::File, juce::File songLibrary = {});
     void mouseDown(const juce::MouseEvent&) override;
     ~Studio() override;
     void paint(juce::Graphics&) override;
@@ -75,19 +90,21 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void combo(const juce::String&, Rect, const juce::StringArray&, int selected,
                std::function<void(int)> change, bool mono = false);
     void choose(DeviceChoice);
-    juce::File libraryRoot,projectDir,diagnosticDir;
-    Song song,diagnosticSong;
+    juce::File libraryRoot, projectDir, diagnosticDir;
+    Song song, diagnosticSong;
     AudioLibrary library;
     ViewState view;
     std::unique_ptr<Performance> performance;
-    juce::String draftTitle,draftTempo="112",draftTrack;
-    int draftBeats=4,draftUnit=4, draftKind=0, draftPort=0, draftChannels=1;
-    bool editingTempo=false,diagnosing=false;
-    int projectMonitor=0;
-    double lastTap=0,lastArchive=0;
+    juce::String draftTitle, draftTempo = "112", draftTrack;
+    int draftBeats = 4, draftUnit = 4, draftKind = 0, draftPort = 0, draftChannels = 1;
+    bool editingTempo = false, diagnosing = false;
+    int projectMonitor = 0;
+    double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler;
     std::vector<Rect> lanes;
-    int firstTrack=0;
+    int firstTrack = 0;
+    std::map<juce::String, std::deque<std::pair<Frame, float>>> liveWaves;
+    Rect inputMeter;
     void newProject();
     void openProject(juce::File);
     void finishProject();
@@ -101,7 +118,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void configureSongMonitor();
     void syncTest();
     void finishSync(Performance&);
-    void field(const juce::String&,Rect,juce::String&);
+    void field(const juce::String&, Rect, juce::String&);
     Frame playPosition() const;
     void toggleDistant();
     Page tunerReturn = Page::home;

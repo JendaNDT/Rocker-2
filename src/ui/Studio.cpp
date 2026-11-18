@@ -204,7 +204,7 @@ void Theme::drawComboBox(Graphics& g, int w, int h, bool, int, int, int, int, Co
     g.setColour(s::chalk);
     g.strokePath(p, PathStrokeType(s::stroke));
 }
-Studio::Studio(DeviceSystem& sys, File path,File root)
+Studio::Studio(DeviceSystem& sys, File path, File root)
     : devices(sys), settingsFile(std::move(path)), settings(Settings::load(settingsFile)), link(sys),
       page(settings.visited ? Page::home : Page::device) {
     setLookAndFeel(&skin);
@@ -217,13 +217,16 @@ Studio::Studio(DeviceSystem& sys, File path,File root)
     for (int i = 0; i < (int)tunings.size(); ++i)
         if (tunings[i].name == settings.tuningName)
             tuningIndex = i;
-    libraryRoot=root==File{}?settingsFile.getSiblingFile("Skladby"):root;
+    libraryRoot = root == File{} ? settingsFile.getSiblingFile("Skladby") : root;
     resetTuning();
     devices.changed = [this] { refresh(true); };
     refresh(false);
     setSize(s::minWidth, s::minHeight);
-    for(const auto& dir:libraryRoot.findChildFiles(File::findDirectories,false))
-        if(!dir.getChildFile("Zachrana").findChildFiles(File::findFiles,false,"*.json").isEmpty()){openProject(dir);break;}
+    for (const auto& dir : libraryRoot.findChildFiles(File::findDirectories, false))
+        if (!dir.getChildFile("Zachrana").findChildFiles(File::findFiles, false, "*.json").isEmpty()) {
+            openProject(dir);
+            break;
+        }
     startTimerHz(30);
 }
 Studio::~Studio() {
@@ -241,7 +244,8 @@ void Studio::persist() {
 }
 void Studio::refresh(bool notify) {
     activityBeforePluck.clear();
-    if(performance)stopProject();
+    if (performance)
+        stopProject();
     link.rescan(settings.device);
     laptop = link.online &&
              (builtIn(link.current.input) ||
@@ -288,7 +292,8 @@ void Studio::finish() {
     persist();
 }
 void Studio::show(Page value) {
-    if(performance)stopProject();
+    if (performance)
+        stopProject();
     activityBeforePluck.clear();
     link.audio.stopTone();
     const bool keepMonitor =
@@ -304,7 +309,8 @@ void Studio::show(Page value) {
         link.audio.live.setTuner(true);
     }
     page = value;
-    if(value==Page::project)configureSongMonitor();
+    if (value == Page::project)
+        configureSongMonitor();
     answer = -1;
     played = false;
     message = {};
@@ -316,7 +322,7 @@ void Studio::status(String value) {
 }
 void Studio::timerCallback() {
     projectTick();
-    if (page >= Page::live && page<=Page::customTuning)
+    if (page >= Page::live && page <= Page::customTuning)
         pollLive();
     if (page == Page::inputs) {
         identifyGuitar();
@@ -362,7 +368,8 @@ void Studio::paint(Graphics& g) {
     g.setColour(s::line);
     g.fillRect(0, s::header, getWidth(), s::hairline);
     g.fillRect(0, getHeight() - s::footer, getWidth(), s::hairline);
-    if(page==Page::project)paintProject(g);
+    if (page == Page::project)
+        paintProject(g);
     if (page == Page::live) {
         auto drawMeter = [&](Rect r, float value, float held, bool clipped) {
             auto track = r.withSizeKeepingCentre(r.getWidth(), s::grid * 2);
@@ -472,7 +479,11 @@ void Studio::rebuild() {
         return;
     auto area = getLocalBounds().reduced(s::margin, 0);
     area = area.withSizeKeepingCentre(std::min(area.getWidth(), s::maxWidth), area.getHeight());
-    if(page>=Page::newProject){projectPage(area);repaint();return;}
+    if (page >= Page::newProject) {
+        projectPage(area);
+        repaint();
+        return;
+    }
     auto header = area.removeFromTop(s::header);
     auto brandFont = skin.font(s::counter, false, true);
     const int brandWidth = roundToInt(std::ceil(width(brandFont, cs::brand))) + s::gap;
@@ -519,16 +530,25 @@ void Studio::makeHome(Rect area) {
             button(cs::library, b, [this] { status(cs::coming(8)); });
         else
             button(cs::resume, b, [this] { openProject(File(settings.lastSong)); }, plain, "Enter");
-        if(!i && libraryRoot.isDirectory()){
-            auto projects=libraryRoot.findChildFiles(File::findDirectories,false);
-            StringArray names; int selected=0;
-            for(auto& dir:projects)if(dir.getChildFile("skladba.json").existsAsFile() || Song::latestVersion(dir)!=File{}){
-                if(dir.getFullPathName()==settings.lastSong)selected=names.size();
-                names.add(dir.getFileName());
-            }
-            if(!names.isEmpty()){
-                if(settings.lastSong.isEmpty())settings.lastSong=libraryRoot.getChildFile(names[selected]).getFullPathName();
-                combo(cs::chooseSong,p.removeFromTop(s::button),names,selected,[this,names](int i){settings.lastSong=libraryRoot.getChildFile(names[i]).getFullPathName();persist();});continue;
+        if (!i && libraryRoot.isDirectory()) {
+            auto projects = libraryRoot.findChildFiles(File::findDirectories, false);
+            StringArray names;
+            int selected = 0;
+            for (auto& dir : projects)
+                if (dir.getChildFile("skladba.json").existsAsFile() ||
+                    Song::latestVersion(dir) != File{}) {
+                    if (dir.getFullPathName() == settings.lastSong)
+                        selected = names.size();
+                    names.add(dir.getFileName());
+                }
+            if (!names.isEmpty()) {
+                if (settings.lastSong.isEmpty())
+                    settings.lastSong = libraryRoot.getChildFile(names[selected]).getFullPathName();
+                combo(cs::chooseSong, p.removeFromTop(s::button), names, selected, [this, names](int i) {
+                    settings.lastSong = libraryRoot.getChildFile(names[i]).getFullPathName();
+                    persist();
+                });
+                continue;
             }
         }
         text(i ? cs::emptyIdeas : cs::emptySongs, p, s::heading, s::chalk);
@@ -728,14 +748,56 @@ void Studio::inputPage(Rect area) {
     }
 }
 bool Studio::keyPressed(const KeyPress& key) {
-    if(page==Page::project){
-        if(key==KeyPress::F11Key){toggleDistant();return true;}
-        if(key==KeyPress::spaceKey || key.getKeyCode()=='R'){if(performance)stopProject();else startProject(key!=KeyPress::spaceKey);return true;}
-        if(key==KeyPress::homeKey && !performance){view.cursor=0;view.save(projectDir);repaint();return true;}
-        if(key==KeyPress::escapeKey){if(performance)stopProject();else if(view.distant)toggleDistant();else show(Page::home);return true;}
+    if (page == Page::project) {
+        if (!performance && (key == KeyPress::leftKey || key == KeyPress::rightKey)) {
+            auto bar = song.grid.beatAt(view.cursor) / song.grid.beats;
+            view.cursor =
+                std::min(song.end(),
+                         song.grid.beat(std::max<Frame>(0, bar + (key == KeyPress::leftKey ? -1 : 1)) *
+                                        song.grid.beats));
+            view.save(projectDir);
+            repaint();
+            return true;
+        }
+        if (key.getTextCharacter() == '+' || key.getTextCharacter() == '-') {
+            view.zoom = jlimit(1, 64, key.getTextCharacter() == '+' ? view.zoom / 2 : view.zoom * 2);
+            view.save(projectDir);
+            repaint();
+            return true;
+        }
+        if (key == KeyPress::F11Key) {
+            toggleDistant();
+            return true;
+        }
+        if (key == KeyPress::spaceKey || key.getKeyCode() == 'R') {
+            if (performance)
+                stopProject();
+            else
+                startProject(key != KeyPress::spaceKey);
+            return true;
+        }
+        if (key == KeyPress::homeKey && !performance) {
+            view.cursor = 0;
+            view.save(projectDir);
+            repaint();
+            return true;
+        }
+        if (key == KeyPress::escapeKey) {
+            if (performance)
+                stopProject();
+            else if (view.distant)
+                toggleDistant();
+            else
+                show(Page::home);
+            return true;
+        }
     }
-    if(page==Page::newProject && key==KeyPress::returnKey){
-        for(auto* c:controls)if(auto* b=dynamic_cast<Button*>(c);b && b->getName()==cs::createSong){b->onClick();return true;}
+    if (page == Page::newProject && key == KeyPress::returnKey) {
+        for (auto* c : controls)
+            if (auto* b = dynamic_cast<Button*>(c); b && b->getName() == cs::createSong) {
+                b->onClick();
+                return true;
+            }
     }
     if (page != Page::customTuning && !key.getModifiers().isAnyModifierKeyDown() &&
         CharacterFunctions::toUpperCase((juce_wchar)key.getKeyCode()) == 'T' &&
