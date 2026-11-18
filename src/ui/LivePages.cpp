@@ -102,6 +102,12 @@ StringArray Studio::inputNames() const {
     return result;
 }
 void Studio::changeMonitor(int mode) {
+    if (page == Page::amp && ampFromProject) {
+        projectMonitor = mode;
+        configureSongMonitor();
+        triggerAsyncUpdate();
+        return;
+    }
     const bool ampAllowed = (guitarSource == 0 || (guitarSource == 3 && !hearSecond)) && !laptop;
     if (mode == (int)Monitor::amp && !ampAllowed)
         mode = (int)Monitor::off;
@@ -380,8 +386,13 @@ void Studio::ampPanel(Rect area) {
               triggerAsyncUpdate();
           });
     top.removeFromLeft(s::gutter);
-    const bool allowed = !laptop && (guitarSource == 0 || (guitarSource == 3 && !hearSecond)) &&
-                         !link.caps.inputs.isEmpty() && link.caps.outputChannels > 0;
+    const bool sourceAllowsAmp =
+        ampFromProject
+            ? view.selected < (int)song.tracks.size() && song.tracks[view.selected].kind == "kytara" &&
+                  link.caps.inputs.contains(song.tracks[view.selected].inputs[0])
+            : guitarSource == 0 || (guitarSource == 3 && !hearSecond);
+    const bool allowed =
+        !laptop && sourceAllowsAmp && !link.caps.inputs.isEmpty() && link.caps.outputChannels > 0;
     if (allowed)
         button(link.audio.live.monitor == Monitor::amp ? cs::soundOff : cs::soundOn,
                top.removeFromLeft(s::nameWidth),

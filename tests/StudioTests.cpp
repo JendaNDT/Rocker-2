@@ -357,6 +357,12 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         click(view, cs::apply);
         click(view, cs::arm);
         chooseItem(view, cs::listen, 2);
+        click(view, cs::ampPage);
+        REQUIRE(fake.active->live.input.load() == 1);
+        click(view, cs::soundOff);
+        click(view, cs::soundOn);
+        REQUIRE(fake.active->live.input.load() == 1);
+        click(view, cs::useProject);
         click(view, cs::recordSong);
         feed(true);
         click(view, cs::far);

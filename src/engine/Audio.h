@@ -23,9 +23,6 @@ class Audio {
     void stopTone() noexcept { command.store(-1); }
     Reading read(int channel) const noexcept;
     void clearClip(int channel) noexcept;
-#if defined(ROCKER_RT_AUDIT)
-    [[clang::nonblocking]]
-#endif
     void process(const float* const* inputs, int inputCount, float* const* outputs, int outputCount,
                  int frames) noexcept;
 

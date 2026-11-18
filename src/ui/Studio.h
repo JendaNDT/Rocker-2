@@ -99,6 +99,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int draftBeats = 4, draftUnit = 4, draftKind = 0, draftPort = 0, draftChannels = 1;
     bool editingTempo = false, diagnosing = false;
     int projectMonitor = 0;
+    bool ampFromProject = false;
     double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler;
     std::vector<Rect> lanes;

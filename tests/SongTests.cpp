@@ -113,6 +113,14 @@ TEST_CASE("A-06 offline mix ignores headphones and count-in settings") {
         previous = bytes;
     }
 }
+// Annotate the full call boundary in the realtime audit binary.
+void overdubBlock(Audio& device, const float* const* inputs, float* const* outputs)
+#if defined(ROCKER_RT_AUDIT)
+    [[clang::nonblocking]]
+#endif
+{
+    device.process(inputs, 2, outputs, 1, 128);
+}
 TEST_CASE("A-07 A-15 ten minute dry overdub with independent input and output delays", "[realtime]") {
     Workspace w;
     auto s = example();
@@ -153,7 +161,7 @@ TEST_CASE("A-07 A-15 ten minute dry overdub with independent input and output de
             in[i] = inputDelay[time % 211];
             inputDelay[time % 211] = outputDelay[time % 173];
         }
-        device.process(inputs, 2, outputs, 1, 128);
+        overdubBlock(device, inputs, outputs);
         for (int i = 0; i < 128; ++i)
             outputDelay[(at + i) % 173] = out[i];
         if (at % (128 * 100) == 0)
