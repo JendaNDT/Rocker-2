@@ -17,7 +17,7 @@ bool builtIn(const String& name) {
         || name.containsIgnoreCase("macbook") || name.containsIgnoreCase("realtek")
         || name.containsIgnoreCase("microphone array") || name.containsIgnoreCase(String(u8"mikrofonní pole"));
 }
-enum ButtonStyle { plain, primary, recording, newSong, linkButton, tunerButton, selected };
+enum ButtonStyle { plain, primary, recording, newSong, clipButton, tunerButton, selected };
 class Action final : public Button {
 public:
     Action(const String& title, int kind, String key, Theme& theme)
@@ -32,11 +32,11 @@ public:
     void paintButton(Graphics& g,bool over,bool down) override {
         auto bounds=getLocalBounds().toFloat().reduced(s::hairline);
         const bool active = mode==primary || mode==selected;
-        g.setColour(active ? s::chalk : (down || over ? s::barGrid : s::raised));
+        g.setColour(mode==clipButton ? s::clipping : active ? s::chalk : (down || over ? s::barGrid : s::raised));
         g.fillRoundedRectangle(bounds,s::radius);
         g.setColour(hasKeyboardFocus(true) ? s::selection : s::line);
         g.drawRoundedRectangle(bounds,s::radius,hasKeyboardFocus(true)?s::stroke:s::hairline);
-        g.setColour(active ? s::background : s::chalk);
+        g.setColour(active || mode==clipButton ? s::background : s::chalk);
         auto area=getLocalBounds().reduced(s::inset,0);
         auto symbol=area.withWidth(s::icon).withSizeKeepingCentre(s::icon,s::icon).toFloat();
         if (mode==recording) {
@@ -65,7 +65,7 @@ class InputRow final : public Component {
 public:
     InputRow(Theme& theme, Connection& connection, int index, const String& name,
              std::function<void(String)> rename) : skin(theme), link(connection), channel(index),
-             clip(cs::clip,plain,{},theme) {
+             clip(cs::clip,clipButton,{},theme) {
         addAndMakeVisible(editor);
         editor.setName(cs::channel(index));
         editor.setFont(skin.font(s::body));
@@ -176,7 +176,18 @@ void Studio::persist() {
 }
 void Studio::refresh(bool notify) {
     link.rescan(settings.device);
-    laptop=link.online && builtIn(link.current.input);
+    laptop=link.online && (builtIn(link.current.input) || (settings.laptopInput.isNotEmpty() && settings.laptopInput==link.current.input));
+    if (laptop && link.current.driver!=Driver::core && link.current.driver!=Driver::shared
+        && settings.device.input.isEmpty()) {
+        for (const auto& p:link.ports) {
+            if (p.driver!=Driver::shared || !p.inputs.contains(link.current.input)) continue;
+            const auto previous=link.current;
+            auto shared=previous;
+            shared.driver=Driver::shared;
+            if (!link.select(shared)) link.select(previous);
+            break;
+        }
+    }
     if (notify) {
         message=cs::unplugged;
         if (page!=Page::home) page=Page::device;
@@ -187,7 +198,7 @@ void Studio::choose(DeviceChoice d) {
     const bool ok=link.select(d);
     message=ok ? String{} : String(cs::failed);
     if (ok) { settings.device=link.current; persist(); }
-    laptop=builtIn(link.current.input);
+    laptop=builtIn(link.current.input) || (link.current.input.isNotEmpty() && settings.laptopInput==link.current.input);
     triggerAsyncUpdate();
 }
 void Studio::finish() {
@@ -232,7 +243,7 @@ void Studio::combo(const String& title,Rect r,const StringArray& items,int selec
     text(title,r.removeFromLeft(s::labelWidth),s::body,s::muted);
     auto* box=new ComboBox;
     controls.add(box); addAndMakeVisible(box); box->setName(title); box->setBounds(r.withWidth(s::fieldWidth));
-    if (mono) box->getProperties().set("number",true);
+    if (mono) { box->getProperties().set("number",true); box->lookAndFeelChanged(); }
     const auto font=skin.getComboBoxFont(*box);
     for (int i=0;i<items.size();++i)
         box->addItem(shortened(font,items[i],box->getWidth()-s::icon-2*s::gap),i+1);
@@ -262,8 +273,8 @@ void Studio::makeHome(Rect area) {
     auto footer=area.removeFromBottom(s::footer).reduced(0,(s::footer-s::button)/2);
     button(cs::setup,footer.removeFromLeft(s::nameWidth),[this]{show(Page::device);});
     footer.removeFromLeft(s::gap);
-    button(cs::tuner,footer.removeFromLeft(s::clipWidth),[this]{status(cs::coming(1));},tunerButton,"T");
-    text(message,footer.reduced(s::inset,0),s::body,s::warning,false,false,true);
+    button(cs::tuner,footer.removeFromLeft(s::nameWidth),[this]{status(cs::coming(1));},tunerButton,"T");
+    text(message,footer.reduced(s::inset,0),s::body,message==cs::saved?s::ready:s::warning,false,false,true);
     area.reduce(0,s::gutter);
     auto actions=area.removeFromTop(s::recordButton);
     int card=(actions.getWidth()-s::inset)/2;
@@ -344,7 +355,7 @@ void Studio::devicePage(Rect area) {
             if (enable) for (auto& p:link.ports) if (p.driver==Driver::shared) {
                 DeviceChoice d=link.current; d.driver=Driver::shared; choose(d); break;
             }
-            laptop=enable; triggerAsyncUpdate();
+            laptop=enable; settings.laptopInput=enable?link.current.input:String{}; persist(); triggerAsyncUpdate();
         });
     text(!link.online?cs::connect:(laptop?cs::fallback:cs::hints[(int)link.current.driver]),area.removeFromTop(s::button),
          s::body,laptop || !link.online ? s::warning:s::muted);

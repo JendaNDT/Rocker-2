@@ -7,10 +7,11 @@ class FakeDevice final : public DeviceSystem {
 public:
     using Block = std::vector<std::vector<float>>;
     int channels = 2, outputs = 2, rate = 48000;
-    bool asio = true, laptop = false, attached = true;
+    bool core = false, asio = true, laptop = false, attached = true;
     Audio* active = nullptr;
     std::vector<Ports> scan() override {
         if (!attached) return {};
+        if (core) return {{Driver::core,{"Studio USB"},{"Studio USB"},true}};
         std::vector<Ports> list;
         if (asio) list.push_back({Driver::asio,{"Studio USB"},{"Studio USB"},false});
         if (laptop) list.push_back({Driver::shared,{"Internal microphone"},{"Headphones"},true});

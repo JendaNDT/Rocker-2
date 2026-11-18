@@ -5,6 +5,7 @@ namespace rocker {
 struct Settings {
     DeviceChoice device;
     bool visited = false;
+    juce::String laptopInput;
     std::map<juce::String, juce::String> aliases;
     static juce::File location();
     static Settings load(const juce::File&);

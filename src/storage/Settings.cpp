@@ -25,6 +25,7 @@ Settings Settings::load(const juce::File& file) {
     };
     result.device.driver = static_cast<Driver>(integer("driver", 0, 0, static_cast<int>(Driver::alsa)));
     result.device.input = string("input");
+    result.laptopInput = string("laptopInput");
     result.device.output = string("output");
     result.device.rate = integer("rate", 48000, 1, 1000000);
     result.device.buffer = integer("buffer", 128, 1, 1000000);
@@ -44,6 +45,7 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("visited", visited);
     object->setProperty("driver", static_cast<int>(device.driver));
     object->setProperty("input", device.input);
+    object->setProperty("laptopInput", laptopInput);
     object->setProperty("output", device.output);
     object->setProperty("buffer", device.buffer);
     object->setProperty("rate", device.rate);

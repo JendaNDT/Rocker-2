@@ -59,6 +59,9 @@ TEST_CASE("Settings round trip, partial fields and corrupt files") {
 TEST_CASE("A-17 real screen layouts and snapshots") {
     ScopedJuceInitialiser_GUI gui; Temp t;
     test::FakeDevice fake;
+#if JUCE_MAC
+    fake.core=true;
+#endif
     Studio view(fake,t.file);
     for (int pixels:{1280,1920}) {
         if (view.currentPage()==Page::home) click(view,cs::setup);
