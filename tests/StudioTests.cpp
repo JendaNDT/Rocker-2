@@ -400,7 +400,8 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         REQUIRE(find<Button>(view, String(u8"Můj aparát")));
         REQUIRE(Settings::load(temp.file).guitarPresets.size() == 1);
         fits(view);
-        for (int pixels : {1280, 1920}) snapshot(view, "12-zvuk-stopy", pixels);
+        for (int pixels : {1280, 1920})
+            snapshot(view, "12-zvuk-stopy", pixels);
         click(view, cs::useProject);
         click(view, cs::stopSong);
         fits(view);

@@ -85,22 +85,26 @@ constexpr std::uint64_t enabledBit = std::uint64_t(1) << 63;
 void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
     auto& strip = *strips[track];
     strip.command.store(sound.values.pack() | (sound.enabled ? enabledBit : 0));
-    if (recall) ++strip.recalls;
+    if (recall)
+        ++strip.recalls;
 }
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
     for (auto& track : s.tracks) {
         auto& strip = *strips.emplace_back(std::make_unique<Strip>());
         for (const auto& clip : s.clips) {
-            if (track.id != clip.track) continue;
+            if (track.id != clip.track)
+                continue;
             auto wave = lib.data.find(clip.asset);
-            if (wave == lib.data.end()) continue;
+            if (wave == lib.data.end())
+                continue;
             strip.clips.push_back({wave->second, clip.position, clip.offset, clip.length});
             strip.channels = std::max(strip.channels, int(wave->second->reader->numChannels));
             hasClips = true;
         }
         if (track.kind == "kytara" && !strip.clips.empty()) {
             strip.amps.resize(strip.channels);
-            for (auto& amp : strip.amps) amp.prepare(s.grid.rate);
+            for (auto& amp : strip.amps)
+                amp.prepare(s.grid.rate);
             setSound(strips.size() - 1, track.amp, true);
             tail = 2 * s.grid.rate;
         }
@@ -121,24 +125,29 @@ void Playback::prefetch(Frame from, Frame to) const {
                 c.wave->reader->touchSample(c.offset + i - c.at);
 }
 void Playback::Strip::read(float (&block)[2][256], int count, Frame at) const noexcept {
-    for (int ch = 0; ch < channels; ++ch) std::fill_n(block[ch], count, 0.f);
+    for (int ch = 0; ch < channels; ++ch)
+        std::fill_n(block[ch], count, 0.f);
     float source[2][256];
     int* raw[]{reinterpret_cast<int*>(source[0]), reinterpret_cast<int*>(source[1])};
     for (const auto& clip : clips) {
         auto first = std::max(at, clip.at);
-        int n = static_cast<int>(std::max<Frame>(0, std::min(at + count, clip.at + clip.length) - first));
-        if (n == 0) continue;
+        int n =
+            static_cast<int>(std::max<Frame>(0, std::min(at + count, clip.at + clip.length) - first));
+        if (n == 0)
+            continue;
         auto& reader = *clip.wave->reader;
         reader.readSamples(raw, int(reader.numChannels), 0, clip.offset + first - clip.at, n);
         for (int ch = 0; ch < channels; ++ch) {
             auto* dest = block[ch] + (first - at);
             auto* input = source[std::min(ch, int(reader.numChannels) - 1)];
-            for (int i = 0; i < n; ++i) dest[i] += input[i];
+            for (int i = 0; i < n; ++i)
+                dest[i] += input[i];
         }
     }
 }
 void Playback::Strip::process(float* const* out, int outputs, int size, Frame at) noexcept {
-    if (clips.empty()) return;
+    if (clips.empty())
+        return;
     const auto word = command.load();
     const auto recall = recalls.load();
     const bool wet = (word & enabledBit) != 0 && !amps.empty();
@@ -147,7 +156,8 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
     if (wet && (restart || word != applied)) {
         for (auto& amp : amps) {
             amp.configure(AmpParameters::unpack(word & ~enabledBit));
-            if (restart) amp.reset();
+            if (restart)
+                amp.reset();
         }
     }
     applied = word;
@@ -161,19 +171,22 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
         read(block, count, at + delay + offset);
         if (wet)
             for (int ch = 0; ch < channels; ++ch)
-                for (int i = 0; i < count; ++i) block[ch][i] = amps[ch].process(block[ch][i]);
+                for (int i = 0; i < count; ++i)
+                    block[ch][i] = amps[ch].process(block[ch][i]);
         if (heard && offset >= 0)
             for (int ch = 0; ch < std::min(2, outputs); ++ch)
                 if (out[ch]) {
                     auto* source = block[std::min(ch, channels - 1)];
-                    for (int i = 0; i < count; ++i) out[ch][offset + i] += source[i];
+                    for (int i = 0; i < count; ++i)
+                        out[ch][offset + i] += source[i];
                 }
         offset += count;
     }
 }
 void Playback::mix(float* const* out, int outputs, int size, Frame at) noexcept {
     const ScopedNoDenormals guard;
-    for (auto& strip : strips) strip->process(out, outputs, size, at);
+    for (auto& strip : strips)
+        strip->process(out, outputs, size, at);
 }
 bool renderSong(const Song& song, const AudioLibrary& library, const File& destination) {
     TemporaryFile output(destination);
@@ -196,8 +209,8 @@ bool renderSong(const Song& song, const AudioLibrary& library, const File& desti
 Performance::Performance(const Song& s, const AudioLibrary& library, Frame from, bool rec,
                          bool metronome, int count)
     : grid(s.grid), playback(s, library), start(from),
-      end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()), clock(from - s.grid.beat(count)),
-      recording(rec), click(metronome), cursor(clock) {
+      end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()),
+      clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock) {
     // Anchor count-in to the punch position; normal beats follow the song grid.
     beatIndex = count ? -count : grid.beatAt(from);
     nextBeat = count ? clock : grid.beat(beatIndex);

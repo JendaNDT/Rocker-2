@@ -88,7 +88,8 @@ bool Settings::save(const juce::File& file) const {
     for (auto& [key, name] : aliases)
         names->setProperty(key, name);
     juce::Array<juce::var> sounds;
-    for (const auto& preset : guitarPresets) sounds.add(preset.json());
+    for (const auto& preset : guitarPresets)
+        sounds.add(preset.json());
     object->setProperty("guitarPresets", sounds);
     object->setProperty("lastSong", lastSong);
     object->setProperty("tuningName", tuningName);

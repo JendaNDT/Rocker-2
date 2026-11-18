@@ -67,7 +67,8 @@ void Studio::saveSong() {
         status(cs::writeError);
 }
 void Studio::finishProject() {
-    if (pendingSoundSave) saveSong();
+    if (pendingSoundSave)
+        saveSong();
     soundDeckOpen = namingPreset = false;
     if (performance)
         stopProject();
@@ -140,7 +141,8 @@ void Studio::configureSongMonitor() {
     if (view.selected < 0 || view.selected >= (int)song.tracks.size())
         return;
     auto& t = song.tracks[view.selected];
-    if (t.kind != "kytara") soundDeckOpen = namingPreset = false;
+    if (t.kind != "kytara")
+        soundDeckOpen = namingPreset = false;
     int port = link.caps.inputs.indexOf(t.inputs[0]);
     if (port < 0)
         return;
@@ -148,7 +150,8 @@ void Studio::configureSongMonitor() {
     live.setAmp(t.amp.values);
     if (projectMonitor == 2 && (laptop || t.kind != "kytara"))
         projectMonitor = 0;
-    live.monitor = projectMonitor == 2 && !t.amp.enabled ? Monitor::clean : static_cast<Monitor>(projectMonitor);
+    live.monitor =
+        projectMonitor == 2 && !t.amp.enabled ? Monitor::clean : static_cast<Monitor>(projectMonitor);
 }
 Frame Studio::playPosition() const { return performance ? performance->cursor.load() : view.cursor; }
 void Studio::toggleDistant() {
@@ -277,7 +280,8 @@ void Studio::projectTick() {
     if (performance && (page == Page::project || diagnosing))
         repaint();
     auto now = Time::getMillisecondCounterHiRes();
-    if (pendingSoundSave && now >= pendingSoundSave) saveSong();
+    if (pendingSoundSave && now >= pendingSoundSave)
+        saveSong();
     if (page == Page::project && now - lastArchive > 300000) {
         if (!song.archive(projectDir))
             status(cs::writeError);
@@ -379,7 +383,8 @@ void Studio::projectPage(Rect area) {
                         fresh.tuning = tunings[tuningIndex].name;
                         for (int i = 0; i < 2; ++i) {
                             Track t{Uuid().toString(), cs::trackKinds[i], kinds[i]};
-                            t.amp.enabled = t.kind == "kytara" && (guitarSource == 0 || guitarSource == 3);
+                            t.amp.enabled =
+                                t.kind == "kytara" && (guitarSource == 0 || guitarSource == 3);
                             for (int c = 0; c < link.caps.inputs.size(); ++c) {
                                 auto alias = settings.aliases.find(Settings::inputKey(link.current, c));
                                 if (alias != settings.aliases.end() &&
@@ -410,7 +415,9 @@ void Studio::projectPage(Rect area) {
                         song.tracks.push_back({Uuid().toString()});
                     auto& t = song.tracks[view.selected];
                     t.name = draftTrack.trim();
-                    if (t.kind != kinds[draftKind]) t.amp.enabled = kinds[draftKind] == "kytara" && (guitarSource == 0 || guitarSource == 3);
+                    if (t.kind != kinds[draftKind])
+                        t.amp.enabled =
+                            kinds[draftKind] == "kytara" && (guitarSource == 0 || guitarSource == 3);
                     t.kind = kinds[draftKind];
                     t.inputs.clear();
                     for (int i = 0; i < draftChannels && draftPort + i < link.caps.inputs.size(); ++i)
@@ -502,53 +509,56 @@ void Studio::projectPage(Rect area) {
         inputMeter = {};
         trackSoundDeck(foot);
     } else {
-    auto upper = row(foot);
-    text(cs::hear.toUpperCase(), cell(upper, s::nameWidth), s::section, s::muted);
-    text(cs::toRecord.toUpperCase(), cell(upper, s::labelWidth), s::section, s::muted);
-    text(cs::delay, cell(upper, s::fieldWidth), s::caption, s::muted);
-    text(cs::input, upper, s::caption, s::muted);
-    auto info = row(foot);
-    StringArray heard;
-    if (performance) {
-        const bool solo =
-            std::any_of(song.tracks.begin(), song.tracks.end(), [](auto& t) { return t.solo; });
+        auto upper = row(foot);
+        text(cs::hear.toUpperCase(), cell(upper, s::nameWidth), s::section, s::muted);
+        text(cs::toRecord.toUpperCase(), cell(upper, s::labelWidth), s::section, s::muted);
+        text(cs::delay, cell(upper, s::fieldWidth), s::caption, s::muted);
+        text(cs::input, upper, s::caption, s::muted);
+        auto info = row(foot);
+        StringArray heard;
+        if (performance) {
+            const bool solo =
+                std::any_of(song.tracks.begin(), song.tracks.end(), [](auto& t) { return t.solo; });
+            for (auto& t : song.tracks)
+                if (!t.mute && (!solo || t.solo) &&
+                    std::any_of(song.clips.begin(), song.clips.end(),
+                                [&](auto& c) { return c.track == t.id; }))
+                    heard.add(t.name);
+            if (view.click || playPosition() < performance->start)
+                heard.add(cs::songClick);
+        }
+        if (projectMonitor > 0 && view.selected < (int)song.tracks.size())
+            heard.add(song.tracks[view.selected].name + " / " +
+                      (projectMonitor == 2 && song.tracks[view.selected].amp.enabled
+                           ? song.tracks[view.selected].amp.name
+                           : cs::monitors[1]));
+        text(limit(skin.font(s::body), heard.isEmpty() ? cs::monitors[0] : heard.joinIntoString(" + "),
+                   s::nameWidth),
+             cell(info, s::nameWidth));
+        StringArray armed;
         for (auto& t : song.tracks)
-            if (!t.mute && (!solo || t.solo) &&
-                std::any_of(song.clips.begin(), song.clips.end(),
-                            [&](auto& c) { return c.track == t.id; }))
-                heard.add(t.name);
-        if (view.click || playPosition() < performance->start)
-            heard.add(cs::songClick);
-    }
-    if (projectMonitor > 0 && view.selected < (int)song.tracks.size())
-        heard.add(song.tracks[view.selected].name + " / " +
-                  (projectMonitor == 2 && song.tracks[view.selected].amp.enabled ? song.tracks[view.selected].amp.name : cs::monitors[1]));
-    text(limit(skin.font(s::body), heard.isEmpty() ? cs::monitors[0] : heard.joinIntoString(" + "),
-               s::nameWidth),
-         cell(info, s::nameWidth));
-    StringArray armed;
-    for (auto& t : song.tracks)
-        if (t.armed)
-            armed.add(t.inputs.joinIntoString(" + ") + String(u8" → ") + t.name);
-    text(limit(skin.font(s::body), armed.isEmpty() ? cs::noneArmed : armed.joinIntoString(", "),
-               s::labelWidth),
-         cell(info, s::labelWidth));
-    text(latencyLabel(), cell(info, s::fieldWidth));
-    inputMeter = info;
-    if (!performance && view.selected < (int)song.tracks.size()) {
-        auto controlsRow = row(foot);
-        auto modes = cs::monitors;
-        if (laptop || song.tracks[view.selected].kind != "kytara")
-            modes.remove(2);
-        combo(cs::listen, cell(controlsRow, s::fieldWidth), modes, projectMonitor, [this](int i) {
-            projectMonitor = i;
-            configureSongMonitor();
-            triggerAsyncUpdate();
-        });
-        if (song.tracks[view.selected].kind == "kytara")
-            button(cs::ampPage, cell(controlsRow, s::clipWidth), [this] { openTrackSound(view.selected); });
-        button(cs::tuner, cell(controlsRow, s::levelWidth), [this] { toggleTuner(); });
-    }
+            if (t.armed)
+                armed.add(t.inputs.joinIntoString(" + ") + String(u8" → ") + t.name);
+        text(limit(skin.font(s::body), armed.isEmpty() ? cs::noneArmed : armed.joinIntoString(", "),
+                   s::labelWidth),
+             cell(info, s::labelWidth));
+        text(latencyLabel(), cell(info, s::fieldWidth));
+        inputMeter = info;
+        if (!performance && view.selected < (int)song.tracks.size()) {
+            auto controlsRow = row(foot);
+            auto modes = cs::monitors;
+            if (laptop || song.tracks[view.selected].kind != "kytara")
+                modes.remove(2);
+            combo(cs::listen, cell(controlsRow, s::fieldWidth), modes, projectMonitor, [this](int i) {
+                projectMonitor = i;
+                configureSongMonitor();
+                triggerAsyncUpdate();
+            });
+            if (song.tracks[view.selected].kind == "kytara")
+                button(cs::ampPage, cell(controlsRow, s::clipWidth),
+                       [this] { openTrackSound(view.selected); });
+            button(cs::tuner, cell(controlsRow, s::levelWidth), [this] { toggleTuner(); });
+        }
     }
     auto disk = notice.removeFromRight(s::labelWidth);
     const int channels = std::max(
@@ -587,11 +597,14 @@ void Studio::projectPage(Rect area) {
             i == view.selected ? 1 : 0);
         if (t.kind == "kytara") {
             const auto label = t.amp.enabled ? t.amp.name + (t.amp.modified ? "*" : "") : cs::bypass;
-            auto* badge = button(limit(skin.font(s::body, false, true), label, head.getWidth() - 2*s::inset), head,
-                                 [this, i] { openTrackSound(i); });
-            if (i == view.selected) soundBadge = badge;
-        } else text(limit(skin.font(s::caption), t.inputs.joinIntoString(" + "), head.getWidth()), head,
-             s::caption, s::muted);
+            auto* badge =
+                button(limit(skin.font(s::body, false, true), label, head.getWidth() - 2 * s::inset),
+                       head, [this, i] { openTrackSound(i); });
+            if (i == view.selected)
+                soundBadge = badge;
+        } else
+            text(limit(skin.font(s::caption), t.inputs.joinIntoString(" + "), head.getWidth()), head,
+                 s::caption, s::muted);
     }
     if (!song.tracks.empty()) {
         auto r = trackCommands;
@@ -782,8 +795,10 @@ void Studio::mouseDown(const MouseEvent& event) {
     repaint();
 }
 void Studio::startLoadTrial() {
-    if (performance || !link.online || link.caps.outputChannels == 0) return;
-    diagnosticDir = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("Rocker2-load", "", false);
+    if (performance || !link.online || link.caps.outputChannels == 0)
+        return;
+    diagnosticDir =
+        File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("Rocker2-load", "", false);
     AudioLibrary sources;
     if (!makeLoadTrial(diagnosticSong, diagnosticDir, link.current.rate, trialAmps) ||
         !sources.load(diagnosticSong, diagnosticDir)) {
@@ -806,9 +821,11 @@ void Studio::finishLoadTrial(Performance& p) {
     link.audio.measuringLoad = testingLoad = false;
     preventSleep(false);
     const int current = devices.xruns();
-    const String lost = initialXruns >= 0 && current >= initialXruns ? String(current - initialXruns) : cs::unreported;
+    const String lost =
+        initialXruns >= 0 && current >= initialXruns ? String(current - initialXruns) : cs::unreported;
     status((p.finished ? cs::trialFinished : cs::trialStopped) + "  " + cs::maxLoad + " " +
-           String(link.audio.peakLoad.load(), 1).replaceCharacter('.', ',') + cs::percentUnit + "  /  " + cs::xruns + " " + lost);
+           String(link.audio.peakLoad.load(), 1).replaceCharacter('.', ',') + cs::percentUnit + "  /  " +
+           cs::xruns + " " + lost);
 }
 void Studio::syncTest() {
     if (performance || !link.online || link.caps.inputs.isEmpty() || link.caps.outputChannels == 0)

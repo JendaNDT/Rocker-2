@@ -29,7 +29,6 @@ struct AudioLibrary {
 struct PlaybackClip {
     std::shared_ptr<const MappedWave> wave;
     Frame at, offset, length;
-
 };
 class Playback {
   public:

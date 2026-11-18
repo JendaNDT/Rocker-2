@@ -78,7 +78,8 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
             std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
         float load = 0.95f * live.cpuPercent.load() + 0.05f * elapsed * 100 * rate / frames;
         live.cpuPercent.store(load);
-        if (measuringLoad.load(std::memory_order_relaxed) && load > peakLoad.load(std::memory_order_relaxed))
+        if (measuringLoad.load(std::memory_order_relaxed) &&
+            load > peakLoad.load(std::memory_order_relaxed))
             peakLoad.store(load, std::memory_order_relaxed);
     }
 }

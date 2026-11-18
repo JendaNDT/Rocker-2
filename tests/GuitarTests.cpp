@@ -2,13 +2,23 @@
 #include "engine/LoadTrial.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <iostream>
 
 namespace {
 using namespace juce;
 using namespace rocker;
 
+void playbackBlock(Audio& device, float* const* out, int count)
+#if defined(ROCKER_RT_AUDIT)
+    [[clang::nonblocking]]
+#endif
+{
+    device.process(nullptr, 0, out, 2, count);
+}
+
 struct Session {
-    File dir = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("rocker-amp", "", true);
+    File dir =
+        File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("rocker-amp", "", true);
     Song song;
     AudioLibrary library;
     AudioBuffer<float> source{2, 9600};
@@ -30,10 +40,15 @@ struct Session {
         REQUIRE(writer->writeFromAudioSampleBuffer(source, 0, source.getNumSamples()));
         writer.reset();
         song.assets = {{"a", "Zvuk/riff.wav", 9600, 2}};
-        song.clips = {{"d", "dr", "a", 52, 360, 110}, {"c1", "g1", "a", 0, 0, 9600}, {"c2", "g2", "a", 137, 800, 8200}};
+        song.clips = {{"d", "dr", "a", 52, 360, 110},
+                      {"c1", "g1", "a", 0, 0, 9600},
+                      {"c2", "g2", "a", 137, 800, 8200}};
         REQUIRE(library.load(song, dir));
     }
-    ~Session() { library.data.clear(); dir.deleteRecursively(); }
+    ~Session() {
+        library.data.clear();
+        dir.deleteRecursively();
+    }
     AudioBuffer<float> play(int block) {
         Audio device;
         device.prepare(0, 48000);
@@ -42,7 +57,7 @@ struct Session {
         AudioBuffer<float> result(2, (int)p.end);
         for (int pos = 0; pos < result.getNumSamples(); pos += block) {
             float* out[]{result.getWritePointer(0, pos), result.getWritePointer(1, pos)};
-            device.process(nullptr, 0, out, 2, std::min(block, result.getNumSamples() - pos));
+            playbackBlock(device, out, std::min(block, result.getNumSamples() - pos));
         }
         device.timeline.detach();
         REQUIRE(p.finished.load());
@@ -55,13 +70,15 @@ float difference(const AudioBuffer<float>& a, const AudioBuffer<float>& b) {
     float peak = 0;
     for (int ch = 0; ch < 2; ++ch)
         for (int i = 0; i < a.getNumSamples(); ++i) {
-            const float delta = std::abs(a.getSample(ch,i) - b.getSample(ch,i));
-            if (!std::isfinite(delta)) return std::numeric_limits<float>::infinity();
+            const float delta = std::abs(a.getSample(ch, i) - b.getSample(ch, i));
+            if (!std::isfinite(delta))
+                return std::numeric_limits<float>::infinity();
             peak = std::max(peak, delta);
         }
     return peak;
 }
-TEST_CASE("A-05 two independent stereo guitar amps and drums match the offline WAV including tails") {
+TEST_CASE("A-05 two independent stereo guitar amps and drums match the offline WAV including tails",
+          "[realtime]") {
     Session s;
     auto file = s.dir.getChildFile("mix.wav");
     MemoryBlock first;
@@ -80,7 +97,8 @@ TEST_CASE("A-05 two independent stereo guitar amps and drums match the offline W
     for (int n : {64, 128, 512, 1024})
         REQUIRE(difference(s.play(n), render) <= 0.0000005f);
 }
-TEST_CASE("A-20 recalls and embedded user settings reproduce guitar sound independently of the library") {
+TEST_CASE(
+    "A-20 recalls and embedded user settings reproduce guitar sound independently of the library") {
     Session s;
     auto original = s.play(128);
     s.song.tracks[1].amp.values = presets[3];
@@ -118,9 +136,10 @@ TEST_CASE("Playback advances guitar by the cabinet delay and preserves the first
         reference.reset();
         float error = 0;
         for (int i = 0; i < s.source.getNumSamples(); ++i) {
-            float output = reference.process(s.source.getSample(ch,i));
+            float output = reference.process(s.source.getSample(ch, i));
             if (i >= reference.delaySamples())
-                error = std::max(error, std::abs(played.getSample(ch,i - reference.delaySamples()) - output));
+                error = std::max(error,
+                                 std::abs(played.getSample(ch, i - reference.delaySamples()) - output));
         }
         REQUIRE(error <= 0.000001f);
     }
@@ -132,7 +151,8 @@ TEST_CASE("M-05 trial covers ten minutes of sixteen tracks with eight complete a
     REQUIRE(makeLoadTrial(trial, path, 8000, 8));
     REQUIRE(trial.end() == 600 * 8000);
     REQUIRE(trial.tracks.size() == 16);
-    CHECK(std::count_if(trial.tracks.begin(), trial.tracks.end(), [](auto& t){return t.amp.enabled;}) == 8);
+    CHECK(std::count_if(trial.tracks.begin(), trial.tracks.end(),
+                        [](auto& t) { return t.amp.enabled; }) == 8);
     AudioLibrary lib;
     REQUIRE(lib.load(trial, path));
     Performance p(trial, lib, 600 * 8000 - 2048, false, false, 0);
@@ -144,4 +164,28 @@ TEST_CASE("M-05 trial covers ten minutes of sixteen tracks with eight complete a
     REQUIRE(p.finished.load());
 }
 
+TEST_CASE("Time the M-05 mix without an audio device", "[.benchmark]") {
+    Session s;
+    Song trial;
+    const int rate = 48000, block = 128, frames = rate * 600;
+    auto folder = s.dir.getChildFile("benchmark");
+    REQUIRE(makeLoadTrial(trial, folder, rate, 8));
+    AudioLibrary lib;
+    REQUIRE(lib.load(trial, folder));
+    Performance player(trial, lib, 0, false, false, 0);
+    player.end = frames;
+    Audio device;
+    device.prepare(0, rate);
+    device.timeline.attach(player);
+    AudioBuffer<float> output(2, block);
+    auto start = std::chrono::steady_clock::now();
+    for (int at = 0; at < frames; at += block)
+        playbackBlock(device, output.getArrayOfWritePointers(), std::min(block, frames - at));
+    double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    device.timeline.detach();
+    REQUIRE(player.finished.load());
+    std::cout << "M-05 offline: " << frames << " frames, " << seconds << " s, mean " << seconds / 6
+              << "% of realtime\n";
 }
+
+} // namespace

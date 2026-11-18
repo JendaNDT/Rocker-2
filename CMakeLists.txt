@@ -45,7 +45,7 @@ if(BUILD_TESTING)
         foreach(sanitizer realtime thread)
             set(target Audit_${sanitizer})
             juce_add_console_app(${target} PRODUCT_NAME ${target})
-            target_sources(${target} PRIVATE tests/SongTests.cpp src/engine/Audio.cpp src/engine/Live.cpp
+            target_sources(${target} PRIVATE tests/SongTests.cpp tests/GuitarTests.cpp src/engine/Audio.cpp src/engine/Live.cpp
                 src/engine/Timeline.cpp src/dsp/Pitch.cpp src/dsp/Amp.cpp src/song/Song.cpp)
             target_compile_options(${target} PRIVATE -O1 -g -fsanitize=${sanitizer} -fno-omit-frame-pointer)
             target_link_options(${target} PRIVATE -fsanitize=${sanitizer})

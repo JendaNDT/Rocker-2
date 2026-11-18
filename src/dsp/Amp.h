@@ -40,7 +40,8 @@ class Amp {
     std::vector<float> cabinet, history;
     AmpParameters params = presets[0];
     struct Controls {
-        float gain = 1, level = 1, threshold = 0, bass = 1, mid = 1, treble = 1, presence = 0, echo = 0, room = 0;
+        float gain = 1, level = 1, threshold = 0, bass = 1, mid = 1, treble = 1, presence = 0, echo = 0,
+              room = 0;
     } current, target;
     float env = 0, gate = 0, release = 0, attack = 0;
     float low = 0, wide = 0, air = 0, lowPole = 0, midPole = 0, airPole = 0;
