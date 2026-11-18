@@ -384,15 +384,36 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
         REQUIRE(wav->read(&sample, 0, 1, 233, true, false));
         CHECK(sample.getSample(0, 0) == 0.2f * std::sin((grid.beat(4) + 233) * 0.017f));
         click(view, cs::playSong);
+        click(view, "Crunch");
+        chooseItem(view, cs::preset, 3);
+        auto* drive = find<Slider>(view, cs::drive);
+        REQUIRE(drive);
+        drive->setValue(64, sendNotificationSync);
+        REQUIRE(find<Button>(view, "Metal*"));
         fake.process({}, 4096);
+        click(view, cs::savePreset);
+        auto* title = find<TextEditor>(view, cs::presetTitle);
+        REQUIRE(title);
+        title->setText(String(u8"Můj aparát"));
+        click(view, cs::storePreset);
+        REQUIRE(find<Button>(view, String(u8"Můj aparát")));
+        REQUIRE(Settings::load(temp.file).guitarPresets.size() == 1);
+        fits(view);
+        for (int pixels : {1280, 1920}) snapshot(view, "12-zvuk-stopy", pixels);
+        click(view, cs::useProject);
         click(view, cs::stopSong);
         fits(view);
         for (int pixels : {1280, 1920})
             snapshot(view, "10-skladba", pixels);
         click(view, cs::home);
     }
+    auto machine = Settings::load(temp.file);
+    machine.guitarPresets.clear();
+    REQUIRE(machine.save(temp.file));
     Studio reopened(fake, temp.file);
     click(reopened, cs::resume);
+    click(reopened, String(u8"Můj aparát"));
+    REQUIRE(find<Slider>(reopened, cs::drive)->getValue() == 64);
     CHECK(reopened.currentPage() == Page::project);
     auto v = ViewState::load(File(Settings::load(temp.file).lastSong));
     CHECK(v.cursor == 4096);
