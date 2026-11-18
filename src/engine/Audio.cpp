@@ -72,6 +72,7 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
             position = -1;
     }
     live.render(inputs, inputCount, outputs, outputCount, frames);
+    timeline.process(inputs,inputCount,outputs,outputCount,frames);
     if (frames > 0) {
         const auto elapsed =
             std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();

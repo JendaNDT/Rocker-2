@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-project(Rocker2 VERSION 0.2.0 LANGUAGES C CXX)
+project(Rocker2 VERSION 0.3.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
@@ -11,11 +11,11 @@ include(FetchContent)
 FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG 9.0.5 GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(JUCE)
 juce_add_binary_data(Fonts SOURCES assets/fonts/Inter.ttf assets/fonts/InterSemiBold.ttf assets/fonts/Mono.ttf)
-add_library(Studio STATIC src/dsp/Amp.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp)
+add_library(Studio STATIC src/song/Song.cpp src/engine/Timeline.cpp src/dsp/Amp.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp)
 target_include_directories(Studio PUBLIC src "${JUCE_MODULES_DIR}")
 target_compile_definitions(Studio PUBLIC JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
     JUCE_USE_WIN_WEBVIEW2=0 JUCE_REPORT_APP_USAGE=0 $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>)
-target_link_libraries(Studio PRIVATE Fonts juce::juce_audio_devices juce::juce_gui_basics
+target_link_libraries(Studio PRIVATE Fonts juce::juce_audio_formats juce::juce_audio_devices juce::juce_gui_basics
     PUBLIC juce::juce_recommended_config_flags)
 juce_add_gui_app(Rocker2 PRODUCT_NAME "Rocker 2" BUNDLE_ID "cz.rocker2.studio"
     MICROPHONE_PERMISSION_ENABLED TRUE MICROPHONE_PERMISSION_TEXT "Rocker 2 potřebuje vstup pro měření signálu z nástroje.")

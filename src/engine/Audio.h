@@ -1,5 +1,6 @@
 #pragma once
 #include "Live.h"
+#include "Timeline.h"
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -16,6 +17,7 @@ class Audio {
   public:
     // The device must be stopped before changing the channel layout.
     Live live;
+    Timeline timeline;
     void prepare(int inputs, int sampleRate);
     void playTone() noexcept { command.store(1); }
     void stopTone() noexcept { command.store(-1); }
