@@ -13,6 +13,8 @@ Místní sestavení prošlo všemi 12 případy včetně původních zkoušek E0
 | Ladění a nastavení | Devět továrních ladění, Drop D / B, neplatné názvy tónů, dva různé vstupy a vlastní ladění s českým názvem po novém otevření. |
 | A-17 a snímky | Devět obrazovek ve dvou velikostech, včetně ladičky s hrajícím D2. Simulovaná zvukovka dodala signál pro měřiče. |
 
+Při spuštění skutečné aplikace na místním Linuxu bez zvukovky se otevřelo okno 1280 × 720. Klávesa T zobrazila ladičku s radou, kde vybrat vstup. Další stisk vrátil průvodce Zapojení.
+
 **M-01 a H-01 čekají na ruční zkoušku.** Čísla ze simulace výše slouží k ověření výpočtu. Jendova zvukovka, sluchátka, procesor, buffer, pět měření a hodnocení riffu zatím čekají na první zápis. Pro hraní ještě nebyl schválen výchozí buffer. [Postup a tabulka pro měření](../README.md) · [Náhled hraní](zkousky/E1/hrani.png) · [Náhled ladičky](zkousky/E1/ladicka.png)
 
 ## E0 — první zvuk

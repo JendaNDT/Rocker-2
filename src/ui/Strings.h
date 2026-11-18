@@ -89,9 +89,8 @@ inline const juce::String
     bluetooth = u8"Bluetooth může přidat přes 100 ms. Pro hraní použij sluchátka s kabelem.",
     outputLevel = u8"Úroveň výstupu", delay = u8"Zpoždění ve sluchátkách",
     estimated = u8"Odhad ovladače", measured = u8"Změřeno kabelem",
-    unknown = u8"Ovladač údaj neposkytl.", good = u8"dobré", usable = u8"použitelné",
-    slow = u8"může rušit", noise = u8"Změř ticho",
-    quiet = u8"Dvě sekundy nehraj. Brána změří šum vybraného vstupu.",
+    unknown = u8"Ovladač údaj neposkytl.", good = u8"dobré", usable = u8"použitelné", slow = u8"ruší",
+    noise = u8"Změř ticho", quiet = u8"Dvě sekundy nehraj. Brána změří šum vybraného vstupu.",
     gateSet = u8"Práh brány je nastaven.", gate = u8"Brána", drive = u8"Zkreslení",
     shape = u8"Druh zkreslení", bass = "Basy", middle = u8"Středy", treble = u8"Výšky", presence = "Jas",
     volume = "Hlasitost", cabinet = u8"Reprobox · vestavěná impulsní odezva", tuning = u8"Ladění",
@@ -115,4 +114,7 @@ inline const juce::String
     customSaved = u8"Ladění je uložené.", soundOn = u8"Zapnout odposlech",
     soundOff = u8"Vypnout odposlech", ampDelay = u8"včetně aparátu", userNotes = u8"Tóny strun",
     openSetup = u8"Zařízení", listeningTo = u8"Poslechový vstup";
+inline const juce::String& latencyRating(double milliseconds) {
+    return milliseconds <= 10 ? good : (milliseconds <= 15 ? usable : slow);
+}
 } // namespace rocker::cs

@@ -120,19 +120,25 @@ void Studio::resetTuning() {
     if (targetString >= (int)confirmed.size())
         targetString = -1;
 }
+int Studio::listeningDelaySamples() const {
+    if (!link.online)
+        return -1;
+    const auto saved = settings.latency.find(Settings::calibrationKey(link.current));
+    int delay = link.caps.inputLatency + link.caps.outputLatency;
+    if (saved != settings.latency.end())
+        delay = saved->second.samples;
+    else if (delay <= 0)
+        return -1;
+    return delay + (link.audio.live.monitor == Monitor::amp ? link.audio.live.ampDelay() : 0);
+}
 String Studio::latencyLabel() const {
-    const auto found = settings.latency.find(Settings::calibrationKey(link.current));
-    const bool measured = found != settings.latency.end();
-    const int reported = link.caps.inputLatency + link.caps.outputLatency;
-    if (!link.online || (!measured && reported <= 0))
+    const int samples = listeningDelaySamples();
+    if (samples < 0)
         return cs::unknown;
-    const bool amp = link.audio.live.monitor == Monitor::amp;
-    const int total =
-        (measured ? found->second.samples : reported) + (amp ? link.audio.live.ampDelay() : 0);
-    double value = 1000. * total / link.current.rate;
-    return (measured ? cs::measured : cs::estimated) + "  " + ms(total, link.current.rate) + "  /  " +
-           (value <= 10 ? cs::good : (value <= 20 ? cs::usable : cs::slow)) +
-           (amp ? "  (" + cs::ampDelay + ")" : "");
+    const bool measured = settings.latency.contains(Settings::calibrationKey(link.current));
+    return (measured ? cs::measured : cs::estimated) + "  " + ms(samples, link.current.rate) + "  /  " +
+           cs::latencyRating(1000. * samples / link.current.rate) +
+           (link.audio.live.monitor == Monitor::amp ? "  (" + cs::ampDelay + ")" : "");
 }
 void Studio::dynamicText(Readout id, String value, Rect r, int size, bool mono) {
     dynamicLines[id] = textLines.size();
@@ -203,8 +209,10 @@ void Studio::pollLive() {
             stableString = -1;
             stableTime = 0;
         }
+        const auto offset =
+            std::abs(cents) < 0.05 ? String(u8"±0,0") : (cents > 0 ? "+" : "") + decimal(cents);
         setReadout(Readout::pitch, Tuning::noteName(note) + "   " + decimal(readingHz) + " Hz   " +
-                                       (cents >= 0 ? "+" : "") + decimal(cents) + cs::centUnit);
+                                       offset + cs::centUnit);
         setReadout(Readout::hint,
                    std::abs(cents) <= 5 ? cs::inTune : (cents < 0 ? cs::flat : cs::sharp));
         StringArray done;
@@ -342,6 +350,8 @@ void Studio::playPanel(Rect area) {
          s::muted);
     if (wireless(link.current.output))
         text(cs::bluetooth, advice.translated(0, s::transport), s::body, s::warning);
+    else if (listeningDelaySamples() > link.current.rate * 0.015)
+        text(cs::directOption, advice.translated(0, s::transport), s::body, s::warning);
 }
 void Studio::fader(const String& title, Rect area, int low, int high, int initial, const String& unit,
                    std::function<void(int)> apply) {

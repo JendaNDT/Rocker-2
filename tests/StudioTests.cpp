@@ -236,6 +236,10 @@ TEST_CASE("A pluck names the active input even if it ends between UI updates") {
 }
 
 TEST_CASE("Guitar routing, custom tuning and cable calibration survive normal UI workflows") {
+    CHECK(cs::latencyRating(10) == cs::good);
+    CHECK(cs::latencyRating(10.01) == cs::usable);
+    CHECK(cs::latencyRating(15) == cs::usable);
+    CHECK(cs::latencyRating(15.01) == cs::slow);
     ScopedJuceInitialiser_GUI gui;
     Temp temp;
     test::FakeDevice fake;

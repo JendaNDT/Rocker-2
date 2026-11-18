@@ -159,7 +159,11 @@ void Live::render(const float* const* in, int ni, float* const* out, int no, int
     const auto command = cueCommand.exchange(0);
     if (command == -1)
         cueLeft = 0;
-    else if (command != 0) {
+    else if (command == -2) {
+        releasing = true;
+        cueLeft = std::min(cueLeft, std::min(rate / 200, cueLength - cueLeft));
+    } else if (command != 0 && !(command < 0 && reference && cueLeft > 0 && !releasing)) {
+        releasing = false;
         reference = command > 0;
         cueLength = reference ? rate : rate / 8;
         cueLeft = cueLength;
@@ -202,7 +206,7 @@ void Live::render(const float* const* in, int ni, float* const* out, int no, int
             angle += step;
             if (angle >= 2 * std::numbers::pi)
                 angle -= 2 * std::numbers::pi;
-            if (!reference || cueLeft > cueLength / 2)
+            if (!reference || releasing || cueLeft > cueLength / 2)
                 --cueLeft;
         }
         for (int c = 0; c < std::min(2, no); ++c)

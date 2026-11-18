@@ -100,6 +100,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void toggleTuner();
     int heardInput() const;
     juce::StringArray inputNames() const;
+    int listeningDelaySamples() const;
     juce::String latencyLabel() const;
     void dynamicText(Readout, juce::String, Rect, int, bool);
     void setReadout(Readout, const juce::String&);

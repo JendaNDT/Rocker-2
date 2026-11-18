@@ -25,7 +25,7 @@ class Live {
     void selectInput(int index);
     void setTuner(bool active);
     void cue(double frequency, bool confirmation = false);
-    void endCue() { cueCommand = -1; }
+    void endCue() { cueCommand = -2; }
     void silence();
     void learnNoise();
     std::optional<int> takeThreshold();
@@ -48,7 +48,7 @@ class Live {
     unsigned lastRecall = 0;
     Monitor previousMode = Monitor::off;
     std::atomic<int> cueCommand{0};
-    bool reference = false;
+    bool reference = false, releasing = false;
     int cueLeft = 0, cueLength = 0;
     double angle = 0, step = 0;
     std::atomic<bool> tuning{false};

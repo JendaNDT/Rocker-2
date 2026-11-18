@@ -93,6 +93,12 @@ TEST_CASE("Live routing separates inputs, cues and noise measurement") {
     CHECK(out[0] == out[1]);
     CHECK(*std::max_element(out[0].begin(), out[0].end()) > 0.09f);
     CHECK(link.audio.read(0).peak == 0);
+    fake.process({}, fake.rate);
+    out = fake.process({}, 2400);
+    CHECK(*std::max_element(out[0].begin(), out[0].end()) > 0.09f);
+    live.endCue();
+    fake.process({}, 512);
+    CHECK(fake.process({}, 16)[0] == std::vector<float>(16, 0));
     live.cue(880, true);
     fake.process({}, 6000);
     CHECK(fake.process({}, 16)[0] == std::vector<float>(16, 0));
