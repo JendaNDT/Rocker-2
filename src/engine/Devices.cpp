@@ -63,7 +63,7 @@ public:
             device.reset(e.type->createDevice(choice.output, choice.input));
             if (!device) break;
             caps.rates = device->getAvailableSampleRates();
-            caps.buffers = device->getAvailableBufferSizesAvailable();
+            caps.buffers = device->getAvailableBufferSizes();
             if (!caps.rates.contains(choice.rate))
                 choice.rate = caps.rates.contains(48000) ? 48000 : static_cast<int>(caps.rates.getFirst());
             if (!caps.buffers.contains(choice.buffer)) choice.buffer = device->getDefaultBufferSize();
