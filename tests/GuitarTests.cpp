@@ -144,6 +144,22 @@ TEST_CASE("Playback advances guitar by the cabinet delay and preserves the first
         REQUIRE(error <= 0.000001f);
     }
 }
+TEST_CASE("Documented amp units and older dry guitars load without a preset library") {
+    REQUIRE_FALSE(GuitarSound::read({}).enabled);
+    auto saved = GuitarSound::read(object({{"typ", "distortion"}, {"brana", -62}, {"zkresleni", 0.48},
+                                           {"basy", 0.1}, {"jas", 0.0}, {"dozvuk", 0.12}}));
+    REQUIRE(saved.enabled);
+    CHECK(saved.values.shape == 1);
+    CHECK(saved.values.gate == 62);
+    CHECK(saved.values.drive == 48);
+    CHECK(saved.values.bass == 55);
+    CHECK(saved.values.presence == 50);
+    CHECK(saved.values.room == 12);
+    for (const auto& preset : presets) {
+        saved.values = preset;
+        REQUIRE(GuitarSound::read(saved.json()).values == preset);
+    }
+}
 TEST_CASE("A-20 switches the active track on the next block and recalls Crunch exactly") {
     Session s;
     auto& track = s.song.tracks[1];
