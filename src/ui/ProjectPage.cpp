@@ -13,7 +13,7 @@ namespace rocker {
 using namespace juce;
 namespace s = style;
 namespace {
-using Rect = Rectangle<int>;
+using Rect = juce::Rectangle<int>;
 Rect row(Rect& r, int h = s::button) {
     auto line = r.removeFromTop(h);
     r.removeFromTop(s::gap);
