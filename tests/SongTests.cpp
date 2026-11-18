@@ -1,0 +1,199 @@
+#include "FakeDevice.h"
+#include "song/Song.h"
+#include <catch2/catch_test_macros.hpp>
+#include <cmath>
+namespace {
+using namespace rocker;
+using namespace juce;
+struct Workspace {
+    File dir =
+        File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("rocker-song", "", true);
+    Workspace() { REQUIRE(dir.createDirectory().wasOk()); }
+    ~Workspace() { dir.deleteRecursively(); }
+};
+Song example() {
+    Song s;
+    s.title = String(u8"Noční čtvrť");
+    s.tracks = {{"dr", "Drums", "bici", {"In 1"}, false},
+                {"gt", String(u8"Řezavá kytara"), "kytara", {"In 2"}, true}};
+    return s;
+}
+TEST_CASE("A-03 song, version fallback, invalid clip and view round trip") {
+    Workspace w;
+    auto s = example();
+    s.assets = {{"a", "Zvuk/test.wav", 48000, 1}};
+    s.clips = {{"c", "dr", "a", 9231, 384, 24000}};
+    CHECK(s.save(w.dir));
+    CHECK(s.archive(w.dir));
+    bool bad = false;
+    auto read = Song::load(w.dir, bad);
+    REQUIRE(read);
+    CHECK_FALSE(bad);
+    CHECK(JSON::toString(read->json()) == JSON::toString(s.json()));
+    ViewState v{240012, 1, 16, true, false, true};
+    CHECK(v.save(w.dir));
+    auto view = ViewState::load(w.dir);
+    CHECK(view.cursor == v.cursor);
+    CHECK(view.selected == 1);
+    CHECK(view.zoom == 16);
+    CHECK(view.distant);
+    CHECK_FALSE(view.click);
+    auto old = object({{"schemaVersion", 0}, {"nazev", s.title}, {"stopy", Array<var>{}}});
+    auto migrated = Song::parse(old, bad);
+    REQUIRE(migrated);
+    CHECK((int)migrated->json().getProperty("schemaVersion", 0) == 1);
+    s.clips.front().offset = 47000;
+    REQUIRE(Song::parse(s.json(), bad));
+    CHECK(bad);
+    REQUIRE(w.dir.getChildFile("skladba.json").replaceWithText("{broken"));
+    CHECK_FALSE(Song::load(w.dir, bad));
+    auto backup = Song::latestVersion(w.dir);
+    REQUIRE(backup.existsAsFile());
+    REQUIRE(Song::parse(JSON::parse(backup), bad)->title == s.title);
+}
+TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
+    auto s = example();
+    s.bars = 400;
+    Audio device;
+    device.prepare(1, s.grid.rate);
+    Performance p(s, {}, 0, false, true, 0);
+    device.timeline.attach(p);
+    std::array<float, 509> out;
+    float* channels[]{out.data()};
+    std::vector<Frame> found;
+    int previous = 0;
+    for (Frame at = 0; at < 48000 * 600; at += out.size()) {
+        device.process(nullptr, 0, channels, 1, (int)out.size());
+        for (int i = 0; i < (int)out.size(); ++i) {
+            if (out[i] > 0 && previous == 0)
+                found.push_back(at + i);
+            previous = out[i] != 0.f;
+        }
+    }
+    device.timeline.detach();
+    REQUIRE(found.size() > 1100);
+    for (size_t i = 0; i < found.size(); ++i)
+        REQUIRE(found[i] == std::llround(i * 48000. * 60 / 112.));
+}
+TEST_CASE("A-06 offline mix ignores headphones and count-in settings") {
+    Workspace w;
+    auto s = example();
+    s.bars = 1;
+    AudioLibrary lib;
+    auto samples = std::make_shared<AudioBuffer<float>>(1, 4000);
+    samples->clear();
+    samples->setSample(0, 329, 0.75f);
+    lib.data["a"] = samples;
+    s.clips = {{"c", "dr", "a", 0, 0, 4000}};
+    MemoryBlock previous;
+    for (bool click : {false, true}) {
+        ViewState view;
+        view.click = click;
+        view.countIn = click;
+        REQUIRE(view.save(w.dir));
+        auto file = w.dir.getChildFile(click ? "on.wav" : "off.wav");
+        REQUIRE(renderSong(s, lib, file));
+        auto reader = waveReader(file);
+        REQUIRE(reader);
+        AudioBuffer<float> rendered(2, 500);
+        REQUIRE(reader->read(&rendered, 0, 500, 0, true, true));
+        CHECK(rendered.getSample(1, 329) == 0.75f);
+        MemoryBlock bytes;
+        REQUIRE(file.loadFileAsData(bytes));
+        if (click)
+            CHECK(bytes == previous);
+        previous = bytes;
+    }
+}
+TEST_CASE("A-07 A-15 ten minute dry overdub with independent input and output delays", "[realtime]") {
+    Workspace w;
+    auto s = example();
+    const int rate = s.grid.rate;
+    const int duration = rate * 600;
+    auto audio = std::make_shared<AudioBuffer<float>>(1, duration);
+    audio->clear();
+    std::vector<int> attacks;
+    for (int beat = 0; s.grid.beat(beat) < duration; ++beat) {
+        int pos = (int)s.grid.beat(beat);
+        attacks.push_back(pos);
+        audio->setSample(0, pos, 0.5f);
+    }
+    AudioLibrary lib;
+    lib.data["source"] = audio;
+    s.clips = {{"source-clip", "dr", "source", 0, 0, duration}};
+    Performance p(s, lib, 0, true, false, 0);
+    REQUIRE(p.arm(s, w.dir, {"In 1", "In 2"}, 211 + 173));
+    Audio device;
+    device.prepare(2, rate);
+    device.timeline.attach(p);
+    std::array<float, 173> outputDelay{};
+    std::array<float, 211> inputDelay{};
+    std::array<float, 128> in{}, out{};
+    const float* inputs[]{nullptr, in.data()};
+    float* outputs[]{out.data()};
+    for (int at = 0; at < duration + 384; at += 128) {
+        for (int i = 0; i < 128; ++i) {
+            int time = at + i;
+            in[i] = inputDelay[time % 211];
+            inputDelay[time % 211] = outputDelay[time % 173];
+        }
+        device.process(inputs, 2, outputs, 1, 128);
+        for (int i = 0; i < 128; ++i)
+            outputDelay[(at + i) % 173] = out[i];
+        if (at % (128 * 100) == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    device.timeline.detach();
+    p.finishDisk();
+    REQUIRE(p.drop < 0);
+    REQUIRE_FALSE(p.failed.load());
+    REQUIRE(recoverTake(s, w.dir, p.journal));
+    auto clip = s.clips.back();
+    REQUIRE(clip.offset == 384);
+    auto reader = waveReader(w.dir.getChildFile(s.assets.back().path));
+    REQUIRE(reader);
+    AudioBuffer<float> buf(1, 3);
+    for (auto expected : attacks) {
+        REQUIRE(reader->read(&buf, 0, 3, expected + clip.offset - 1, true, false));
+        REQUIRE(buf.getSample(0, 1) == 0.5f);
+        REQUIRE(buf.getSample(0, 0) == 0);
+        REQUIRE(buf.getSample(0, 2) == 0);
+    }
+}
+TEST_CASE("A-14 stalled disk buffers five seconds and marks a fifteen-second overrun") {
+    Workspace w;
+    for (int seconds : {5, 15}) {
+        auto s = example();
+        s.grid.rate = 8000;
+        Frame start = 8400;
+        Performance p(s, {}, start, true, false, 0);
+        REQUIRE(p.arm(s, w.dir, {"In 1", "In 2"}, 0, false));
+        std::vector<float> block(800);
+        const float* ptr[]{nullptr, block.data()};
+        for (int i = 0; i < seconds * 10; ++i) {
+            std::fill(block.begin(), block.end(), (float)i);
+            p.process(ptr, 2, nullptr, 0, 800);
+        }
+        CHECK(p.finished.load() == (seconds == 15));
+        if (seconds == 15)
+            CHECK(p.drop == start + 80000);
+        else
+            CHECK(p.drop < 0);
+        REQUIRE(p.drain());
+        p.finishDisk();
+        if (p.drop >= 0)
+            s.dropouts.push_back(p.drop.load());
+        REQUIRE(recoverTake(s, w.dir, p.journal));
+        CHECK(s.clips.back().length == std::min(seconds, 10) * 8000);
+        auto reader = waveReader(w.dir.getChildFile(s.assets.back().path));
+        REQUIRE(reader);
+        AudioBuffer<float> sample(1, 1);
+        for (int i = 0; i < std::min(seconds, 10) * 10; ++i) {
+            REQUIRE(reader->read(&sample, 0, 1, i * 800, true, false));
+            CHECK(sample.getSample(0, 0) == (float)i);
+        }
+        bool damaged = false;
+        REQUIRE(Song::load(w.dir, damaged)->dropouts == s.dropouts);
+    }
+}
+} // namespace

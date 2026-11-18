@@ -112,10 +112,14 @@ TEST_CASE("A-17 real screen layouts and snapshots") {
         click(view, cs::finish);
         fits(view);
         snapshot(view, "00-uvod", pixels);
-        for (auto& name : {cs::song, cs::record, cs::resume, cs::library}) {
+        for (auto& name : {cs::record, cs::resume, cs::library}) {
             click(view, name);
             fits(view);
         }
+        click(view, cs::song);
+        fits(view);
+        snapshot(view, "09-nova-skladba", pixels);
+        click(view, cs::back);
         click(view, cs::livePage);
         chooseItem(view, cs::listen, 2);
         fake.process({std::vector<float>(512, 0.3f)}, 512);
@@ -145,7 +149,7 @@ TEST_CASE("A-17 real screen layouts and snapshots") {
         snapshot(view, "08-diagnostika", pixels);
         click(view, cs::home);
     }
-    for (int key : {'t', 'T', 'r', 'n', 'u'})
+    for (int key : {'t', 'T', 'r', 'u', 'n'})
         CHECK(view.keyPressed(KeyPress(key)));
     view.setSize(1920, 1080);
     fits(view);
@@ -304,4 +308,87 @@ TEST_CASE("Guitar routing, custom tuning and cable calibration survive normal UI
     click(reopened, cs::tuner);
     REQUIRE(find<ComboBox>(reopened, cs::tuning)->getText() == String(u8"Jendův baryton"));
     REQUIRE(Settings::load(temp.file).tunings.at(0).notes == Tuning::parse("B1 F#2 B2 E3 G#3 C#4"));
+}
+
+TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resumes the saved view") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    Settings initial;
+    initial.visited = true;
+    REQUIRE(initial.save(temp.file));
+    {
+        Studio view(fake, temp.file);
+        click(view, cs::song);
+        auto* title = find<TextEditor>(view, cs::titleSong);
+        REQUIRE(title);
+        title->setText(String(u8"Noční riff"), false);
+        title->onTextChange();
+        click(view, cs::createSong);
+        REQUIRE(view.currentPage() == Page::project);
+        fits(view);
+        click(view, cs::trackEdit);
+        chooseItem(view, cs::input, 0);
+        click(view, cs::apply);
+        click(view, cs::disarm);
+        click(view, cs::recordSong);
+        BeatGrid grid;
+        const int total = (int)grid.beat(36) + 384;
+        auto feed = [&](bool guitar) {
+            for (int pos = 0; pos < total; pos += 256) {
+                int n = std::min(256, total - pos);
+                test::FakeDevice::Block in(2, std::vector<float>(n));
+                for (int i = 0; i < n; ++i)
+                    in[guitar ? 1 : 0][i] = guitar ? 0.2f * std::sin((pos + i) * 0.017f)
+                                                   : 0.68f * std::exp(-((pos + i) % 6000) / 800.f) *
+                                                         std::cos((pos + i) * 0.035f);
+                fake.process(in, n);
+                if (pos % 16384 == 0)
+                    Thread::sleep(1);
+            }
+        };
+        feed(false);
+        click(view, cs::stopSong);
+        click(view, cs::atStart);
+        click(view, cs::disarm);
+        chooseItem(view, cs::audioTracks, 1);
+        click(view, cs::trackEdit);
+        chooseItem(view, cs::input, 1);
+        click(view, cs::apply);
+        click(view, cs::disarm);
+        chooseItem(view, cs::listen, 2);
+        click(view, cs::recordSong);
+        feed(true);
+        click(view, cs::far);
+        fits(view);
+        for (int pixels : {1280, 1920})
+            snapshot(view, "11-zdalky", pixels);
+        click(view, cs::normal);
+        click(view, cs::stopSong);
+        click(view, cs::atStart);
+        auto dir = File(Settings::load(temp.file).lastSong);
+        bool bad = false;
+        auto loaded = Song::load(dir, bad);
+        REQUIRE(loaded);
+        REQUIRE(loaded->clips.size() == 2);
+        REQUIRE(loaded->assets.size() == 2);
+        auto wav = waveReader(dir.getChildFile(loaded->assets[1].path));
+        REQUIRE(wav);
+        AudioBuffer<float> sample(1, 1);
+        REQUIRE(wav->read(&sample, 0, 1, 233, true, false));
+        CHECK(sample.getSample(0, 0) == 0.2f * std::sin((grid.beat(4) + 233) * 0.017f));
+        click(view, cs::playSong);
+        fake.process({}, 4096);
+        click(view, cs::stopSong);
+        fits(view);
+        for (int pixels : {1280, 1920})
+            snapshot(view, "10-skladba", pixels);
+        click(view, cs::home);
+    }
+    Studio reopened(fake, temp.file);
+    click(reopened, cs::resume);
+    CHECK(reopened.currentPage() == Page::project);
+    auto v = ViewState::load(File(Settings::load(temp.file).lastSong));
+    CHECK(v.cursor == 4096);
+    CHECK(v.selected == 1);
 }
