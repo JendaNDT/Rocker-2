@@ -99,7 +99,6 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int draftBeats = 4, draftUnit = 4, draftKind = 0, draftPort = 0, draftChannels = 1;
     bool editingTempo = false, diagnosing = false;
     int projectMonitor = 0;
-    bool ampFromProject = false;
     double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler;
     std::vector<Rect> lanes;
@@ -124,6 +123,10 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void saveSong();
     void editTrack(bool);
     void configureSongMonitor();
+    bool testingLoad = false;
+    int trialAmps = 8, initialXruns = -1;
+    void startLoadTrial();
+    void finishLoadTrial(Performance&);
     void syncTest();
     void finishSync(Performance&);
     void field(const juce::String&, Rect, juce::String&);

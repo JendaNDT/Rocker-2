@@ -1,4 +1,5 @@
 #include "Studio.h"
+#include "engine/LoadTrial.h"
 #include "Strings.h"
 #include <numeric>
 #if JUCE_WINDOWS
@@ -227,6 +228,12 @@ void Studio::stopProject() {
     p->finishDisk();
     if (p->recording)
         preventSleep(false);
+    if (testingLoad) {
+        finishLoadTrial(*p);
+        p.reset();
+        diagnosticDir.deleteRecursively();
+        return;
+    }
     if (diagnosing) {
         finishSync(*p);
         return;
@@ -773,6 +780,35 @@ void Studio::mouseDown(const MouseEvent& event) {
     view.cursor = begin + (Frame)((double)(event.x - axis.getX()) * (last - begin) / axis.getWidth());
     view.save(projectDir);
     repaint();
+}
+void Studio::startLoadTrial() {
+    if (performance || !link.online || link.caps.outputChannels == 0) return;
+    diagnosticDir = File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("Rocker2-load", "", false);
+    AudioLibrary sources;
+    if (!makeLoadTrial(diagnosticSong, diagnosticDir, link.current.rate, trialAmps) ||
+        !sources.load(diagnosticSong, diagnosticDir)) {
+        sources.data.clear();
+        diagnosticDir.deleteRecursively();
+        status(cs::writeError);
+        return;
+    }
+    link.audio.live.silence();
+    performance = std::make_unique<Performance>(diagnosticSong, sources, 0, false, false, 0);
+    performance->end = Frame(link.current.rate) * 600;
+    initialXruns = devices.xruns();
+    link.audio.peakLoad = 0;
+    link.audio.measuringLoad = testingLoad = true;
+    preventSleep(true);
+    link.audio.timeline.attach(*performance);
+    status(cs::trialRunning);
+}
+void Studio::finishLoadTrial(Performance& p) {
+    link.audio.measuringLoad = testingLoad = false;
+    preventSleep(false);
+    const int current = devices.xruns();
+    const String lost = initialXruns >= 0 && current >= initialXruns ? String(current - initialXruns) : cs::unreported;
+    status((p.finished ? cs::trialFinished : cs::trialStopped) + "  " + cs::maxLoad + " " +
+           String(link.audio.peakLoad.load(), 1).replaceCharacter('.', ',') + cs::percentUnit + "  /  " + cs::xruns + " " + lost);
 }
 void Studio::syncTest() {
     if (performance || !link.online || link.caps.inputs.isEmpty() || link.caps.outputChannels == 0)

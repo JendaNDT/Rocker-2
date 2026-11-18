@@ -102,12 +102,6 @@ StringArray Studio::inputNames() const {
     return result;
 }
 void Studio::changeMonitor(int mode) {
-    if (page == Page::amp && ampFromProject) {
-        projectMonitor = mode;
-        configureSongMonitor();
-        triggerAsyncUpdate();
-        return;
-    }
     const bool ampAllowed = (guitarSource == 0 || (guitarSource == 3 && !hearSecond)) && !laptop;
     if (mode == (int)Monitor::amp && !ampAllowed)
         mode = (int)Monitor::off;
@@ -393,11 +387,7 @@ void Studio::ampPanel(Rect area) {
               triggerAsyncUpdate();
           });
     top.removeFromLeft(s::gutter);
-    const bool sourceAllowsAmp =
-        ampFromProject
-            ? view.selected < (int)song.tracks.size() && song.tracks[view.selected].kind == "kytara" &&
-                  link.caps.inputs.contains(song.tracks[view.selected].inputs[0])
-            : guitarSource == 0 || (guitarSource == 3 && !hearSecond);
+    const bool sourceAllowsAmp = guitarSource == 0 || (guitarSource == 3 && !hearSecond);
     const bool allowed =
         !laptop && sourceAllowsAmp && !link.caps.inputs.isEmpty() && link.caps.outputChannels > 0;
     if (allowed)
@@ -714,9 +704,16 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
-    if (diagnosing) {
+    if (testingLoad || diagnosing) {
         button(cs::stopSong, row(area).withWidth(s::nameWidth), [this] { stopProject(); });
         return;
+    }
+    if (link.online && link.caps.outputChannels > 0 && link.audio.live.measurement() == Measurement::idle) {
+        auto perf = row(left);
+        StringArray counts;
+        for (int n=1; n<=8; ++n) counts.add(String(n));
+        button(cs::loadTrial, perf.removeFromRight(s::nameWidth), [this] { startLoadTrial(); });
+        combo(cs::ampCount, perf, counts, trialAmps - 1, [this](int i) { trialAmps = i + 1; });
     }
     if (link.online && link.caps.outputChannels > 0 && !link.caps.inputs.isEmpty() &&
         link.audio.live.measurement() == Measurement::idle) {

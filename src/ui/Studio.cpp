@@ -294,8 +294,8 @@ void Studio::finish() {
 void Studio::show(Page value) {
     if (performance)
         stopProject();
-    if (value == Page::amp && page != Page::tuner)
-        ampFromProject = page == Page::project;
+    if ((value == Page::amp || value == Page::live) && page != Page::amp && page != Page::live)
+        link.audio.live.setAmp(sound);
     activityBeforePluck.clear();
     link.audio.stopTone();
     const bool keepMonitor =
@@ -320,7 +320,7 @@ void Studio::show(Page value) {
         link.audio.live.setTuner(true);
     }
     page = value;
-    if (value == Page::project || (value == Page::amp && ampFromProject))
+    if (value == Page::project)
         configureSongMonitor();
     answer = -1;
     played = false;

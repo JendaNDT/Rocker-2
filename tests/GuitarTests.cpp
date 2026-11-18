@@ -1,4 +1,5 @@
 #include "engine/Audio.h"
+#include "engine/LoadTrial.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
@@ -124,4 +125,23 @@ TEST_CASE("Playback advances guitar by the cabinet delay and preserves the first
         REQUIRE(error <= 0.000001f);
     }
 }
+TEST_CASE("M-05 trial covers ten minutes of sixteen tracks with eight complete amp chains") {
+    Session s;
+    Song trial;
+    auto path = s.dir.getChildFile("trial");
+    REQUIRE(makeLoadTrial(trial, path, 8000, 8));
+    REQUIRE(trial.end() == 600 * 8000);
+    REQUIRE(trial.tracks.size() == 16);
+    CHECK(std::count_if(trial.tracks.begin(), trial.tracks.end(), [](auto& t){return t.amp.enabled;}) == 8);
+    AudioLibrary lib;
+    REQUIRE(lib.load(trial, path));
+    Performance p(trial, lib, 600 * 8000 - 2048, false, false, 0);
+    p.end = trial.end();
+    AudioBuffer<float> out(2, 2048);
+    out.clear();
+    p.process(nullptr, 0, out.getArrayOfWritePointers(), 2, 2048);
+    REQUIRE(out.getMagnitude(0, 2048) > 0.001f);
+    REQUIRE(p.finished.load());
+}
+
 }
