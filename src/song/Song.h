@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_audio_formats/juce_audio_formats.h>
+#include "GuitarSound.h"
 #include <map>
 #include <optional>
 #include <vector>
@@ -16,6 +17,7 @@ struct Track {
     juce::String id, name, kind;
     juce::StringArray inputs;
     bool armed = false, mute = false, solo = false;
+    GuitarSound amp;
 };
 struct Clip {
     juce::String id, track, asset;

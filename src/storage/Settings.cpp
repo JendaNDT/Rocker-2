@@ -45,6 +45,11 @@ Settings Settings::load(const juce::File& file) {
         for (auto& item : obj->getProperties())
             if (item.value.isString())
                 result.aliases[item.name.toString()] = item.value.toString();
+    auto sounds = data.getProperty("guitarPresets", {});
+    if (auto* list = sounds.getArray())
+        for (auto& item : *list)
+            if (item.isObject() && item.getProperty("predvolba", {}).isString())
+                result.guitarPresets.push_back(GuitarSound::read(item));
     result.lastSong = string("lastSong");
     result.tuningName = string("tuningName");
     auto tuningList = data.getProperty("tunings", {});
@@ -82,6 +87,9 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("aliases", juce::var(names));
     for (auto& [key, name] : aliases)
         names->setProperty(key, name);
+    juce::Array<juce::var> sounds;
+    for (const auto& preset : guitarPresets) sounds.add(preset.json());
+    object->setProperty("guitarPresets", sounds);
     object->setProperty("lastSong", lastSong);
     object->setProperty("tuningName", tuningName);
     juce::Array<juce::var> list;

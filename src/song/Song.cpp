@@ -47,6 +47,7 @@ var Song::json() const {
                        {"druh", t.kind},
                        {"vstup", object({{"nazvy", var(t.inputs)}})},
                        {"nahravat", t.armed},
+                       {"amp", t.kind == "kytara" ? t.amp.json() : var()},
                        {"mix", object({{"mute", t.mute}, {"solo", t.solo}})}}));
     for (auto& c : clips)
         cs.add(object({{"id", c.id},
@@ -111,6 +112,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         for (auto& n : items(field(t, "vstup"), "nazvy"))
             if (n.isString() && x.inputs.size() < 2)
                 x.inputs.add(n.toString());
+        x.amp = GuitarSound::read(field(t, "amp"));
         x.armed = field(t, "nahravat");
         x.mute = field(field(t, "mix"), "mute");
         x.solo = field(field(t, "mix"), "solo");
