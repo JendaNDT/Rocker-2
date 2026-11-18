@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure Windows
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A ${{ matrix.arch }}
@@ -31,7 +31,16 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel 3
       - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
+        shell: python
+        run: |
+          import subprocess
+          result = subprocess.run(["ctest", "--test-dir", "build", "-C", "Release", "--output-on-failure"],
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
+          print(result.stdout)
+          if result.returncode:
+              detail = result.stdout[-6000:].replace("%", "%25").replace("\n", "%0A").replace("\r", "%0D")
+              print(f"::error title=E0::{detail}")
+          raise SystemExit(result.returncode)
       - name: Package Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -45,12 +54,12 @@ jobs:
           mkdir pack
           cp -R "build/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
           ditto -c -k --sequesterRsrc pack Rocker2-Mac.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Rocker2-${{ matrix.name }}
           path: Rocker2-*.zip
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Snimky-${{ matrix.name }}
           path: build/screenshots/*.png
