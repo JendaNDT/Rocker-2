@@ -99,10 +99,16 @@ TEST_CASE("A-17 real screen layouts and snapshots") {
         click(view, cs::finish);
         fits(view);
         snapshot(view, "00-uvod", pixels);
-        for (auto& name : {cs::song, cs::record, cs::resume, cs::library, cs::tuner}) {
+        for (auto& name : {cs::song, cs::record, cs::resume, cs::library}) {
             click(view, name);
             fits(view);
         }
+        click(view,cs::livePage); fits(view);snapshot(view,"04-co-slysim",pixels);
+        click(view,cs::ampPage); click(view,cs::soundOn);fits(view);snapshot(view,"05-aparat",pixels);
+        click(view,cs::tuner);fits(view);snapshot(view,"06-ladicka",pixels);
+        click(view,cs::custom);fits(view);snapshot(view,"07-vlastni-ladeni",pixels);
+        click(view,cs::diagnostics);fits(view);snapshot(view,"08-diagnostika",pixels);
+        click(view,cs::home);
     }
     for (int key : {'t', 'T', 'r', 'n', 'u'})
         CHECK(view.keyPressed(KeyPress(key)));

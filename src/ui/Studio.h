@@ -4,7 +4,7 @@
 #include <functional>
 
 namespace rocker {
-enum class Page { home, device, tone, inputs };
+enum class Page { home, device, tone, inputs, live, amp, tuner, diagnostics, customTuning };
 class Theme final : public juce::LookAndFeel_V4 {
   public:
     Theme();
@@ -74,5 +74,35 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void combo(const juce::String&, Rect, const juce::StringArray&, int selected,
                std::function<void(int)> change, bool mono = false);
     void choose(DeviceChoice);
+    Page tunerReturn=Page::home;
+    int guitarSource=0, primaryInput=0, secondaryInput=1, presetIndex=1;
+    bool hearSecond=false;
+    AmpParameters sound=presets[1];
+    std::vector<Tuning> tunings;
+    int tuningIndex=0, targetString=-1, nearestString=0, stableString=-1;
+    double stableTime=0, readingHz=0, cents=0;
+    double lastVoiced=0;
+    std::vector<bool> confirmed;
+    juce::String customName,customNotes;
+    Rect needleArea;
+    enum class Readout { level, cpu, pitch, hint, confirmed };
+    std::map<Readout,std::size_t> dynamicLines;
+    void livePages(Rect);
+    void playPanel(Rect);
+    void ampPanel(Rect);
+    void tunerPanel(Rect);
+    void diagnosticPanel(Rect);
+    void customPanel(Rect);
+    void pollLive();
+    void resetRoute();
+    void resetTuning();
+    void changeMonitor(int);
+    void toggleTuner();
+    int heardInput() const;
+    juce::StringArray inputNames() const;
+    juce::String latencyLabel() const;
+    void dynamicText(Readout,juce::String,Rect,int,bool);
+    void setReadout(Readout,const juce::String&);
+    void fader(const juce::String&,Rect,int,int,int,const juce::String&,std::function<void(int)>);
 };
 } // namespace rocker

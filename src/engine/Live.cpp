@@ -86,7 +86,7 @@ std::optional<double> Live::takePitch() {
     return hz;
 }
 void Live::render(const float* const* in,int ni,float* const* out,int no,int frames) noexcept {
-    if (cancel.exchange(false) && phase.load()!=Measurement::ready) phase=Measurement::idle;
+    if (cancel.exchange(false)) phase=Measurement::idle;
     auto state=phase.load();
     if (state==Measurement::requested) { cursor=0; phase=state=Measurement::recording; }
     const auto mode=monitor.load();
