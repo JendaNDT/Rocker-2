@@ -4,7 +4,15 @@
 
 Vyzkoušej **Hraj → Přímo do zvukovky → Se zvukem**, potom **Zvuk kytary → Crunch**. **T** otevře ladičku s devíti laděními a vlastními strunami. **Diagnostika → Změřit zpoždění** uloží úspěšnou kalibraci a při návratu ke stejnému zařízení, frekvenci a bufferu ji znovu zobrazí. Měřiče ukazují vstup i poslechový výstup. [Návod pro Jendu](../README.md)
 
-Místně prošlo 12 automatických zkoušek. Z GitHubu vyber zelený běh pro etapa-1, otevři Artifacts a vyber Rocker2 pro svůj počítač nebo Snimky s 18 obrázky. [Běhy s aplikacemi a snímky pro E1](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-1) · [Hraní](zkousky/E1/hrani.png) · [Ladička](zkousky/E1/ladicka.png)
+Na Windows x64, Windows ARM64 i macOS prošlo sestavení a všech 12 automatických zkoušek. Každý počítač vytvořil balík s aplikací a 18 snímků. [Ověřený běh](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014)
+
+| Počítač | Aplikace | 18 snímků PNG |
+|---|---|---|
+| Windows s Intelem nebo AMD | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014/artifacts/14474244002) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014/artifacts/14472814520) |
+| Windows na ARM | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014/artifacts/14474203133) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014/artifacts/14473013610) |
+| Mac s Apple Silicon | [Stáhnout ZIP](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014/artifacts/14473289672) | [Stáhnout snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014/artifacts/14473814557) |
+
+[Náhled hraní](zkousky/E1/hrani.png) · [Náhled ladičky](zkousky/E1/ladicka.png)
 
 ## 2. Zbývá
 

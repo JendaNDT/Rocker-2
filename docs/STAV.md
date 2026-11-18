@@ -2,7 +2,7 @@
 
 ## E1 · kytara do sluchátek
 
-Místní sestavení prošlo všemi 12 případy včetně původních zkoušek E0. [Kontroly cílových systémů a výstupy](https://github.com/JendaNDT/Rocker-2/pull/2/checks)
+Na Windows x64, Windows ARM64 i macOS prošlo sestavení a všech 12 automatických zkoušek. Každý počítač vytvořil balík s aplikací a 18 snímků. [Ověřený běh](https://github.com/JendaNDT/Rocker-2/actions/runs/44403854014)
 
 | Automatická zkouška | Výsledek |
 |---|---|
