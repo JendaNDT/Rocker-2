@@ -18,7 +18,7 @@ class Live {
     void prepare(int sampleRate);
     void render(const float* const* in, int ni, float* const* out, int no, int frames) noexcept;
     void setAmp(AmpParameters p, bool recall = true) {
-        parameters.store(std::bit_cast<std::uint64_t>(p));
+        parameters.store(p.pack());
         if (recall)
             ++recallCount;
     }
@@ -42,7 +42,7 @@ class Live {
   private:
     int rate = 48000, stride = 4;
     Amp amp;
-    std::atomic<std::uint64_t> parameters{std::bit_cast<std::uint64_t>(presets[1])};
+    std::atomic<std::uint64_t> parameters{presets[1].pack()};
     std::uint64_t applied = 0;
     std::atomic<unsigned> recallCount{0};
     unsigned lastRecall = 0;
