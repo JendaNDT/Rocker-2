@@ -1,3 +1,4 @@
+#include "storage/AtomicFile.h"
 #include "Song.h"
 #include <cmath>
 #include <set>
@@ -18,12 +19,6 @@ var object(std::initializer_list<std::pair<Identifier, var>> fields) {
     for (const auto& [key, value] : fields)
         out->setProperty(key, value);
     return result;
-}
-bool atomicJson(const File& path, const var& data) {
-    if (path.getParentDirectory().createDirectory().failed())
-        return false;
-    TemporaryFile tmp(path);
-    return tmp.getFile().replaceWithText(JSON::toString(data)) && tmp.overwriteTargetFileWithTemporary();
 }
 namespace {
 var field(const var& v, const char* key, var fallback = {}) { return v.getProperty(key, fallback); }

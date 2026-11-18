@@ -1,3 +1,4 @@
+#include "storage/AtomicFile.h"
 #include "Timeline.h"
 #include <cmath>
 #include <numbers>
@@ -140,7 +141,7 @@ bool renderSong(const Song& song, const AudioLibrary& library, const File& desti
             return false;
     }
     writer.reset();
-    return output.overwriteTargetFileWithTemporary();
+    return commitTemporary(output);
 }
 Performance::Performance(const Song& s, const AudioLibrary& library, Frame from, bool rec,
                          bool metronome, int count)

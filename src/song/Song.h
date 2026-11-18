@@ -49,7 +49,6 @@ struct ViewState {
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };
-bool atomicJson(const juce::File&, const juce::var&);
 juce::var object(std::initializer_list<std::pair<juce::Identifier, juce::var>>);
 std::unique_ptr<juce::AudioFormatWriter> waveWriter(const juce::File&, int rate, int channels);
 std::unique_ptr<juce::AudioFormatReader> waveReader(const juce::File&);
