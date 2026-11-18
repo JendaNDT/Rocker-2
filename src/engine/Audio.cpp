@@ -6,7 +6,7 @@
 
 namespace rocker {
 static_assert(std::atomic<float>::is_always_lock_free && std::atomic<int>::is_always_lock_free &&
-              std::atomic<bool>::is_always_lock_free);
+              std::atomic<bool>::is_always_lock_free && std::atomic<std::uint32_t>::is_always_lock_free);
 float decibels(float value) noexcept {
     return value > 0 ? 20.0f * std::log10(value) : -std::numeric_limits<float>::infinity();
 }
@@ -21,7 +21,7 @@ Reading Audio::read(int channel) const noexcept {
     if (channel < 0 || channel >= count)
         return {};
     const auto& m = meters[channel];
-    return {m.peak.load(), m.held.load(), m.clipped.load()};
+    return {m.peak.load(), m.held.load(), m.clipped.load(), m.activity.load(std::memory_order_relaxed)};
 }
 void Audio::clearClip(int channel) noexcept {
     if (channel >= 0 && channel < count)
@@ -41,6 +41,9 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
                 m.remaining = (3 * rate + 1) / 2;
             }
         }
+        // Keep short plucks visible to input identification between UI polls (-36 dBFS).
+        if (peak >= 0.015848932f)
+            m.activity.fetch_add(1, std::memory_order_relaxed);
         m.peak.store(peak);
         m.held.store(m.hold);
         if (peak >= 0.9885530947f)

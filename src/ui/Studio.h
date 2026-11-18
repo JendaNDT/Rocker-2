@@ -52,6 +52,9 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     juce::String message;
     int answer = -1;
     bool played = false, laptop = false;
+    std::vector<std::uint32_t> activityBeforePluck;
+    int detectionTicks = 0;
+    void identifyGuitar();
     void handleAsyncUpdate() override;
     void timerCallback() override;
     void rebuild();

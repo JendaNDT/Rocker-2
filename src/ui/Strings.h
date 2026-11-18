@@ -50,6 +50,12 @@ inline const juce::String hints[] = {
     u8"Výstup můžeš sdílet s dalšími aplikacemi. Při hraní může být slyšet zpoždění.",
     u8"Vyber vstup a sluchátka připojená ke stejné zvukovce.",
     u8"Vyber zařízení pro vstup a poslech."};
+inline const juce::String findGuitar = u8"Najít vstup kytary", guitar = "Kytara",
+                          pluck = u8"Teď brnkni jen na kytaru.",
+                          ambiguous =
+                              u8"Ozvalo se víc vstupů. Podle měřičů napiš název k tomu správnému.",
+                          identified = u8"Signál kytary má ",
+                          existing = u8". Jméno můžeš upravit v jeho řádku.";
 inline juce::String coming(int stage) {
     return juce::String(u8"Připravujeme (etapa E") + juce::String(stage) + ")";
 }

@@ -230,6 +230,7 @@ void Studio::persist() {
         message = cs::writeError;
 }
 void Studio::refresh(bool notify) {
+    activityBeforePluck.clear();
     link.rescan(settings.device);
     laptop = link.online &&
              (builtIn(link.current.input) ||
@@ -274,6 +275,7 @@ void Studio::finish() {
     persist();
 }
 void Studio::show(Page value) {
+    activityBeforePluck.clear();
     link.audio.stopTone();
     page = value;
     answer = -1;
@@ -286,10 +288,36 @@ void Studio::status(String value) {
     triggerAsyncUpdate();
 }
 void Studio::timerCallback() {
-    if (page == Page::inputs)
+    if (page == Page::inputs) {
+        identifyGuitar();
         for (auto* c : rows.getChildren())
             if (auto* row = dynamic_cast<InputRow*>(c))
                 row->update();
+    }
+}
+void Studio::identifyGuitar() {
+    if (activityBeforePluck.empty())
+        return;
+    int active = -1;
+    for (int i = 0; i < static_cast<int>(activityBeforePluck.size()); ++i) {
+        if (link.audio.read(i).activity == activityBeforePluck[i])
+            continue;
+        if (active >= 0) {
+            activityBeforePluck.clear();
+            status(cs::ambiguous);
+            return;
+        }
+        active = i;
+    }
+    // Observe three UI ticks after the first attack to catch simultaneous channels.
+    if (active < 0 || ++detectionTicks < 3)
+        return;
+    activityBeforePluck.clear();
+    auto& alias = settings.aliases[Settings::inputKey(link.current, active)];
+    if (alias.isEmpty())
+        alias = cs::guitar;
+    status(cs::identified + cs::channel(active) + cs::existing);
+    persist();
 }
 void Studio::handleAsyncUpdate() { rebuild(); }
 void Studio::resized() { rebuild(); }
@@ -359,10 +387,10 @@ void Studio::rebuild() {
     const int brandWidth = roundToInt(std::ceil(width(brandFont, cs::brand))) + s::gap;
     text(cs::brand, header.removeFromLeft(brandWidth), s::counter, s::chalk, false, true);
     text(cs::version, header.removeFromLeft(s::keyWidth), s::counter, s::muted, true);
-    auto indicator = link.online
-                         ? String(cs::device) + String(u8"  ·  ") +
-                               cs::drivers[(int)link.current.driver] + "  /  " + link.current.output
-                         : String(cs::disconnected);
+    const auto endpoint = link.current.output.isEmpty() ? link.current.input : link.current.output;
+    auto indicator = link.online ? String(cs::device) + String(u8"  ·  ") +
+                                       cs::drivers[(int)link.current.driver] + "  /  " + endpoint
+                                 : String(cs::disconnected);
     text(shortened(skin.font(s::caption), indicator, header.getWidth()), header, s::caption, s::muted,
          false, false, true);
     if (page == Page::home)
@@ -556,7 +584,17 @@ void Studio::tonePage(Rect area) {
 }
 void Studio::inputPage(Rect area) {
     text(cs::inputHelp, area.removeFromTop(s::button));
-    text(cs::clipHelp, area.removeFromTop(s::button), s::caption, s::muted);
+    auto options = area.removeFromTop(s::button);
+    if (!link.caps.inputs.isEmpty()) {
+        button(cs::findGuitar, options.removeFromRight(s::nameWidth), [this] {
+            activityBeforePluck.clear();
+            detectionTicks = 0;
+            for (int i = 0; i < link.caps.inputs.size(); ++i)
+                activityBeforePluck.push_back(link.audio.read(i).activity);
+            status(cs::pluck);
+        });
+    }
+    text(cs::clipHelp, options, s::caption, s::muted);
     if (link.caps.inputs.isEmpty()) {
         text(cs::noInputs, area, s::body, s::warning);
         return;
@@ -589,7 +627,9 @@ bool Studio::keyPressed(const KeyPress& key) {
         status(cs::coming(2));
         return true;
     }
-    switch (key.getKeyCode()) {
+    if (key.getModifiers().isAnyModifierKeyDown())
+        return false;
+    switch (CharacterFunctions::toUpperCase(static_cast<juce_wchar>(key.getKeyCode()))) {
     case 'R':
     case 'U':
         status(cs::coming(8));

@@ -104,6 +104,8 @@ TEST_CASE("A-17 real screen layouts and snapshots") {
             fits(view);
         }
     }
+    for (int key : {'t', 'T', 'r', 'n', 'u'})
+        CHECK(view.keyPressed(KeyPress(key)));
     view.setSize(1920, 1080);
     fits(view);
     for (bool mono : {false, true})
@@ -171,4 +173,23 @@ TEST_CASE("A-24 setup follows available inputs, drivers, rates and unplug events
             click(view, cs::finish);
             CHECK(Settings::load(t.file).visited);
         }
+}
+
+TEST_CASE("A pluck names the active input even if it ends between UI updates") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    Studio view(fake, temp.file);
+    click(view, cs::next);
+    click(view, cs::next);
+    click(view, cs::findGuitar);
+    fake.process({{0}, {-0.4f}}, 1);
+    fake.process({}, 1024);
+    for (int i = 0; i < 100 && !temp.file.existsAsFile(); ++i) {
+        Thread::sleep(20);
+        Timer::callPendingTimersSynchronously();
+    }
+    view.resized();
+    REQUIRE(find<TextEditor>(view, cs::channel(1))->getText() == cs::guitar);
+    CHECK(find<TextEditor>(view, cs::channel(0))->getText().isEmpty());
 }
