@@ -2,6 +2,8 @@
 
 ## 1. Hotovo
 
+Samostatný Metronom zahraje při otevření z Nápadů i ze skladby s vypnutým klikem. Ve skladbě můžeš vodítko přepnout klávesou K také během záznamu. Automatická kontrola sleduje oba výstupy až po zvukové vzorky, čas jednotlivých úderů a čistý uložený záznam. V balíku sestavení najdeš srovnávací WAV s osmi údery při 112 BPM. [Návod k poslechu](../README.md#když-metronom-neslyšíš) · [Běhy a balíky opravy](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Akontrola-metronomu)
+
 Ve skladbě přibyly akce pro poslech a opakování právě uloženého záběru, zachování místa při přepnutí režimu, vypnutí odposlechu během záznamu a volba náhradního vstupu u konkrétní stopy. Před změnou automatická zkouška zachytila všechny čtyři původní potíže. Výsledky běhů, snímky a balíky patří ke konkrétní revizi v PR. [PR č. 23](https://github.com/JendaNDT/Rocker-2/pull/23) · [Návod](../README.md#jak-si-poslechnout-poslední-pokus)
 
 Redesign přidává boční lištu, stálý transport, ovládání stop, sbalitelný panel mixu, samostatný Metronom a nový Úvod, Ladičku i Zapojení. Automatická kontrola vykreslí obrazovky v 1280 × 720 i 1920 × 1080 při 150 %. [Plán](07_PLAN_REDESIGNU_1B.md) · [Sestavení redesignu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aredesign-1b)

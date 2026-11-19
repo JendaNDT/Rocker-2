@@ -16,6 +16,13 @@ Na levé liště jsou **Úvod**, **Nápady**, režimy **Hraj / Stříhej / Mích
 
 V transportu klikni na **Klik**, **Rytmus** nebo **Bez kliku**, pokud chceš vodítko jedním stiskem zapnout nebo vypnout. Chceš-li změnit jeho druh, hlasitost nebo zvuk, otevři **Metronom** z lišty nebo klikni na BPM ve skladbě. Tempo můžeš naťukat osmi stisky mezerníku a vyzkoušet tlačítkem **Přehrát**. Volba **Použít ve skladbě** uloží nastavení a vrátí tě na stejný takt. Odpočet se nastavuje zvlášť.
 
+### Když metronom neslyšíš
+
+Otevři **Metronom** na levé liště. Vpravo vyber **Klik**, nastav **Hlasitost kliku** třeba na **50 %** a stiskni **Přehrát**. Údery mají znít z výstupu uvedeného nahoře. Volba **Bez kliku** nechá jen blikání dob. Pokud je ticho také při **Zapojení → Zkušební tón**, zkontroluj vybraný výstup, zapojení sluchátek a jejich hlasitost na zvukovce.
+
+Ve skladbě **K** zapíná nebo vypíná vodítko i během přehrávání a nahrávání. Klik i rytmus jde do sluchátek. Nahraná stopa a export obsahují samotnou hudbu. Samostatný Metronom můžeš vyzkoušet i ze skladby, ve které máš klik vypnutý. **Zpět** zachová její nastavení.
+
+
 **Smyčka** v transportu přehrává označené takty opakovaně. Pokud chceš uložit každý průchod jako nový pokus, použij **Stříhej → Nahrávat dokola**. Pro přepínání pokusů zmáčkni **Tab**, volbu potvrď **Enterem**.
 
 ## Stažení v1.0.0 a spuštění

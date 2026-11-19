@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## Kontrola aplikace a metronomu
+
+Zkoušky výchozí verze zopakovaly ticho po spuštění z Nápadů, zablokované přepnutí kliku během hraní a přerušení zvuku při oznámení systému o zařízeních. Při 112 BPM se samostatný klik navíc po několika taktech rozešel s přesnou polohou doby. Nové zkoušky měří výstup po spuštění z jednotlivých obrazovek, zapnutí za běhu, mono i stereo při 44,1, 48 a 96 kHz, ztrátu výstupu a absenci kliku v uloženém záběru. Poslech konkrétní zvukovky čeká na ruční zkoušku. [Návod](../README.md#když-metronom-neslyšíš) · [Testy, balíky a snímky](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Akontrola-metronomu)
+
 ## Poslech posledního pokusu a vstupy
 
 Kontrola skladby po záběru pokrývá poslech, opakování různě dlouhých záběrů, výběr původního pokusu a současné nahrávání více vstupů. Další zkoušky sledují přechod mezi režimy během přehrávání, živý odposlech, přerušení zápisu a přepojení konkrétní stopy. Poslech na fyzické zvukovce čeká na ruční zkoušku po vydání. [Implementační plán](08_PLAN_DOLADENI_UX.md) · [Výsledky, balíky a snímky](https://github.com/JendaNDT/Rocker-2/pull/23)
