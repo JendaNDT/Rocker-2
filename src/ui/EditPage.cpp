@@ -442,6 +442,20 @@ bool Studio::editKey(const KeyPress& key) {
         editMode(code == '2');
         return true;
     }
+    if(!performance && !view.editing && !view.mixing && isPositiveAndBelow(view.selected,(int)song.tracks.size()) &&
+       song.tracks[view.selected].kind=="podklad" && (code==KeyPress::leftKey || code==KeyPress::rightKey)) {
+        auto id=selectedTrack();
+        Frame step=std::llround(song.grid.rate*(mods.isShiftDown()?.010:.001))*(code==KeyPress::leftKey?-1:1);
+        Frame earliest=std::numeric_limits<Frame>::max(),last=0;
+        for(auto& c:song.clips) if(c.track==id){earliest=std::min(earliest,c.position);last=std::max(last,c.position+c.length);}
+        if(last>0) {
+            step=std::max(step,-earliest);
+            song.extendOrder(last+step);
+            for(auto& c:song.clips) if(c.track==id) c.position+=step;
+            song.commitClips();saveSong(cs::backing);repaint();
+        }
+        return true;
+    }
     if (!view.editing)
         return false;
     if (selectedOccurrence >= 0 && code == 'D') {

@@ -88,6 +88,8 @@ void Studio::resetRoute() {
         }
     }
     secondaryInput = primaryInput == 0 ? 1 : 0;
+    link.audio.ideaPort=primaryInput;
+    if(link.audio.ideaInput) link.audio.ideaInput->setHistory(settings.insurance);
     link.audio.live.selectInput(primaryInput);
     link.audio.live.setAmp(sound);
 }
