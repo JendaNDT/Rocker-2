@@ -20,14 +20,25 @@ bool builtIn(const String& name) {
            name.containsIgnoreCase("microphone array") ||
            name.containsIgnoreCase(String(u8"mikrofonní pole"));
 }
-enum ButtonStyle { plain, primary, recording, newSong, clipButton, tunerButton, selected };
 class Action final : public Button {
   public:
-    Action(const String& title, int kind, String key, Theme& theme)
-        : Button(title), mode(kind), shortcut(std::move(key)), skin(theme) {
+    Action(const String& title, int kind, String key, Icon symbol, String visible, Theme& theme)
+        : Button(title), mode(kind), shortcut(std::move(key)), icon(symbol),
+          label(std::move(visible)), skin(theme) {
         setWantsKeyboardFocus(true);
+        if (icon != Icon::none)
+            setTooltip(title);
     }
+    bool isRound() const { return mode >= roundIdle && mode <= roundRecording; }
+    bool isRail() const { return mode == railIdle || mode == railCurrent; }
+    String shownTitle() const { return label.isEmpty() ? getName() : label; }
     Rect titleArea() const {
+        if (isRail())
+            return getLocalBounds().reduced(s::grid, 0).removeFromBottom(s::inset);
+        if (isRound())
+            return getLocalBounds();
+        if (mode == armActive || mode == muteActive || mode == soloActive || getWidth() <= s::armWidth)
+            return getLocalBounds().reduced(s::grid, 0);
         auto area = getLocalBounds().reduced(s::inset, 0);
         if (mode == recording || mode == newSong || mode == tunerButton)
             area.removeFromLeft(s::icon + s::gap);
@@ -36,20 +47,75 @@ class Action final : public Button {
         return area;
     }
     Font titleFont() const {
-        return skin.font(mode == recording || mode == newSong ? s::heading : s::body, false, true);
+        if (isRail())
+            return skin.font(s::railLabel, false, true);
+        if (mode == armActive || mode == muteActive || mode == soloActive || getWidth() <= s::armWidth)
+            return skin.font(s::section, false, true);
+        return skin.font(mode == recording || mode == newSong ? s::heading : s::body,
+                         getProperties().contains("number"), true);
     }
     void paintButton(Graphics& g, bool over, bool down) override {
         if (!isEnabled())
             g.beginTransparencyLayer(s::disabledOpacity);
         auto bounds = getLocalBounds().toFloat().reduced(s::hairline);
+        if (isRail() || isRound()) {
+            const auto ink = mode == roundPlay ? s::background : isRail() && !over && mode != railCurrent
+                                                               ? s::muted : s::chalk;
+            if (isRail()) {
+                if (mode == railCurrent || over || down) {
+                    g.setColour(s::raised);
+                    g.fillRoundedRectangle(bounds, s::panelRadius);
+                }
+                auto top = getLocalBounds().withTrimmedBottom(s::inset - s::grid);
+                paintIcon(g, icon, ink, top.withSizeKeepingCentre(s::icon, s::icon).toFloat());
+                g.setColour(ink);
+                g.setFont(titleFont());
+                g.drawText(shownTitle(), titleArea(), Justification::centred, false);
+                if (shortcut.isNotEmpty()) {
+                    g.setFont(skin.font(s::railLabel, true));
+                    g.drawText(shortcut, getLocalBounds().reduced(s::grid)
+                                             .removeFromTop(s::caption), Justification::topRight);
+                }
+                if (mode == railCurrent) {
+                    g.setColour(s::chalk);
+                    g.fillRoundedRectangle(bounds.withWidth(s::railIndicator)
+                                               .reduced(0, s::gap), s::stroke);
+                }
+            } else {
+                g.setColour(mode == roundPlay ? s::chalk : mode == roundRecording ? s::recording
+                                                               : over || down ? s::raised : s::panel);
+                g.fillEllipse(bounds);
+                g.setColour(mode == roundRecord || mode == roundRecording ? s::record : s::barGrid);
+                g.drawEllipse(bounds, s::stroke);
+                if (mode == roundRecord) {
+                    g.setColour(s::record);
+                    g.fillEllipse(bounds.withSizeKeepingCentre(s::icon, s::icon));
+                } else {
+                    paintIcon(g, icon, ink, bounds.withSizeKeepingCentre(s::icon, s::icon));
+                }
+            }
+            if (hasKeyboardFocus(true)) {
+                g.setColour(s::selection);
+                g.drawRoundedRectangle(bounds, s::panelRadius, s::stroke);
+            }
+            if (!isEnabled())
+                g.endTransparencyLayer();
+            return;
+        }
         const bool active = mode == primary || mode == selected;
-        g.setColour(mode == clipButton ? s::clipping
+        const bool toggle = mode == pillOff || mode == pillOn;
+        const auto radius = toggle ? s::transportPillRadius : s::radius;
+        g.setColour(mode == armActive ? s::record.withAlpha(s::armedOpacity)
+                    : mode == muteActive ? s::warning : mode == soloActive ? s::selection
+                    : mode == clipButton ? s::clipping
                     : active           ? s::chalk
                                        : (down || over ? s::barGrid : s::raised));
-        g.fillRoundedRectangle(bounds, s::radius);
-        g.setColour(hasKeyboardFocus(true) ? s::selection : s::line);
-        g.drawRoundedRectangle(bounds, s::radius, hasKeyboardFocus(true) ? s::stroke : s::hairline);
-        g.setColour(active || mode == clipButton ? s::background : s::chalk);
+        g.fillRoundedRectangle(bounds, radius);
+        g.setColour(hasKeyboardFocus(true) ? s::selection : mode == armActive ? s::record : s::line);
+        g.drawRoundedRectangle(bounds, radius, hasKeyboardFocus(true) ? s::stroke : s::hairline);
+        const auto titleInk = active || mode == clipButton || mode == muteActive || mode == soloActive
+                              ? s::background : mode == armActive ? s::armedInk : s::chalk;
+        g.setColour(titleInk);
         auto area = getLocalBounds().reduced(s::inset, 0);
         auto symbol = area.withWidth(s::icon).withSizeKeepingCentre(s::icon, s::icon).toFloat();
         if (mode == recording) {
@@ -69,8 +135,21 @@ class Action final : public Button {
             g.drawLine(fork.getCentreX(), fork.getCentreY(), fork.getCentreX(), fork.getBottom(),
                        s::stroke);
         }
+        auto titleBounds = titleArea();
+        if (toggle) {
+            auto led = titleBounds.removeFromLeft(s::inset)
+                           .withSizeKeepingCentre(s::transportLed, s::transportLed);
+            g.setColour(mode == pillOn ? s::ready : s::barGrid);
+            g.fillEllipse(led.toFloat());
+        }
+        if (icon != Icon::none) {
+            auto iconBounds = shownTitle() == " " ? getLocalBounds()
+                                                  : titleBounds.removeFromLeft(s::icon + s::gap);
+            paintIcon(g, icon, titleInk, iconBounds.withSizeKeepingCentre(s::icon, s::icon).toFloat());
+        }
+        g.setColour(titleInk);
         g.setFont(titleFont());
-        g.drawText(getName(), titleArea(),
+        g.drawText(shownTitle(), titleBounds,
                    mode == recording || mode == newSong ? Justification::centredLeft
                                                         : Justification::centred,
                    false);
@@ -86,13 +165,16 @@ class Action final : public Button {
   private:
     int mode;
     String shortcut;
+    Icon icon;
+    String label;
     Theme& skin;
 };
 class InputRow final : public Component {
   public:
     InputRow(Theme& theme, Connection& connection, int index, const String& name,
              std::function<void(String)> rename)
-        : skin(theme), link(connection), channel(index), clip(cs::clip, clipButton, {}, theme) {
+        : skin(theme), link(connection), channel(index),
+          clip(cs::clip, clipButton, {}, Icon::none, {}, theme) {
         addAndMakeVisible(editor);
         editor.setName(cs::channel(index));
         editor.setFont(skin.font(s::body));
@@ -248,6 +330,7 @@ Studio::~Studio() {
         fileTask.wait();
     devices.midiChanged = {};
     stopTimer();
+    stopMetronome();
     stopPreview();
     stopIdea();
     if (preparingPreview.valid()) {
@@ -273,6 +356,9 @@ void Studio::persist() {
         message = cs::settingsError;
 }
 void Studio::refresh(bool notify) {
+    answer = -1;
+    played = false;
+    stopMetronome();
     stopPreview();
     stopIdea();
     activityBeforePluck.clear();
@@ -306,6 +392,9 @@ void Studio::refresh(bool notify) {
     triggerAsyncUpdate();
 }
 void Studio::choose(DeviceChoice d, bool refreshCalibration) {
+    answer = -1;
+    played = false;
+    stopMetronome();
     stopPreview();
     stopIdea();
     const bool ok = link.select(d);
@@ -331,6 +420,8 @@ void Studio::finish() {
     persist();
 }
 void Studio::show(Page value) {
+    if (value != Page::metronome)
+        stopMetronome();
     if (value != Page::device)
         pedalLearning = false;
     if (value != Page::ideas) {
@@ -373,8 +464,10 @@ void Studio::show(Page value) {
     link.audio.drums.monitor = value == Page::midi && activeMidi.isNotEmpty();
     if (value == Page::project)
         configureSongMonitor();
-    answer = -1;
-    played = false;
+    if (value < Page::device || value > Page::inputs) {
+        answer = -1;
+        played = false;
+    }
     message = {};
     triggerAsyncUpdate();
 }
@@ -386,6 +479,8 @@ void Studio::timerCallback() {
     projectTick();
     pollMidi();
     ideaTick();
+    if (page == Page::metronome && metronome)
+        repaint(metroBeats);
     if ((page >= Page::live && page <= Page::customTuning) || (page == Page::project && soundDeckOpen))
         pollLive();
     if (page == Page::inputs) {
@@ -423,19 +518,31 @@ void Studio::handleAsyncUpdate() { rebuild(); }
 void Studio::resized() { rebuild(); }
 void Studio::paint(Graphics& g) {
     g.fillAll(s::background);
-    g.setColour(s::panel);
-    g.fillRect(getLocalBounds().removeFromTop(s::header));
+    const auto content = getLocalBounds().withTrimmedLeft(navigationBounds.getWidth());
+    if (workspaceHeading.isEmpty()) {
+        g.setColour(s::panel);
+        g.fillRect(content.withHeight(s::header));
+    }
+    paintWorkspace(g);
     for (auto r : panels) {
         g.setColour(s::panel);
         g.fillRoundedRectangle(r.toFloat(), s::radius);
     }
     g.setColour(s::line);
-    g.fillRect(0, s::header, getWidth(), s::hairline);
-    g.fillRect(0, getHeight() - s::footer, getWidth(), s::hairline);
+    if (transportBounds.isEmpty() && workspaceHeading.isEmpty()) {
+        g.fillRect(content.getX(), s::header, content.getWidth(), s::hairline);
+        g.fillRect(content.getX(), getHeight() - s::footer, content.getWidth(), s::hairline);
+    }
     if (page == Page::project)
         paintProject(g);
+    if (page == Page::metronome)
+        paintMetronome(g);
     if (page == Page::home || page == Page::ideas)
         paintIdeas(g);
+    for (const auto& [shape, ink] : homePreview) {
+        g.setColour(ink);
+        g.fillRect(shape);
+    }
     if (page == Page::live) {
         auto drawMeter = [&](Rect r, float value, float held, bool clipped) {
             auto track = r.withSizeKeepingCentre(r.getWidth(), s::grid * 2);
@@ -474,21 +581,8 @@ void Studio::paint(Graphics& g) {
             }
         }
     }
-    if (page == Page::tuner && !needleArea.isEmpty()) {
-        auto band = needleArea.withSizeKeepingCentre(needleArea.getWidth(), s::grid);
-        g.setColour(s::line);
-        g.fillRect(band);
-        auto centre = band.getCentreX();
-        g.setColour(s::ready);
-        g.fillRect(centre - s::stroke, needleArea.getY(), 2 * s::stroke, needleArea.getHeight());
-        if (readingHz > 0) {
-            int x = centre + juce::roundToInt(std::clamp(needleCents, -50., 50.) / 50 *
-                                              (band.getWidth() / 2 - s::grid));
-            g.setColour(std::abs(cents) <= 5 ? s::ready : s::warning);
-            g.fillEllipse((float)(x - s::gap / 2), (float)(band.getCentreY() - s::gap / 2), s::gap,
-                          s::gap);
-        }
-    }
+    if (page == Page::tuner)
+        paintTuner(g);
     for (const auto& item : textLines) {
         g.setColour(item.ink);
         g.setFont(item.font);
@@ -502,8 +596,9 @@ void Studio::text(String value, Rect r, int size, Colour ink, bool mono, bool bo
         f.setExtraKerningFactor(s::tracking);
     textLines.push_back({std::move(value), r, f, ink, right});
 }
-Button* Studio::button(const String& name, Rect r, Handler handler, int look, String key) {
-    auto* b = new Action(name, look, std::move(key), skin);
+Button* Studio::button(const String& name, Rect r, Handler handler, int look, String key, Icon icon,
+                       String visible) {
+    auto* b = new Action(name, look, std::move(key), icon, std::move(visible), skin);
     controls.add(b);
     addAndMakeVisible(b);
     b->setBounds(r);
@@ -534,9 +629,11 @@ void Studio::combo(const String& title, Rect r, const StringArray& items, int se
 void Studio::rebuild() {
     controls.clear();
     ideaWaves.clear();
+    homePreview.clear();
     ideaTrace = {};
     soundBadge = nullptr;
     dynamicLines.clear();
+    tunerTiles.clear();
     needleArea = {};
     inputBar = {};
     outputBar = {};
@@ -544,9 +641,38 @@ void Studio::rebuild() {
     textLines.clear();
     panels.clear();
     viewport.setVisible(false);
+    navigationBounds = workspaceHeading = inspectorBounds = transportBounds = {};
     if (getWidth() <= 0)
         return;
-    auto area = getLocalBounds().reduced(s::margin, 0);
+    auto workspace = getLocalBounds();
+    if (page != Page::project || !view.distant)
+        navigation(workspace.removeFromLeft(s::railWidth));
+    if (page == Page::metronome && !fileTask.valid()) {
+        metronomePage(workspace);
+        repaint();
+        return;
+    }
+    if (page == Page::tuner && !fileTask.valid()) {
+        tunerPanel(workspace);
+        repaint();
+        return;
+    }
+    if (page >= Page::device && page <= Page::inputs && !fileTask.valid()) {
+        makeWizard(workspace);
+        repaint();
+        return;
+    }
+    if (page == Page::home && !fileTask.valid()) {
+        makeHome(workspace);
+        repaint();
+        return;
+    }
+    if (page == Page::project && !view.distant && !fileTask.valid()) {
+        projectPage(workspace);
+        repaint();
+        return;
+    }
+    auto area = workspace.reduced(s::safeGutter, 0);
     area = area.withSizeKeepingCentre(std::min(area.getWidth(), s::maxWidth), area.getHeight());
     if (page == Page::midi) {
         midiPage(area);
@@ -589,142 +715,204 @@ void Studio::rebuild() {
                                  : String(cs::disconnected);
     text(shortened(skin.font(s::caption), indicator, header.getWidth()), header, s::caption, s::muted,
          false, false, true);
-    if (page == Page::home)
-        makeHome(area);
-    else if (page <= Page::inputs)
-        makeWizard(area);
-    else
-        livePages(area);
+    livePages(area);
     repaint();
 }
 void Studio::makeHome(Rect area) {
-    auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
-    button(cs::openPackage, footer.removeFromRight(s::clipWidth), [this] {
-        choosePack(true);
-    })->setEnabled(!fileTask.valid());
-    button(cs::setup, footer.removeFromLeft(s::nameWidth), [this] { show(Page::device); });
-    footer.removeFromLeft(s::gap);
-    button(cs::tuner, footer.removeFromLeft(s::nameWidth), [this] { toggleTuner(); }, tunerButton, "T");
-    footer.removeFromLeft(s::gap);
-    button(cs::livePage, footer.removeFromLeft(s::clipWidth), [this] { show(Page::live); }, primary);
-    if (message.isEmpty()) {
-        button(settings.insurance ? cs::insuranceOn : cs::insuranceOff,
-               footer.removeFromLeft(s::clipWidth), [this] { show(Page::ideas); });
-        button(cs::keepHistory, footer.removeFromLeft(s::nameWidth), [this] {
-            startIdea(true);
-        })->setEnabled(settings.insurance);
-    } else
-        text(limit(skin.font(s::body), message, footer.getWidth() - 2 * s::inset),
-             footer.reduced(s::inset, 0), s::body, s::warning);
-    area.reduce(0, s::gutter);
-    auto actions = area.removeFromTop(s::recordButton);
-    int card = (actions.getWidth() - s::inset) / 2;
-    button(cs::record, actions.removeFromLeft(card), [this] { startIdea(false); }, recording, "R");
-    actions.removeFromLeft(s::inset);
-    button(cs::song, actions, [this] { newProject(); }, newSong, "N");
-    area.removeFromTop(s::gutter);
-    for (int i = 0; i < 2; ++i) {
-        auto p = area.removeFromTop((area.getHeight() - (i == 0 ? s::gap : 0)) / (2 - i));
-        panels.push_back(p);
-        p.reduce(s::gutter, s::inset);
-        auto h = p.removeFromTop(s::transport);
-        auto heading = String(i ? cs::ideas : cs::resume).toUpperCase();
-        if (i && !ideas->all().empty())
-            heading += "   " + cs::starMark +
-                       String(int(std::count_if(ideas->all().begin(), ideas->all().end(),
-                                                [](auto& x) { return x.star; }))) +
-                       cs::divider + cs::totalIdeas + " " + String(int(ideas->all().size()));
-        text(heading, h, s::section, s::muted, false, true);
-        auto b = h.removeFromRight(s::nameWidth).withSizeKeepingCentre(s::nameWidth, s::button);
-        if (i)
-            button(cs::library, b, [this] { show(Page::ideas); });
-        else
-            button(cs::resume, b, [this] { openProject(File(settings.lastSong)); }, plain, "Enter");
-        if (!i && libraryRoot.isDirectory()) {
-            auto projects = libraryRoot.findChildFiles(File::findDirectories, false);
-            std::vector<File> recent;
-            for (auto& dir : projects)
-                if (dir.getChildFile("skladba.json").existsAsFile() || Song::latestVersion(dir) != File{})
-                    recent.push_back(dir);
-            std::stable_sort(recent.begin(), recent.end(), [this](const auto& a, const auto& b) {
-                if (a == b)
-                    return false;
-                if (a.getFullPathName() == settings.lastSong)
-                    return true;
-                if (b.getFullPathName() == settings.lastSong)
-                    return false;
-                return a.getChildFile("skladba.json").getLastModificationTime() >
-                       b.getChildFile("skladba.json").getLastModificationTime();
-            });
-            if (!recent.empty()) {
-                if (settings.lastSong.isEmpty())
-                    settings.lastSong = recent.front().getFullPathName();
-                for (auto& dir : recent) {
-                    if (p.getHeight() < s::button)
-                        break;
-                    auto line = p.removeFromTop(s::button);
-                    p.removeFromTop(s::grid);
-                    bool bad = false;
-                    auto project = Song::load(dir, bad);
-                    auto label = project ? project->title : dir.getFileName();
-                    button(limit(skin.font(s::body, false, true), label, s::nameWidth - 2 * s::inset),
-                           line.removeFromLeft(s::nameWidth), [this, dir] { openProject(dir); });
-                    line.removeFromLeft(s::gap);
-                    if (project) {
-                        auto pos = ViewState::load(dir).cursor;
-                        auto info = dir.getChildFile("skladba.json")
-                                        .getLastModificationTime()
-                                        .formatted("%d. %m. %H:%M") +
-                                    cs::divider + cs::bar + " " +
-                                    String(project->grid.beatAt(pos) / project->grid.beats + 1) + cs::divider +
-                                    project->tuning + cs::divider + String(project->grid.bpm, 1) + " BPM";
-                        text(limit(skin.font(s::body), info, line.getWidth()), line, s::body, s::muted);
-                    }
+    workspaceHeading = area.removeFromTop(s::workspaceHeader);
+    auto heading = workspaceHeading.reduced(s::inset, 0);
+    text(cs::navHome, heading.removeFromLeft(s::nameWidth), s::workspaceTitle, s::chalk, false, true);
+    deviceStatus(heading);
+
+    area.reduce(s::inset, s::inset);
+    auto right = area.removeFromRight(s::homeActions);
+    area.removeFromRight(s::inset);
+    auto actions = [&](int height) {
+        auto bounds = right.removeFromTop(height);
+        right.removeFromTop(s::gap);
+        return bounds;
+    };
+    button(cs::record, actions(s::recordButton + s::gap), [this] { startIdea(false); }, recording, "R")
+        ->setEnabled(!savingIdea.valid());
+    text(cs::ideaBefore, actions(s::caption + s::grid), s::caption, s::muted);
+    button(cs::keepHistory, actions(s::transport), [this] { startIdea(true); }, plain, "U")
+        ->setEnabled(settings.insurance && !savingIdea.valid());
+    auto commands = actions(s::transport);
+    button(cs::song, commands.removeFromLeft((commands.getWidth() - s::grid) / 2),
+           [this] { newProject(); }, plain, "N");
+    commands.removeFromLeft(s::grid);
+    button(cs::openPackage, commands, [this] { choosePack(true); })->setEnabled(!fileTask.valid());
+    button(cs::livePage, actions(s::button), [this] { show(Page::live); }, plain, {}, Icon::none,
+           cs::playWithoutSong);
+    panels.push_back(right);
+    auto ideaCard = right.reduced(s::inset);
+    auto ideasTitle = ideaCard.removeFromTop(s::button);
+    text(cs::ideas.toUpperCase(), ideasTitle.removeFromLeft(s::levelWidth), s::section,
+         s::navigationInk, false, true);
+    button(cs::library, ideasTitle, [this] { show(Page::ideas); });
+    ideaCard.removeFromTop(s::gap);
+    if (ideas->all().empty())
+        text(cs::emptyIdeas, ideaCard.removeFromTop(s::button), s::caption, s::muted);
+    else
+        ideaHome(ideaCard);
+
+    auto recent = libraryRoot.findChildFiles(File::findDirectories, false);
+    const File last = settings.lastSong.isEmpty() ? File{} : File(settings.lastSong);
+    if (last.isDirectory())
+        recent.addIfNotAlreadyThere(last);
+    for (int i = recent.size(); --i >= 0;)
+        if (!recent[i].getChildFile("skladba.json").existsAsFile() && Song::latestVersion(recent[i]) == File{})
+            recent.remove(i);
+    std::stable_sort(recent.begin(), recent.end(), [&last](const auto& a, const auto& b) {
+        if (a == b)
+            return false;
+        if (a == last)
+            return true;
+        if (b == last)
+            return false;
+        return a.getChildFile("skladba.json").getLastModificationTime() >
+               b.getChildFile("skladba.json").getLastModificationTime();
+    });
+    if ((!last.isDirectory() || !recent.contains(last)) && !recent.isEmpty())
+        settings.lastSong = recent.getFirst().getFullPathName();
+
+    auto notice = area.removeFromBottom(s::button);
+    text(limit(skin.font(s::caption), message, notice.getWidth()), notice, s::caption, s::warning);
+    auto resume = area.removeFromTop(s::resumeHeight);
+    panels.push_back(resume);
+    resume.reduce(s::inset, s::inset);
+    text(cs::resume.toUpperCase(), resume.removeFromTop(s::button), s::section,
+         s::navigationInk, false, true);
+    auto resumeTitle = resume.removeFromTop(s::transport);
+    const File target = recent.isEmpty() ? File{} : recent.getFirst();
+    auto* proceed = button(cs::resume, resumeTitle.removeFromRight(s::clipWidth),
+                            [this, target] { openProject(target); }, primary);
+    auto title = resumeTitle.withTrimmedRight(s::gap);
+    bool damaged = false;
+    auto current = target == File{} ? std::optional<Song>{} : Song::load(target, damaged);
+    proceed->setEnabled(target != File{});
+    const auto name = current ? current->title : target != File{} ? target.getFileName() : cs::emptySongs;
+    text(limit(skin.font(s::counter, false, true), name, title.getWidth()), title, s::counter,
+         s::chalk, false, true);
+    if (current) {
+        const auto viewState = ViewState::load(target);
+        auto details = resume.removeFromTop(s::button);
+        auto metadata = cs::bar + " " +
+            String(current->grid.beatAt(viewState.cursor) / current->grid.beats + 1) + cs::divider +
+            current->tuning + cs::divider + String(current->grid.bpm, 1) + " BPM" + cs::divider +
+            String(current->grid.beats) + "/" + String(current->grid.unit);
+        text(limit(skin.font(s::caption), metadata, details.getWidth()), details, s::caption, s::muted);
+        auto strip = resume.removeFromTop(s::caption);
+        const auto duration = std::max<Frame>(1, current->end());
+        auto x = [&](Frame frame) {
+            return strip.getX() + roundToInt(std::clamp(double(frame) / duration, 0., 1.) * strip.getWidth());
+        };
+        for (int i = 0; i < (int)current->order.size(); ++i) {
+            const auto& occurrence = current->order[i];
+            const auto start = current->startBar(i);
+            const auto from = x(current->barFrame(start));
+            const auto to = x(current->barFrame(start + occurrence.length));
+            const auto key = current->sections.at(occurrence.section).colour;
+            const auto ink = key == "uvod" ? s::intro : key == "refren" ? s::chorus
+                           : key == "most" ? s::bridge : key == "solo" ? s::solo
+                           : key == "zaver" ? s::ending : s::verse;
+            if (to > from)
+                homePreview.emplace_back(strip.withLeft(from).withRight(to).reduced(s::hairline, 0), ink);
+        }
+        auto waves = resume.removeFromTop(s::caption + s::grid);
+        if (target == projectDir)
+            for (const auto& clip : current->clips) {
+                auto cached = library.data.find(clip.asset);
+                const auto start = x(clip.position), end = x(clip.position + clip.length);
+                if (cached == library.data.end() || end <= start)
+                    continue;
+                for (int px = start; px < end; ++px) {
+                    const auto position = (px - start) * clip.length / (end - start);
+                    const int count = int(std::clamp<Frame>(clip.length / (end - start), 1,
+                                                           std::numeric_limits<int>::max()));
+                    const int amplitude = roundToInt(cached->second->peak(clip.offset + position, count) *
+                                                     waves.getHeight());
+                    if (amplitude > 0)
+                        homePreview.emplace_back(Rect(px, waves.getCentreY() - amplitude / 2,
+                                                      s::hairline, amplitude), s::guitar);
                 }
-                continue;
             }
-        }
-        if (i && !ideas->all().empty()) {
-            ideaHome(p);
-            continue;
-        }
-        text(i ? cs::emptyIdeas : cs::emptySongs, p, s::heading, s::chalk);
-        area.removeFromTop(s::gap);
+        homePreview.emplace_back(Rect(x(viewState.cursor) - s::hairline, strip.getY(),
+                                      s::stroke, strip.getHeight() + waves.getHeight()), s::playhead);
+    }
+    area.removeFromTop(s::inset);
+    text(cs::recentSongs.toUpperCase(), area.removeFromTop(s::button), s::section, s::navigationInk,
+         false, true);
+    if (recent.isEmpty()) {
+        text(cs::emptySongs, area.removeFromTop(s::button), s::body, s::muted);
+        return;
+    }
+    const int visible = std::max(1, area.getHeight() / s::workspaceHeader);
+    recentOffset = jlimit(0, std::max(0, recent.size() - visible), recentOffset);
+    if (recent.size() > visible) {
+        auto pagination = area.removeFromBottom(s::button);
+        button(cs::prevTracks, pagination.removeFromLeft(s::clipWidth), [this, visible] {
+            recentOffset -= std::max(1, visible - 1);
+            triggerAsyncUpdate();
+        })->setEnabled(recentOffset > 0);
+        pagination.removeFromLeft(s::gap);
+        button(cs::nextTracks, pagination.removeFromLeft(s::clipWidth), [this, visible] {
+            recentOffset += std::max(1, visible - 1);
+            triggerAsyncUpdate();
+        })->setEnabled(recentOffset + visible < recent.size());
+    }
+    for (int i = recentOffset; i < recent.size() && area.getHeight() >= s::workspaceHeader; ++i) {
+        const auto& dir = recent[i];
+        auto line = area.removeFromTop(s::workspaceHeader).reduced(0, s::grid);
+        auto project = Song::load(dir, damaged);
+        auto label = project ? project->title : dir.getFileName();
+        auto spot = line.removeFromLeft(line.getWidth() / 2);
+        button(limit(skin.font(s::body, false, true), label, spot.getWidth() - 2 * s::inset), spot,
+               [this, dir] { openProject(dir); })->setTooltip(label);
+        line.removeFromLeft(s::inset);
+        auto meta = dir.getChildFile("skladba.json").getLastModificationTime().formatted("%d. %m. %H:%M");
+        if (project)
+            meta = project->tuning + cs::divider + String(project->grid.bpm, 1) + " BPM" + cs::divider + meta;
+        text(limit(skin.font(s::caption), meta, line.getWidth()), line, s::caption, s::muted);
     }
 }
 void Studio::makeWizard(Rect area) {
-    auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
-    button(cs::home, footer.removeFromLeft(s::nameWidth), [this] { finish(); });
-    if (page == Page::device && link.caps.separateClocks &&
-        settings.clockOverride != Settings::calibrationKey(link.current)) {
-        button(cs::clockOverride, footer.removeFromLeft(s::nameWidth), [this] {
-            settings.clockOverride = Settings::calibrationKey(link.current);
-            persist();
-            triggerAsyncUpdate();
-        });
-    }
-    if (page == Page::device) {
-        button(cs::pedal, footer.removeFromLeft(s::clipWidth), [this] {
-            pedalLearning = true;
-            grabKeyboardFocus();
-            status(cs::pedalLearn);
-        });
-        if (settings.pedalKey)
-            button(cs::pedalClear, footer.removeFromLeft(s::clipWidth), [this] {
-                settings.pedalKey = 0;
-                persist();
-                status({});
-            });
-    }
-    auto primaryArea = footer.removeFromRight(s::nameWidth);
+    workspaceHeading = area.removeFromTop(s::workspaceHeader);
+    auto heading = workspaceHeading.reduced(s::inset, 0);
+    text(cs::setup, heading.removeFromLeft(s::labelWidth), s::workspaceTitle, s::chalk, false, true);
+    deviceStatus(heading);
+    auto footer = area.removeFromBottom(s::workspaceFooter).reduced(s::inset, s::gap);
+    inspectorBounds = area.removeFromRight(s::inspectorWidth);
+    auto summary = inspectorBounds.reduced(s::inset);
+    auto panelRow = [&](int height = s::inspectorRow) {
+        auto bounds = summary.removeFromTop(height);
+        summary.removeFromTop(s::inspectorGap);
+        return bounds;
+    };
+    text(cs::setupSummary.toUpperCase(), panelRow(), s::section, s::navigationInk, false, true);
+    auto item = [&](const String& title, const String& label, bool on) {
+        text(title, panelRow(s::caption + s::grid), s::caption, s::muted);
+        auto bounds = panelRow();
+        text(limit(skin.font(s::body), label, bounds.getWidth()), bounds, s::body,
+             on ? s::chalk : s::warning);
+    };
+    item(cs::device, link.online ? link.current.input : String(cs::disconnected), link.online);
+    item(cs::formatLabel, link.online ? cs::frequency(link.current.rate) + cs::divider +
+                                        cs::bufferSize(link.current.buffer) : cs::emptyDash, link.online);
+    item(cs::delay, latencyLabel(), link.online);
+    item(cs::titles[1], answer >= 0 ? cs::answers[answer] : cs::tonePending, answer == 0);
+    item(cs::inputCount, String(link.caps.inputs.size()), !link.caps.inputs.isEmpty());
+    button(settings.insurance ? cs::insuranceOn : cs::insuranceOff, panelRow(s::button),
+           [this] { enableInsurance(); }, settings.insurance ? pillOn : pillOff);
+
     const bool last = page == Page::inputs;
-    auto advance = [this] {
+    const auto advance = [this] {
         if (page == Page::inputs)
             finish();
         else
             show(static_cast<Page>((int)page + 1));
     };
-    button(last ? cs::finish : cs::next, primaryArea, advance, primary);
+    button(last ? cs::finish : cs::next, footer.removeFromRight(s::nameWidth), advance, primary);
     footer.removeFromRight(s::gap);
     button(cs::skip, footer.removeFromRight(s::levelWidth), advance);
     if (page != Page::device) {
@@ -732,24 +920,48 @@ void Studio::makeWizard(Rect area) {
         button(cs::back, footer.removeFromRight(s::levelWidth),
                [this] { show(static_cast<Page>((int)page - 1)); });
     }
-    area.reduce(0, s::gutter);
-    auto heading = area.removeFromTop(s::target);
-    text(String(cs::steps).toUpperCase(), heading.removeFromLeft(s::levelWidth), s::section, s::muted,
-         false, true);
-    text(String((int)page) + " / 3", heading, s::body, s::muted, true);
-    text(cs::titles[(int)page - 1], area.removeFromTop(s::recordButton), s::title, s::chalk, false,
-         true);
-    area.removeFromTop(s::gap);
-    auto notice = area.removeFromBottom(s::transport);
-    text(message, notice, s::body, s::warning);
-    panels.push_back(area);
-    area.reduce(s::gutter, s::inset);
-    if (page == Page::device)
-        devicePage(area);
-    if (page == Page::tone)
-        tonePage(area);
-    if (page == Page::inputs)
-        inputPage(area);
+    if (page == Page::device && link.caps.separateClocks &&
+        settings.clockOverride != Settings::calibrationKey(link.current)) {
+        button(cs::clockOverride, footer.removeFromLeft(s::nameWidth), [this] {
+            settings.clockOverride = Settings::calibrationKey(link.current);
+            persist();
+            triggerAsyncUpdate();
+        });
+        footer.removeFromLeft(s::gap);
+    }
+    if (page == Page::device) {
+        button(cs::pedal, footer.removeFromLeft(s::clipWidth), [this] {
+            pedalLearning = true;
+            grabKeyboardFocus();
+            status(cs::pedalLearn);
+        });
+        if (settings.pedalKey) {
+            footer.removeFromLeft(s::gap);
+            button(cs::pedalClear, footer.removeFromLeft(s::clipWidth), [this] {
+                settings.pedalKey = 0;
+                persist();
+                status({});
+            });
+        }
+    }
+    area.reduce(s::inset, s::inset);
+    auto steps = area.removeFromTop(s::workspaceHeader);
+    const int width = (steps.getWidth() - 2 * s::grid) / 3;
+    for (int i = 0; i < 3; ++i) {
+        const auto destination = static_cast<Page>(int(Page::device) + i);
+        button(cs::titles[i], steps.removeFromLeft(width), [this, destination] { show(destination); },
+               destination == page ? primary : plain, String(i + 1));
+        steps.removeFromLeft(s::grid);
+    }
+    area.removeFromTop(s::inset);
+    auto notice = area.removeFromBottom(s::button);
+    text(limit(skin.font(s::caption), message, notice.getWidth()), notice, s::caption, s::warning);
+    switch (page) {
+    case Page::device: devicePage(area); break;
+    case Page::tone: tonePage(area); break;
+    case Page::inputs: inputPage(area); break;
+    default: break;
+    }
 }
 void Studio::devicePage(Rect area) {
     auto row = [&] {
@@ -848,6 +1060,14 @@ void Studio::tonePage(Rect area) {
         },
         primary);
     text(cs::toneInfo, action.reduced(s::inset, 0), s::caption, s::muted, true);
+    auto sequence = area.removeFromTop(s::workspaceHeader);
+    const int width = (sequence.getWidth() - 2 * s::grid) / 3;
+    for (const auto& label : {cs::toneLeft, cs::toneRight, cs::toneBoth}) {
+        auto part = sequence.removeFromLeft(width);
+        panels.push_back(part);
+        text(label, part.withTrimmedLeft(s::inset), s::caption, s::muted, true);
+        sequence.removeFromLeft(s::grid);
+    }
     if (!played)
         return;
     area.removeFromTop(s::gutter);
@@ -893,9 +1113,7 @@ void Studio::inputPage(Rect area) {
             show(Page::live);
         });
     }
-    button(settings.insurance ? cs::insuranceOn : cs::insuranceOff, options.removeFromRight(s::clipWidth),
-           [this] { enableInsurance(); });
-    text(cs::clipHelp, options, s::caption, s::muted);
+    text(cs::clipHelp, area.removeFromTop(s::button), s::caption, s::muted);
     if (link.caps.inputs.isEmpty()) {
         text(cs::noInputs, area, s::body, s::warning);
         return;
@@ -936,6 +1154,23 @@ bool Studio::keyPressed(const KeyPress& key) {
         return true;
     }
     const bool editable = dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()) != nullptr;
+    if (page == Page::metronome && !key.getModifiers().isAnyModifierKeyDown()) {
+        if (key == KeyPress::spaceKey) {
+            if (metroTapping)
+                tapMetronome();
+            else
+                toggleMetronome();
+            return true;
+        }
+        if (key == KeyPress::upKey || key == KeyPress::downKey) {
+            changeMetroTempo(metroGrid.bpm + (key == KeyPress::upKey ? 1 : -1));
+            return true;
+        }
+        if (key == KeyPress::escapeKey) {
+            show(metroReturn);
+            return true;
+        }
+    }
     if (!editable && !key.getModifiers().isAnyModifierKeyDown()) {
         if ((page == Page::drums || page == Page::midi) && key == KeyPress::escapeKey) {
             show(Page::inputs);
@@ -1114,7 +1349,7 @@ StringArray Studio::layoutErrors() const {
             errors.add(l.value);
     for (auto* c : controls) {
         if (auto* a = dynamic_cast<Action*>(c))
-            if (width(a->titleFont(), a->getName()) > a->titleArea().getWidth() ||
+            if ((!a->isRound() && width(a->titleFont(), a->shownTitle()) > a->titleArea().getWidth()) ||
                 a->titleFont().getHeight() > a->getHeight() ||
                 !getLocalBounds().contains(a->getBounds()))
                 errors.add(a->getName());

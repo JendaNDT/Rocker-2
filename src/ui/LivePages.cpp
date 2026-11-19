@@ -243,18 +243,7 @@ void Studio::pollLive() {
             stableString = -1;
             stableTime = 0;
         }
-        const auto offset =
-            std::abs(cents) < 0.05 ? String(u8"±0,0") : (cents > 0 ? "+" : "") + decimal(cents);
-        setReadout(Readout::pitch, Tuning::noteName(note) + "   " + decimal(readingHz) + " Hz   " +
-                                       offset + cs::centUnit);
-        setReadout(Readout::hint,
-                   std::abs(cents) <= 5 ? cs::inTune : (cents < 0 ? cs::flat : cs::sharp));
-        StringArray done;
-        for (size_t i = 0; i < confirmed.size(); ++i)
-            done.add((confirmed[i] ? String(u8"✓ ") : String{}) +
-                     Tuning::noteName(tunings[tuningIndex].notes[i]));
-        setReadout(Readout::confirmed, done.joinIntoString("   "));
-        repaint(needleArea);
+        repaint(tunerArea);
     } else {
         if (pitch) {
             stableString = -1;
@@ -262,25 +251,17 @@ void Studio::pollLive() {
         }
         if (now - lastVoiced > 600 && readingHz > 0) {
             readingHz = 0;
-            setReadout(Readout::pitch, cs::emptyDash);
-            setReadout(Readout::hint, cs::waiting);
-            repaint(needleArea);
+            repaint(tunerArea);
         }
     }
 }
 void Studio::livePages(Rect area) {
     auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
-    const std::array<Page, 6> pages{Page::home, Page::device, Page::live,
-                                    Page::amp,  Page::tuner,  Page::diagnostics};
-    const std::array<String, 6> labels{cs::home,    cs::openSetup, cs::livePage,
-                                       cs::ampPage, cs::tuner,     cs::diagnostics};
-    const int w = (footer.getWidth() - 5 * s::gap) / 6;
-    for (int i = 0; i < 6; ++i) {
-        button(
-            labels[i], footer.removeFromLeft(w), [this, p = pages[i]] { show(p); },
-            pages[i] == page ? 1 : 0);
-        footer.removeFromLeft(s::gap);
-    }
+    button(cs::ampPage, footer.removeFromLeft(s::nameWidth), [this] { show(Page::amp); },
+           page == Page::amp ? primary : plain);
+    footer.removeFromLeft(s::gap);
+    button(cs::diagnostics, footer.removeFromLeft(s::nameWidth), [this] { show(Page::diagnostics); },
+           page == Page::diagnostics ? primary : plain);
     if (projectDir != File{} && song.title.isNotEmpty())
         button(cs::useProject, area.removeFromBottom(s::button).withWidth(s::nameWidth),
                [this] { show(Page::project); });
@@ -301,9 +282,6 @@ void Studio::livePages(Rect area) {
         break;
     case Page::amp:
         ampPanel(area);
-        break;
-    case Page::tuner:
-        tunerPanel(area);
         break;
     case Page::customTuning:
         customPanel(area);
@@ -392,7 +370,10 @@ void Studio::playPanel(Rect area) {
 }
 void Studio::fader(const String& title, Rect area, int low, int high, int initial, const String& unit,
                    std::function<void(int)> apply) {
-    text(title, area.removeFromLeft(std::min(s::levelWidth, area.getWidth() / 3)), s::body, s::muted);
+    const int labelWidth = int(std::ceil(GlyphArrangement::getStringWidth(skin.font(s::body), title))) + s::gap;
+    text(title, area.removeFromLeft(std::min(area.getWidth() / 2,
+                                            std::max(labelWidth, std::min(s::levelWidth, area.getWidth() / 3)))),
+         s::body, s::muted);
     auto* slider = new Fader(skin, title, unit);
     controls.add(slider);
     addAndMakeVisible(slider);
@@ -674,11 +655,51 @@ void Studio::trackSoundDeck(Rect area) {
 }
 
 void Studio::tunerPanel(Rect area) {
-    auto options = row(area);
+    workspaceHeading = area.removeFromTop(s::workspaceHeader);
+    auto header = workspaceHeading.reduced(s::inset, 0);
+    text(cs::tuner, header.removeFromLeft(s::nameWidth), s::workspaceTitle, s::chalk, false, true);
+    deviceStatus(header);
+    inspectorBounds = area.removeFromRight(s::inspectorWidth);
+    auto panel = inspectorBounds.reduced(s::inset);
+    const auto& notes = tunings[tuningIndex].notes;
+    tunerArea = area.reduced(s::inset);
+    auto main = tunerArea;
+    main.removeFromTop(s::gutter);
+    tunerNote = main.removeFromTop(s::meterClock + s::gutter);
+    needleArea = main.removeFromTop(s::workspaceRuler)
+                     .withSizeKeepingCentre(std::min(main.getWidth(), s::fieldWidth + s::transportSide),
+                                            s::workspaceRuler);
+    tunerHint = row(main, s::workspaceHeader);
+    for (int i = 0; i < (int)notes.size();) {
+        const int take = std::min(6, int(notes.size()) - i);
+        auto strings = row(main, s::workspaceHeader)
+                           .withSizeKeepingCentre(take * (s::transportPill + s::inset + s::grid) * 3 / 2,
+                                                  s::workspaceHeader);
+        const int width = strings.getWidth() / take;
+        for (int n = 0; n < take; ++n, ++i) {
+            const auto label = String(int(notes.size()) - i) + " · " + Tuning::noteName(notes[i]);
+            auto tile = strings.removeFromLeft(width).reduced(s::grid, 0);
+            button(label, tile.removeFromTop(s::button), [this, i] {
+                targetString = targetString == i ? -1 : i;
+                stableString = -1;
+                stableTime = 0;
+                readingHz = 0;
+                link.audio.live.setTuner(true);
+                triggerAsyncUpdate();
+            }, targetString == i ? primary : plain);
+            tunerTiles.push_back(tile);
+        }
+    }
+    auto help = row(main);
+    text(cs::tunerAdvice, help, s::caption, s::muted);
+    auto info = main.removeFromBottom(s::button);
+    text(limit(skin.font(s::caption), message, info.getWidth()), info, s::caption, s::warning);
+
+    text(cs::tuning.toUpperCase(), row(panel), s::section, s::navigationInk, false, true);
     StringArray names;
     for (const auto& tuning : tunings)
         names.add(tuning.name);
-    combo(cs::tuning, options.removeFromLeft(options.getWidth() / 2), names, tuningIndex, [this](int i) {
+    combo(cs::tuning, row(panel), names, tuningIndex, [this](int i) {
         tuningIndex = i;
         targetString = -1;
         settings.tuningName = tunings[i].name;
@@ -691,25 +712,21 @@ void Studio::tunerPanel(Rect area) {
         link.audio.live.setTuner(true);
         triggerAsyncUpdate();
     });
-    options.removeFromLeft(s::gutter);
-    button(cs::custom, options.removeFromLeft(s::nameWidth), [this] { show(Page::customTuning); });
-    auto target = row(area);
-    StringArray strings{cs::automatic};
-    const auto& notes = tunings[tuningIndex].notes;
-    for (size_t i = 0; i < notes.size(); ++i)
-        strings.add(String((int)(notes.size() - i)) + "  /  " + Tuning::noteName(notes[i]));
-    combo(cs::string, target.removeFromLeft(target.getWidth() / 2), strings, targetString + 1,
-          [this](int i) {
-              targetString = i - 1;
-              stableString = -1;
-              stableTime = 0;
-              readingHz = 0;
-              link.audio.live.setTuner(true);
-              triggerAsyncUpdate();
-          });
-    target.removeFromLeft(s::gutter);
+    button(cs::custom, row(panel), [this] { show(Page::customTuning); });
+    button(cs::automatic, row(panel), [this] {
+        targetString = -1;
+        resetTuning();
+        link.audio.live.setTuner(true);
+        triggerAsyncUpdate();
+    }, targetString < 0 ? primary : plain);
+    if (!link.caps.inputs.isEmpty())
+        combo(cs::input, row(panel), inputNames(), link.audio.live.input.load(), [this](int i) {
+            link.audio.live.selectInput(i);
+            resetTuning();
+            triggerAsyncUpdate();
+        });
     if (link.caps.outputChannels > 0) {
-        auto* reference = button(cs::ref, target.removeFromLeft(s::nameWidth), [] {});
+        auto* reference = button(cs::ref, row(panel), [] {});
         reference->onStateChange = [this, reference, playing = false]() mutable {
             if (reference->isDown() == playing)
                 return;
@@ -721,21 +738,79 @@ void Studio::tunerPanel(Rect area) {
                 link.audio.live.endCue();
         };
     }
-    if (!link.caps.inputs.isEmpty())
-        combo(cs::input, row(area), inputNames(), link.audio.live.input.load(), [this](int i) {
-            link.audio.live.selectInput(i);
-            resetTuning();
-            triggerAsyncUpdate();
-        });
-    dynamicText(Readout::pitch, cs::emptyDash, row(area, s::recordButton), s::title, true);
-    needleArea = row(area).reduced(s::inset, 0);
-    dynamicText(Readout::hint, link.caps.inputs.isEmpty() ? cs::noInputs : cs::waiting, row(area),
-                s::body, false);
-    text(cs::tunedStrings, row(area), s::section, s::muted, false, true);
-    StringArray labels;
-    for (auto note : notes)
-        labels.add(Tuning::noteName(note));
-    dynamicText(Readout::confirmed, labels.joinIntoString("   "), row(area), s::body, true);
+    button(cs::back, row(panel), [this] { show(tunerReturn); });
+    text(cs::tunerBackHint, row(panel), s::caption, s::muted);
+}
+
+void Studio::paintTuner(Graphics& g) {
+    if (needleArea.isEmpty())
+        return;
+    const bool present = readingHz > 0;
+    const bool inTune = present && std::abs(cents) <= 5;
+    const auto ink = inTune ? s::ready : present ? s::warning : s::muted;
+    const auto note = !present ? cs::emptyDash
+                              : Tuning::noteName(tunings[tuningIndex].notes[nearestString]);
+    g.setColour(ink);
+    g.setFont(skin.font(s::meterClock, true));
+    g.drawText(note, tunerNote, Justification::centred);
+    if (present) {
+        auto numbers = tunerNote.withLeft(tunerNote.getCentreX() + s::meterClock);
+        auto value = numbers.withSizeKeepingCentre(numbers.getWidth(), s::workspaceRuler);
+        g.setFont(skin.font(s::heading, true));
+        g.drawText(decimal(readingHz) + " Hz", value.removeFromTop(s::workspaceRuler / 2),
+                   Justification::centredLeft);
+        g.setFont(skin.font(s::body, true));
+        const auto offset = std::abs(cents) < .05 ? String(u8"±0,0")
+                           : (cents > 0 ? "+" : "") + decimal(cents);
+        g.drawText(offset + cs::centUnit, value, Justification::centredLeft);
+    }
+    auto ticks = needleArea.reduced(s::inset, 0);
+    auto labels = ticks.removeFromBottom(s::caption + s::grid);
+    auto centre = ticks.getCentreY();
+    auto scale = ticks.withSizeKeepingCentre(ticks.getWidth(), s::grid);
+    g.setColour(s::line);
+    g.fillRect(scale);
+    auto x = [&](double c) {
+        return ticks.getX() + roundToInt((std::clamp(c, -50., 50.) + 50.) / 100. * ticks.getWidth());
+    };
+    g.setColour(s::ready.withAlpha(s::armedOpacity));
+    g.fillRect(x(-5), ticks.getY(), x(5) - x(-5), ticks.getHeight());
+    g.setFont(skin.font(s::caption, true));
+    for (int i = -50; i <= 50; i += 5) {
+        g.setColour(i == 0 ? s::ready : s::barGrid);
+        const auto height = i % 25 == 0 ? s::gap : s::grid;
+        g.drawVerticalLine(x(i), float(centre - height), float(centre + height));
+        if (i % 25 == 0) {
+            g.setColour(s::muted);
+            g.drawText(String(i), labels.withX(x(i) - s::levelWidth / 2).withWidth(s::levelWidth),
+                       Justification::centred);
+        }
+    }
+    if (present) {
+        g.setColour(ink);
+        g.fillEllipse(Rect(x(needleCents) - s::inset / 2, centre - s::inset / 2, s::inset, s::inset).toFloat());
+    }
+    const auto hint = !present ? (link.caps.inputs.isEmpty() ? cs::noInputs : cs::waiting)
+                               : inTune ? cs::inTune : cents < 0 ? cs::flat : cs::sharp;
+    g.setColour(ink);
+    g.setFont(skin.font(s::heading, false, true));
+    g.drawText(hint, tunerHint, Justification::centred);
+    if (present) {
+        const auto width = GlyphArrangement::getStringWidth(skin.font(s::heading, false, true), hint);
+        auto spot = tunerHint.withRight(tunerHint.getCentreX() - roundToInt(width / 2) - s::gap);
+        spot = spot.withLeft(spot.getRight() - s::icon).withSizeKeepingCentre(s::icon, s::icon);
+        paintIcon(g, inTune ? Icon::ok : cents < 0 ? Icon::up : Icon::down, ink, spot.toFloat());
+    }
+    g.setFont(skin.font(s::caption));
+    for (size_t i = 0; i < tunerTiles.size(); ++i) {
+        if (confirmed[i]) {
+            g.setColour(s::ready);
+            g.drawText(cs::inTune, tunerTiles[i], Justification::centred);
+        } else if (int(i) == targetString) {
+            g.setColour(s::muted);
+            g.drawText(cs::tuningTarget, tunerTiles[i], Justification::centred);
+        }
+    }
 }
 void Studio::customPanel(Rect area) {
     auto field = [&](const String& label, String& value) {

@@ -79,12 +79,15 @@ void Studio::startIdea(bool retrospective) {
     }
     if (ideaClick) {
         capturedIdea.bpm = ideaTempo;
+        capturedIdea.beats = ideaBeats;
+        capturedIdea.unit = ideaUnit;
         capturedIdea.firstBeat = ideaRecording->recorded();
         Song click;
-        click.grid.rate = link.current.rate;
-        click.grid.bpm = ideaTempo;
+        click.grid = {link.current.rate, ideaBeats, ideaUnit, ideaTempo};
         click.bars = 1000000;
-        ideaMetronome = std::make_unique<Performance>(click, AudioLibrary{}, 0, false, true, 0);
+        ideaMetronome = std::make_unique<Performance>(click, AudioLibrary{}, 0, false, true, 0,
+                                                      ideaRhythm);
+        ideaMetronome->configureClick(settings.clickVolume, settings.clickSound);
         link.audio.timeline.attach(*ideaMetronome);
     }
     link.audio.live.selectInput(link.audio.ideaPort.load());
@@ -274,7 +277,10 @@ void Studio::ideaHome(Rect area) {
         if (area.getHeight() < s::button)
             break;
         auto r = row(area);
-        button((idea.star ? cs::starMark : String{}) + title(idea), cell(r, s::labelWidth),
+        auto time = r.removeFromRight(s::statusStrip);
+        auto trace = r.removeFromRight(s::railWidth);
+        auto name = (idea.star ? cs::starMark : String{}) + title(idea);
+        button(limit(skin.font(s::body, false, true), name, r.getWidth() - 2 * s::inset), r,
                [this, id = idea.id] {
                    show(Page::ideas);
                    for (const auto& x : ideas->all())
@@ -282,10 +288,9 @@ void Studio::ideaHome(Rect area) {
                            chooseIdea(x);
                            break;
                        }
-               });
-        text(duration(idea.length, idea.rate), cell(r, s::scaleWidth), s::body, s::muted, true);
-        ideaWaves[idea.id] = cell(r, s::nameWidth);
-        text(limit(skin.font(s::body), idea.note, r.getWidth()), r, s::body, s::muted);
+               })->setTooltip(name);
+        text(duration(idea.length, idea.rate), time, s::caption, s::muted, true, false, true);
+        ideaWaves[idea.id] = trace.reduced(s::grid, s::stroke);
     }
 }
 void Studio::ideaPage(Rect area) {
@@ -301,8 +306,6 @@ void Studio::ideaPage(Rect area) {
         ideaTrace = area.removeFromTop(s::soundDeck);
         return;
     }
-    button(cs::home, head.removeFromRight(s::nameWidth).withHeight(s::button),
-           [this] { show(Page::home); });
     auto actions = row(area);
     button(
         cs::record, cell(actions, s::nameWidth), [this] { startIdea(false); }, 1)

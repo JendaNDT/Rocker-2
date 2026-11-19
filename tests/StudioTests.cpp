@@ -114,7 +114,8 @@ TEST_CASE("A-17 real screen layouts and snapshots") {
         click(view, cs::finish);
         fits(view);
         snapshot(view, "00-uvod", pixels);
-        click(view, cs::resume);
+        REQUIRE(find<Button>(view, cs::resume));
+        CHECK_FALSE(find<Button>(view, cs::resume)->isEnabled());
         fits(view);
         click(view, cs::library);
         fits(view);
@@ -465,10 +466,10 @@ TEST_CASE("A-17 edit bars five and six, move to nine, repeat, undo and restore a
     click(view, cs::guitar);
     auto* head = find<Button>(view, cs::trackKinds[0]);
     REQUIRE(head);
-    const int x0 = head->getX() - style::grid + style::trackHead;
-    const int width = view.getWidth() - style::margin - x0;
+    const int x0 = style::railWidth + style::trackHead;
+    const int width = view.getWidth() - style::inspectorWidth - x0;
     auto x = [&](double bar) { return float(x0 + bar * width / 16); };
-    const int axisY = head->getY() - style::grid - style::gap - style::button / 2;
+    const int axisY = head->getY() - style::grid - style::workspaceRuler / 4;
     auto* guitar = find<Button>(view, cs::guitar);
     REQUIRE(guitar);
     const int laneY = guitar->getBounds().getCentreY();
@@ -673,10 +674,10 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
     click(view, cs::resume);
     auto* head = find<Button>(view, cs::guitar);
     REQUIRE(head);
-    int start = head->getX() - style::grid + style::trackHead;
-    int width = view.getWidth() - style::margin - start;
-    int axisY = head->getY() - style::grid - style::gap - style::button / 2;
-    int tapeY = axisY - style::gap - style::button;
+    const int start = style::railWidth + style::trackHead;
+    const int width = view.getWidth() - style::inspectorWidth - start;
+    const int axisY = head->getY() - style::grid - style::workspaceRuler / 4;
+    const int tapeY = axisY - style::workspaceRuler / 2;
     auto x = [&](double bar) { return float(start + bar * width / 28); };
     auto gesture = [&](double a, double b, int y, int modifiers = 0) {
         Point<float> down{x(a), float(y)}, up{x(b), float(y)};
@@ -1371,7 +1372,7 @@ TEST_CASE("A-17 E15 voice presets and controls stay available from a song track"
     CHECK_FALSE(find<Slider>(view, cs::voiceCompression));
 }
 
-TEST_CASE("A-17 E16 guide cycles between click, rhythm and silence and remembers the choice") {
+TEST_CASE("A-17 the transport toggles the selected guide and the standalone metronome plays it") {
     ScopedJuceInitialiser_GUI gui;
     Temp temp;
     test::FakeDevice fake;
@@ -1387,7 +1388,30 @@ TEST_CASE("A-17 E16 guide cycles between click, rhythm and silence and remembers
     REQUIRE(config.save(temp.file));
     Studio view(fake, temp.file);
     click(view, cs::resume);
-    click(view, cs::songClick);
+    click(view, cs::navMetro);
+    REQUIRE(view.currentPage() == Page::metronome);
+    click(view, "7/8");
+    auto* volume = find<Slider>(view, cs::clickLevel);
+    REQUIRE(volume);
+    volume->setValue(40, sendNotificationSync);
+    chooseItem(view, cs::clickVoice, 1);
+    click(view, cs::playSong);
+    auto sound = fake.process({}, 512);
+    REQUIRE_FALSE(sound.empty());
+    CHECK(std::abs(sound[0][0] - .064f) < 1.e-6f);
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "38-metronom", pixels);
+    chooseItem(view, cs::clickMode, 1);
+    click(view, cs::applySongTempo);
+    REQUIRE(view.currentPage() == Page::project);
+    CHECK(Settings::load(temp.file).clickVolume == 40);
+    CHECK(Settings::load(temp.file).clickSound == 1);
+    bool damaged = false;
+    auto stored = Song::load(dir, damaged);
+    REQUIRE(stored);
+    CHECK(stored->grid.beats == 7);
+    CHECK(stored->grid.unit == 8);
     CHECK(ViewState::load(dir).rhythm);
     click(view, cs::home);
     click(view, cs::resume);
@@ -1399,7 +1423,7 @@ TEST_CASE("A-17 E16 guide cycles between click, rhythm and silence and remembers
     CHECK_FALSE(ViewState::load(dir).click);
     click(view, cs::guideOff);
     CHECK(ViewState::load(dir).click);
-    CHECK_FALSE(ViewState::load(dir).rhythm);
+    CHECK(ViewState::load(dir).rhythm);
 }
 
 TEST_CASE("A-17 A-33 loop recording keeps passes and Tab compares them from the editing view") {
@@ -1451,4 +1475,66 @@ TEST_CASE("A-17 A-33 loop recording keeps passes and Tab compares them from the 
     REQUIRE(studio.keyPressed(KeyPress(KeyPress::tabKey)));
     studio.resized();
     CHECK(find<Button>(studio, cs::stopSong));
+}
+
+TEST_CASE("A-17 redesign keeps the transport stable and gives the mixer a collapsible inspector") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    const auto dir = temp.dir.getChildFile("Skladby/Redesign");
+    Song song;
+    song.title = u8"Příliš dlouhý název rozpracované písně pro kytaru, basu a bicí";
+    song.bars = 8;
+    for (int i = 0; i < 8; ++i)
+        song.tracks.push_back({String(i), String(u8"Dlouhá rytmická kytara ") + String(i + 1),
+                               "kytara", {i == 1 ? "In 2" : "In 1"}, i == 0});
+    REQUIRE(song.save(dir));
+    ViewState options;
+    options.countIn = false;
+    REQUIRE(options.save(dir));
+    Settings settings;
+    settings.visited = true;
+    settings.lastSong = dir.getFullPathName();
+    REQUIRE(settings.save(temp.file));
+    Studio studio(fake, temp.file);
+    click(studio, cs::resume);
+    fits(studio);
+    const auto bounds = [&](const String& title) {
+        auto* action = find<Button>(studio, title);
+        REQUIRE(action);
+        return action->getBounds();
+    };
+    const auto play = bounds(cs::playSong);
+    const auto record = bounds(cs::recordSong);
+    const auto start = bounds(cs::atStart);
+    click(studio, cs::recordSong);
+    CHECK(bounds(cs::stopSong) == record);
+    CHECK(bounds(cs::playSong) == play);
+    CHECK(bounds(cs::atStart) == start);
+    fits(studio);
+    for (int pixels : {1280, 1920})
+        snapshot(studio, "37-hraj-nahravani", pixels);
+    test::FakeDevice::Block input{std::vector<float>(512, .2f)};
+    for (int i = 0; i < 16; ++i)
+        fake.process(input, 512);
+    click(studio, cs::stopSong);
+    click(studio, cs::atStart);
+    click(studio, cs::playSong);
+    CHECK(bounds(cs::stopSong) == play);
+    CHECK(bounds(cs::recordSong) == record);
+    click(studio, cs::editMode);
+    CHECK(bounds(cs::stopSong) == play);
+    click(studio, cs::stopSong);
+    click(studio, cs::mixMode);
+    CHECK(bounds(cs::playSong) == play);
+    REQUIRE(find<Slider>(studio, cs::master));
+    click(studio, cs::closeInspector);
+    CHECK_FALSE(find<Slider>(studio, cs::master));
+    CHECK(bounds(cs::recordSong) == record);
+    fits(studio);
+    for (int pixels : {1280, 1920})
+        snapshot(studio, "39-mix-sbaleny", pixels);
+    click(studio, cs::openInspector);
+    REQUIRE(find<Slider>(studio, cs::master));
+    fits(studio);
 }

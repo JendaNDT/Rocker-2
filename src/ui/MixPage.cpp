@@ -60,7 +60,8 @@ void Studio::toggleMix(int i, bool solo) {
     auto& t = song.tracks[i];
     auto& flag = solo ? t.solo : t.mute;
     flag = !flag;
-    view.selected = i;
+    if (!performance || !performance->recording)
+        view.selected = i;
     if (performance)
         performance->playback.updateMix(song);
     saveSong();
@@ -68,103 +69,118 @@ void Studio::toggleMix(int i, bool solo) {
     triggerAsyncUpdate();
 }
 void Studio::mixPage(Rect area) {
-    auto foot = area.removeFromBottom(s::songDeck);
-    const int width = s::clipWidth + s::nameWidth + s::trackHead + 2 * s::faderReadout;
-    auto axis = [&](Rect r) { return r.withTrimmedLeft(width - s::trackHead); };
-    auto header = line(area);
+    stereoMeter = mixReadout = {};
+    if (!mixInspectorCollapsed)
+        inspectorBounds = area.removeFromRight(s::inspectorWidth);
+    auto notice = area.removeFromBottom(s::button).reduced(s::inset, 0);
+    auto trackNavigation = area.removeFromBottom(s::button).reduced(s::inset, 0);
+    const int laneWidth = s::mixTrackHead;
+    auto axis = [&](Rect r) { return r.withTrimmedLeft(laneWidth - s::trackHead); };
+    auto header = area.removeFromTop(s::workspaceRuler / 2);
     sectionStrip = axis(header);
-    text(cs::trackLabel, header.removeFromLeft(s::clipWidth), s::caption, s::muted);
-    text(cs::gainLabel, header.removeFromLeft(s::nameWidth), s::caption, s::muted);
-    text(cs::panLabel, header.removeFromLeft(s::trackHead), s::caption, s::muted);
-    ruler = axis(line(area, s::icon));
+    text(cs::trackLabel, header.removeFromLeft(s::mixNameWidth).withTrimmedLeft(s::inset),
+         s::caption, s::navigationInk);
+    text(cs::gainLabel, header.removeFromLeft(s::mixGainWidth), s::caption, s::navigationInk);
+    text(cs::panLabel, header.removeFromLeft(s::levelWidth), s::caption, s::navigationInk);
+    ruler = axis(area.removeFromTop(s::workspaceRuler / 2));
     lanes.clear();
     trackMeters.clear();
-    const int visible = std::max(1, area.getHeight() / s::songLane);
+    const int visible = std::max(1, area.getHeight() / s::workspaceLane);
     firstTrack = std::clamp(firstTrack, 0, std::max(0, (int)song.tracks.size() - visible));
     for (int i = firstTrack; i < std::min((int)song.tracks.size(), firstTrack + visible); ++i) {
         const auto& t = song.tracks[i];
-        auto lane = area.removeFromTop(s::songLane);
+        auto lane = area.removeFromTop(s::workspaceLane);
         lanes.push_back(axis(lane));
-        auto row = lane.removeFromTop(s::button);
-        auto nameArea = row.removeFromLeft(s::clipWidth).reduced(s::grid, 0);
+        auto head = lane.removeFromLeft(laneWidth).reduced(s::grid);
+        auto row = head.removeFromTop(s::button);
+        auto nameArea = row.removeFromLeft(s::mixNameWidth).reduced(s::grid, 0);
         auto label = button(
             limit(skin.font(s::body, false, true), t.name, nameArea.getWidth() - 2 * s::inset), nameArea,
             [this, i] {
                 view.selected = i;
                 view.save(projectDir);
                 triggerAsyncUpdate();
-            },
-            view.selected == i ? 1 : 0);
+            }, view.selected == i ? 1 : 0);
         label->setTooltip(t.name);
-        mixSlider(cs::gainLabel + " " + t.name, row.removeFromLeft(s::nameWidth), t.gainDb, false,
+        label->setEnabled(!performance || !performance->recording);
+        mixSlider(cs::gainLabel + " " + t.name, row.removeFromLeft(s::mixGainWidth), t.gainDb, false,
                   [this, i](float v) { song.tracks[i].gainDb = v; });
-        mixSlider(cs::panLabel + " " + t.name, row.removeFromLeft(s::trackHead), t.pan, true,
+        auto toggles = row.removeFromRight(2 * (s::trackToggle + s::grid));
+        mixSlider(cs::panLabel + " " + t.name, row, t.pan, true,
                   [this, i](float v) { song.tracks[i].pan = v; });
-        button(
-            "S", row.removeFromLeft(s::faderReadout).reduced(s::grid, 0),
-            [this, i] { toggleMix(i, true); }, t.solo ? 1 : 0)
-            ->setTooltip(cs::solo);
-        button(
-            "M", row.removeFromLeft(s::faderReadout).reduced(s::grid, 0),
-            [this, i] { toggleMix(i, false); }, t.mute ? 1 : 0)
-            ->setTooltip(cs::mute);
-        lane = lane.withHeight(s::button);
+        auto toggle = [&](const String& description, const String& name, bool solo, bool set, int active) {
+            auto* control = button(description + cs::divider + t.name,
+                                   toggles.removeFromLeft(s::trackToggle), [this, i, solo] {
+                                       toggleMix(i, solo);
+                                   }, set ? active : plain, {}, Icon::none, name);
+            control->setTooltip(description);
+            control->setToggleState(set, dontSendNotification);
+            toggles.removeFromLeft(s::grid);
+        };
+        toggle(cs::mute, cs::muteShort, false, t.mute, muteActive);
+        toggle(cs::solo, cs::soloShort, true, t.solo, soloActive);
+        auto details = head.removeFromTop(s::button);
         if (t.kind == "kytara")
-            text(limit(skin.font(s::caption), t.amp.name, s::clipWidth - 2 * s::grid),
-                 lane.removeFromLeft(s::clipWidth).reduced(s::grid, 0), s::caption, s::guitar);
+            text(limit(skin.font(s::caption), t.amp.name, s::mixNameWidth - 2 * s::grid),
+                 details.removeFromLeft(s::mixNameWidth).reduced(s::grid, 0), s::caption, s::guitar);
         else
-            lane.removeFromLeft(s::clipWidth);
-        trackMeters.push_back(lane.removeFromLeft(s::nameWidth));
+            details.removeFromLeft(s::mixNameWidth);
         if (t.inputOver >= 0)
-            button(cs::inputOver + cs::divider + bar(song, t.inputOver), lane.removeFromLeft(s::labelWidth),
+            button(cs::inputOver + cs::divider + bar(song, t.inputOver), details.removeFromRight(s::labelWidth),
                    [this, frame = t.inputOver] { seekMix(frame); });
+        trackMeters.push_back(details);
     }
     timelineArea = ruler.withBottom(lanes.empty() ? ruler.getBottom() : lanes.back().getBottom());
-    auto total = line(foot, s::transport);
-    text(cs::master, total.removeFromLeft(s::clipWidth), s::heading, s::chalk, false, true);
-    mixSlider(cs::master, total.removeFromLeft(s::nameWidth), song.masterDb, false,
-              [this](float v) { song.masterDb = v; });
-    stereoMeter = total.removeFromLeft(total.getWidth() / 2).reduced(s::gap, 0);
-    mixReadout = total;
-    auto actions = line(foot);
-    button(cs::sendMix, actions.removeFromLeft(s::clipWidth), [this] { mixMode(true); }, 1);
-    actions.removeFromLeft(s::gap);
-    if (isPositiveAndBelow(view.selected, (int)song.tracks.size()) &&
-        song.tracks[view.selected].group.isNotEmpty()) {
-        auto& t = song.tracks[view.selected];
-        text(cs::kitGain, actions.removeFromLeft(s::compactButton));
-        mixSlider(cs::kitGain, actions.removeFromLeft(s::nameWidth), t.groupDb, false,
-                  [this, id = t.group](float gain) {
-                      for (auto& member : song.tracks)
-                          if (member.group == id)
-                              member.groupDb = gain;
-                  });
-    }
-    auto meter = performance ? performance->playback.meter() : lastMeter;
-    if (meter.over >= 0)
-        button(cs::mixOver + cs::divider + bar(song, meter.over), actions.removeFromLeft(s::labelWidth),
-               [this, frame = meter.over] { seekMix(frame); });
-    else
-        text(cs::noOver, actions.removeFromLeft(s::clipWidth), s::body, s::ready);
     if (firstTrack > 0)
-        button(cs::prevTracks, actions.removeFromLeft(s::clipWidth), [this, visible] {
+        button(cs::prevTracks, trackNavigation.removeFromLeft(s::clipWidth), [this, visible] {
             firstTrack -= visible;
             triggerAsyncUpdate();
         });
     if (firstTrack + visible < (int)song.tracks.size())
-        button(cs::nextTracks, actions.removeFromLeft(s::clipWidth), [this, visible] {
+        button(cs::nextTracks, trackNavigation.removeFromLeft(s::clipWidth), [this, visible] {
             firstTrack += visible;
             triggerAsyncUpdate();
         });
-    auto notice = line(foot);
+    text(limit(skin.font(s::caption), message, notice.getWidth()), notice, s::caption, s::warning);
+    if (mixInspectorCollapsed)
+        return;
+
+    auto panel = inspectorBounds.reduced(s::inset);
+    text(cs::master, line(panel), s::workspaceTitle, s::chalk, false, true);
+    mixSlider(cs::master, line(panel, s::transport), song.masterDb, false,
+              [this](float v) { song.masterDb = v; });
+    stereoMeter = line(panel, s::transport);
+    mixReadout = line(panel, s::workspaceTitle);
+    auto solo = soloNames();
+    auto label = line(panel);
+    text(limit(skin.font(s::caption), cs::soloStatus + (solo.isEmpty() ? cs::noSolo : solo), label.getWidth()),
+         label, s::caption, solo.isEmpty() ? s::muted : s::warning);
     if (lastLoudness)
-        text(cs::lastDelivery + loudness(*lastLoudness), notice.removeFromRight(s::fieldWidth),
-             s::caption, s::muted);
-    text(message, notice, s::body, s::warning);
+        text(cs::lastDelivery + loudness(*lastLoudness), line(panel), s::caption, s::muted);
+    auto meter = performance ? performance->playback.meter() : lastMeter;
+    if (meter.over >= 0)
+        button(cs::mixOver + cs::divider + bar(song, meter.over), line(panel),
+               [this, frame = meter.over] { seekMix(frame); });
+    else
+        text(cs::noOver, line(panel), s::body, s::ready);
+    if (isPositiveAndBelow(view.selected, (int)song.tracks.size()) &&
+        song.tracks[view.selected].group.isNotEmpty()) {
+        auto& t = song.tracks[view.selected];
+        text(cs::kitGain, line(panel), s::caption, s::muted);
+        mixSlider(cs::kitGain, line(panel), t.groupDb, false, [this, id = t.group](float gain) {
+            for (auto& member : song.tracks)
+                if (member.group == id)
+                    member.groupDb = gain;
+        });
+    }
+    auto send = panel.removeFromBottom(s::transport);
+    button(cs::sendMix, send, [this] { mixMode(true); }, primary, {}, Icon::exportMix);
 }
 void Studio::paintMix(Graphics& g) {
     const auto m = performance ? performance->playback.meter() : lastMeter;
     auto draw = [&](Rect r, float level, const String& name) {
+        if (r.isEmpty())
+            return;
         g.setFont(skin.font(s::caption, true));
         if (name.isNotEmpty()) {
             g.setColour(s::muted);

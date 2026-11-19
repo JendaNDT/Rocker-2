@@ -147,7 +147,7 @@ void Studio::openProject(File dir) {
         status(cs::rateMismatch(song.grid.rate, link.current.rate));
 }
 void Studio::field(const String& label, Rect r, String& value) {
-    text(label, r.removeFromLeft(s::labelWidth), s::body, s::muted);
+    text(label, r.removeFromLeft(std::min(s::labelWidth, r.getWidth() * 2 / 5)), s::body, s::muted);
     auto* edit = new TextEditor;
     controls.add(edit);
     addAndMakeVisible(edit);
@@ -252,12 +252,18 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bo
         view.cursor = 0;
     Frame start = view.cursor;
 
-    if (repair) {
-        start = std::max<Frame>(0, selection().from - song.grid.beat(view.leadBars * song.grid.beats));
-    }
-    const auto loop = looping ? std::optional<LoopSpan>{{selection().from, selection().to, song.grid.beat(view.tailBars * song.grid.beats)}} : std::nullopt;
+    const auto span = selection();
+    const bool repeating = !record && !auditionGroup && view.playLoop && span.valid();
+    if (repair)
+        start = std::max<Frame>(0, span.from - song.grid.beat(view.leadBars * song.grid.beats));
+    else if (repeating)
+        start = span.from;
+    const auto tail = looping ? song.grid.beat(view.tailBars * song.grid.beats) : 0;
+    const auto loop = looping || repeating ? std::optional<LoopSpan>{{span.from, span.to, tail}}
+                                          : std::nullopt;
     auto p = std::make_unique<Performance>(song, library, start, record, view.click,
                                            record && view.countIn ? song.grid.beats : 0, view.rhythm, loop);
+    p->configureClick(settings.clickVolume, settings.clickSound);
     if (repair) {
         p->punchFrom = selection().from;
         p->punchTo = selection().to;
@@ -420,8 +426,8 @@ void Studio::projectTick() {
                     }
                 }
     }
-    if (page == Page::project && !performance)
-        repaint(inputMeter);
+    if (page == Page::project && !performance && !view.mixing)
+        repaint(timelineArea.withWidth(s::trackHead));
     if (performance && (page == Page::project || diagnosing))
         repaint();
     auto now = Time::getMillisecondCounterHiRes();
@@ -434,7 +440,8 @@ void Studio::projectTick() {
     }
 }
 void Studio::projectPage(Rect area) {
-    area.reduce(0, s::inset);
+    if (page != Page::project || view.distant)
+        area.reduce(0, s::inset);
     if (page == Page::rescue) {
         text(cs::rescueTitle, row(area, s::header), s::title);
         bool version = song.title.isEmpty();
@@ -480,7 +487,7 @@ void Studio::projectPage(Rect area) {
                     triggerAsyncUpdate();
                 }
             });
-            StringArray meters{"2/4", "3/4", "4/4", "6/8", "9/8", "12/8"};
+            const auto& meters = cs::meterNames;
             combo(cs::meter, row(area), meters,
                   meters.indexOf(String(draftBeats) + "/" + String(draftUnit)), [this, meters](int i) {
                       draftBeats = meters[i].upToFirstOccurrenceOf("/", false, false).getIntValue();
@@ -641,31 +648,46 @@ void Studio::projectPage(Rect area) {
         text(message, footer, s::body, s::warning);
         return;
     }
+    workspaceHeading = area.removeFromTop(s::workspaceHeader);
+    projectTransport(area.removeFromBottom(s::workspaceFooter));
+    auto heading = workspaceHeading.reduced(s::inset, 0);
+    auto control = [&](int width) {
+        return cell(heading, width).withSizeKeepingCentre(width, s::button);
+    };
+    auto titleArea = control(s::labelWidth);
+    text(limit(skin.font(s::workspaceTitle, false, true), song.title, titleArea.getWidth()),
+         titleArea, s::workspaceTitle, s::chalk, false, true);
+    button(cs::distantView, control(s::compactButton), [this] { toggleDistant(); },
+           plain, {}, Icon::distant);
     if (offerDistant)
-        button(cs::farOffer, row(area).withWidth(s::fieldWidth), [this] { toggleDistant(); }, 1);
-    auto top = row(area, s::statusStrip);
-    text(limit(skin.font(s::heading), song.title, s::nameWidth), cell(top, s::nameWidth), s::heading);
-    button(
-        performance ? cs::stopSong : cs::recordSong, cell(top, s::clipWidth),
-        [this] {
-            if (performance)
-                stopFromTransport();
-            else
-                startProject(true);
-        },
-        performance ? 1 : 2);
-    if (!performance) {
-        button(cs::playSong, cell(top, s::levelWidth), [this] { startProject(false); });
-        button(cs::atStart, cell(top, s::levelWidth), [this] {
-            view.cursor = 0;
+        button(cs::farOffer, control(s::nameWidth), [this] { toggleDistant(); }, primary,
+               {}, Icon::none, cs::farRecordDrums);
+    if (!view.mixing && !performance)
+        button(cs::fileMenu, control(s::compactButton), [this] { showVersions(); });
+    if (!view.editing && !view.mixing && !performance)
+        button(cs::projectSetup, control(s::clipWidth), [this] { openTempoSettings(); });
+    if (view.mixing && !exporting) {
+        button(mixInspectorCollapsed ? cs::openInspector : cs::closeInspector, control(s::button),
+               [this] {
+                   mixInspectorCollapsed = !mixInspectorCollapsed;
+                   triggerAsyncUpdate();
+               }, plain, {}, mixInspectorCollapsed ? Icon::showInspector : Icon::hideInspector, " ");
+        if (mixInspectorCollapsed)
+            button(cs::sendMix, control(s::clipWidth), [this] { mixMode(true); });
+    }
+    if (view.editing) {
+        button(cs::beforeBars, control(s::clipWidth), [this] {
+            view.firstBar = std::max<Frame>(0, view.firstBar - visibleBars());
             view.save(projectDir);
             repaint();
         });
-    }
-    if (!view.mixing && soloNames().isNotEmpty()) {
-        auto room = top.withTrimmedRight(s::fieldWidth);
-        text(limit(skin.font(s::caption), cs::soloStatus + soloNames(), room.getWidth()), room,
-             s::caption, s::warning);
+        button(cs::afterBars, control(s::clipWidth), [this] {
+            view.firstBar = std::min<Frame>(999999, view.firstBar + visibleBars());
+            view.save(projectDir);
+            repaint();
+        });
+        button(cs::zoomIn, control(s::button), [this] { editKey(KeyPress('+')); }, plain, {}, Icon::plus, " ");
+        button(cs::zoomOut, control(s::button), [this] { editKey(KeyPress('-')); }, plain, {}, Icon::minus, " ");
     }
     const bool mismatched = link.online && link.current.rate != song.grid.rate;
     if (mismatched && !performance) {
@@ -693,188 +715,29 @@ void Studio::projectPage(Rect area) {
         }
         text(cs::rateMismatch(song.grid.rate, link.current.rate), rateRow, s::body, s::warning);
     }
-    auto modes = row(area);
-    button(
-        cs::playMode, cell(modes, s::compactButton), [this] { editMode(false); },
-        (view.editing || view.mixing) ? 0 : 1);
-    button(
-        cs::editMode, cell(modes, s::compactButton), [this] { editMode(true); }, view.editing ? 1 : 0);
-    button(cs::mixMode, cell(modes, s::compactButton), [this] { mixMode(false); }, view.mixing ? 1 : 0);
+    area.removeFromTop(s::grid);
     if (view.mixing) {
-        button(cs::sendMix, cell(modes, s::clipWidth), [this] { mixMode(true); });
-        auto names = soloNames();
-        text(limit(skin.font(s::body), cs::soloStatus + (names.isEmpty() ? cs::noSolo : names),
-                   modes.getWidth()),
-             modes, s::body, names.isEmpty() ? s::muted : s::warning);
         if (exporting)
             exportPage(area);
         else
             mixPage(area);
         return;
     }
-    if (!performance && !view.editing) {
-        button(cs::addBacking, cell(modes, s::clipWidth), [this] {
-            chooseImport();
-        })->setEnabled(!importing.valid());
-        button(importAtCursor ? cs::atCursor : cs::atBeginning, cell(modes, s::nameWidth), [this] {
-            importAtCursor = !importAtCursor;
-            triggerAsyncUpdate();
-        });
-    }
-    if (!performance)
-        button(cs::fileMenu, cell(modes, s::compactButton), [this] { showVersions(); });
-    if (view.editing) {
-        button(cs::beforeBars, cell(modes, s::clipWidth), [this] {
-            view.firstBar = std::max<Frame>(0, view.firstBar - visibleBars());
-            view.save(projectDir);
-            repaint();
-        });
-        button(cs::afterBars, cell(modes, s::clipWidth), [this] {
-            view.firstBar = std::min<Frame>(999999, view.firstBar + visibleBars());
-            view.save(projectDir);
-            repaint();
-        });
-        button(cs::zoomIn, cell(modes, s::compactButton), [this] { editKey(KeyPress('+')); });
-        button(cs::zoomOut, cell(modes, s::compactButton), [this] { editKey(KeyPress('-')); });
-    }
-    auto tools = row(area);
-    button(cs::distantView, cell(tools, s::compactButton), [this] { toggleDistant(); });
-    if (!performance) {
-        button(cs::newTrack, cell(tools, s::levelWidth), [this] { editTrack(true); });
-        if (!song.tracks.empty())
-            button(cs::trackEdit, cell(tools, s::clipWidth), [this] { editTrack(false); });
-        button(cs::projectSetup, cell(tools, s::clipWidth), [this] {
-            editingTempo = true;
-            draftTitle = song.title;
-            draftTempo = String(song.grid.bpm, 1);
-            draftBeats = song.grid.beats;
-            draftUnit = song.grid.unit;
-            show(Page::newProject);
-        });
-        const auto guide = !view.click ? cs::guideOff : view.rhythm ? cs::guideRhythm : cs::songClick;
-        button(
-            guide, cell(tools, s::compactButton),
-            [this] {
-                if (!view.click) {
-                    view.click = true;
-                    view.rhythm = false;
-                } else if (!view.rhythm) {
-                    view.rhythm = true;
-                } else {
-                    view.click = false;
-                    view.rhythm = false;
-                }
-                view.save(projectDir);
-                triggerAsyncUpdate();
-            },
-            view.click ? 1 : 0);
-        button(
-            cs::countIn, cell(tools, s::compactButton),
-            [this] {
-                view.countIn = !view.countIn;
-                view.save(projectDir);
-                triggerAsyncUpdate();
-            },
-            view.countIn ? 1 : 0);
-        button(cs::home, cell(tools, s::nameWidth), [this] {
-            finishProject();
-            show(Page::home);
-        });
-    }
-    if (!performance && isPositiveAndBelow(view.selected, (int)song.tracks.size())) {
-        const auto& selected = song.tracks[view.selected];
-        for (size_t i = 0; i < song.tracks.size(); ++i)
-            if (selected.group.isNotEmpty() && song.tracks[i].group == selected.group &&
-                song.tracks[i].kind == "midi") {
-                const bool toMidi = song.tracks[i].mute;
-                button(toMidi ? cs::midiListen : cs::moduleListen, cell(tools, s::clipWidth),
-                       [this, id = selected.group, toMidi] {
-                           for (int n = 0; n < (int)song.tracks.size(); ++n)
-                               if (song.tracks[n].group == id) {
-                                   auto& t = song.tracks[n];
-                                   t.mute = (t.kind == "midi") != toMidi;
-                                   if (!t.mute)
-                                       view.selected = n;
-                               }
-                           defaultMonitor();
-                           configureSongMonitor();
-                           saveSong();
-                           view.save(projectDir);
-                           triggerAsyncUpdate();
-                       });
-                break;
-            }
-    }
-    auto foot = area.removeFromBottom(soundDeckOpen ? s::soundDeck : s::songDeck);
-    panels.push_back(foot);
-    foot.reduce(s::inset, s::gap);
-    auto notice = area.removeFromBottom(s::button);
-    if (browsingVersions) {
-        inputMeter = {};
-        versionsDeck(foot);
-    } else if (view.editing && !soundDeckOpen) {
-        inputMeter = {};
-        editDeck(foot);
-    } else if (soundDeckOpen) {
-        inputMeter = {};
-        trackSoundDeck(foot);
+    auto notice = area.removeFromBottom(s::button).reduced(s::inset, 0);
+    if (browsingVersions || soundDeckOpen) {
+        auto foot = area.removeFromBottom(soundDeckOpen ? s::soundDeck : s::songDeck);
+        panels.push_back(foot);
+        foot.reduce(s::inset, s::gap);
+        if (browsingVersions)
+            versionsDeck(foot);
+        else
+            trackSoundDeck(foot);
     } else {
-        auto upper = row(foot);
-        text(cs::hear.toUpperCase(), cell(upper, s::nameWidth), s::section, s::muted);
-        text(cs::toRecord.toUpperCase(), cell(upper, s::labelWidth), s::section, s::muted);
-        text(cs::delay, cell(upper, s::fieldWidth), s::caption, s::muted);
-        text(cs::input, upper, s::caption, s::muted);
-        auto info = row(foot);
-        StringArray heard;
-        if (performance) {
-            const bool solo =
-                std::any_of(song.tracks.begin(), song.tracks.end(), [](auto& t) { return t.solo; });
-            for (auto& t : song.tracks)
-                if (!t.mute && (!solo || t.solo) &&
-                    std::any_of(song.clips.begin(), song.clips.end(),
-                                [&](auto& c) { return c.track == t.id; }))
-                    heard.add(t.name);
-            if (playPosition() < performance->start)
-                heard.add(cs::songClick);
-            else if (view.click)
-                heard.add(view.rhythm ? cs::guideRhythm : cs::songClick);
-        }
-        if (projectMonitor > 0 && view.selected < (int)song.tracks.size())
-            heard.add(song.tracks[view.selected].name + " / " +
-                      (projectMonitor == 2 && song.tracks[view.selected].amp.enabled
-                           ? song.tracks[view.selected].amp.name
-                           : cs::monitors[1]));
-        text(limit(skin.font(s::body), heard.isEmpty() ? cs::monitors[0] : heard.joinIntoString(" + "),
-                   s::nameWidth),
-             cell(info, s::nameWidth));
-        StringArray armed;
-        for (auto& t : song.tracks)
-            if (t.armed)
-                armed.add((t.kind == "midi" ? cs::midiModule : t.inputs.joinIntoString(" + ")) +
-                          String(u8" → ") + t.name);
-        text(limit(skin.font(s::body), armed.isEmpty() ? cs::noneArmed : armed.joinIntoString(", "),
-                   s::labelWidth),
-             cell(info, s::labelWidth));
-        text(latencyLabel(), cell(info, s::fieldWidth));
-        inputMeter = info;
-        if (!performance && view.selected < (int)song.tracks.size()) {
-            auto controlsRow = row(foot);
-            auto modes = cs::monitors;
-            if (laptop || song.tracks[view.selected].kind != "kytara")
-                modes.remove(2);
-            combo(cs::listen, cell(controlsRow, s::fieldWidth), modes, projectMonitor, [this](int i) {
-                projectMonitor = i;
-                configureSongMonitor();
-                triggerAsyncUpdate();
-            });
-            if (song.tracks[view.selected].kind == "kytara")
-                button(cs::ampPage, cell(controlsRow, s::clipWidth),
-                       [this] { openTrackSound(view.selected); });
-            else if (song.tracks[view.selected].kind == "jine")
-                button(cs::voicePanel, cell(controlsRow, s::clipWidth),
-                       [this] { openTrackSound(view.selected); });
-            button(cs::tuner, cell(controlsRow, s::levelWidth), [this] { toggleTuner(); });
-        }
+        inspectorBounds = area.removeFromRight(s::inspectorWidth);
+        if (view.editing)
+            editDeck(inspectorBounds.reduced(s::inset));
+        else
+            playInspector(inspectorBounds.reduced(s::inset));
     }
     auto disk = notice.removeFromRight(s::labelWidth);
     const int channels = std::max(
@@ -887,99 +750,37 @@ void Studio::projectPage(Rect area) {
          disk, s::caption, s::muted, true, false, true);
     if (!mismatched || message != cs::rateMismatch(song.grid.rate, link.current.rate))
         text(message, notice, s::caption, s::warning);
-    sectionStrip = row(area);
-    text(cs::sections, sectionStrip.withWidth(s::trackHead), s::body, s::muted);
-    ruler = row(area);
-    text(cs::bars, ruler.withWidth(s::trackHead), s::body, s::guitar);
+    sectionStrip = area.removeFromTop(s::workspaceRuler / 2);
+    text(cs::sections, sectionStrip.withWidth(s::trackHead).withTrimmedLeft(s::inset),
+         s::caption, s::navigationInk, false, true);
+    ruler = area.removeFromTop(s::workspaceRuler / 2);
+    text(cs::bars, ruler.withWidth(s::trackHead).withTrimmedLeft(s::inset), s::caption,
+         s::chalk, false, true);
+    const int laneHeight = s::workspaceLane;
     auto trackCommands = area.removeFromBottom(s::button);
     timelineArea = area;
     lanes.clear();
-    int count = std::max(1, area.getHeight() / s::songLane);
-    firstTrack = std::max(0, view.selected - count + 1);
-    for (int i = firstTrack; i < (int)song.tracks.size() && (int)lanes.size() < count; ++i) {
-        auto lane = area.removeFromTop(s::songLane);
+    const int visible = std::max(1, timelineArea.getHeight() / laneHeight);
+    firstTrack = jlimit(0, std::max(0, (int)song.tracks.size() - visible), firstTrack);
+    if (view.selected < firstTrack || view.selected >= firstTrack + visible)
+        firstTrack = jlimit(0, std::max(0, (int)song.tracks.size() - visible), view.selected - visible + 1);
+    for (int i = firstTrack; i < (int)song.tracks.size() && (int)lanes.size() < visible; ++i) {
+        auto lane = area.removeFromTop(laneHeight);
         lanes.push_back(lane);
-        auto head = lane.removeFromLeft(s::trackHead).reduced(s::grid);
-        auto& t = song.tracks[i];
-        auto nameArea = head.removeFromTop(s::button - s::grid);
-        button(
-            limit(skin.font(s::body, false, true), t.name, nameArea.getWidth() - 2 * s::inset), nameArea,
-            [this, i] {
-                if (!performance) {
-                    view.selected = i;
-                    view.selectedClip.clear();
-                    defaultMonitor();
-                    configureSongMonitor();
-                    view.save(projectDir);
-                    triggerAsyncUpdate();
-                }
-            },
-            i == view.selected ? 1 : 0);
-        if (t.kind == "kytara") {
-            const auto label = t.amp.enabled ? t.amp.name + (t.amp.modified ? "*" : "") : cs::bypass;
-            auto* badge =
-                button(limit(skin.font(s::body, false, true), label, head.getWidth() - 2 * s::inset),
-                       head, [this, i] { openTrackSound(i); });
-            if (i == view.selected)
-                soundBadge = badge;
-        } else if (t.kind == "jine") {
-            button(cs::voicePresets[t.voice.preset], head, [this, i] { openTrackSound(i); });
-        } else
-            text(limit(skin.font(s::caption),
-                       t.kind == "midi" ? cs::drumSounds[t.kit] : t.inputs.joinIntoString(" + "),
-                       head.getWidth()),
-                 head, s::caption, s::muted);
+        projectTrack(i, lane.removeFromLeft(s::trackHead));
     }
-    if (!song.tracks.empty()) {
-        auto r = trackCommands;
-        if (!performance)
-            button(
-                song.tracks[view.selected].armed ? cs::disarm : cs::arm, cell(r, s::levelWidth),
-                [this] {
-                    auto& t = song.tracks[view.selected];
-                    const bool enable = !t.armed;
-                    for (auto& member : song.tracks)
-                        if (song.linkedTrack(member.id, t.id))
-                            member.armed = enable;
-                    saveSong();
-                    triggerAsyncUpdate();
-                },
-                song.tracks[view.selected].armed ? 1 : 0);
-        button(
-            cs::mute, cell(r, s::compactButton),
-            [this] {
-                auto& t = song.tracks[view.selected];
-                t.mute = !t.mute;
-                if (performance)
-                    performance->playback.updateMix(song);
-                saveSong();
-                triggerAsyncUpdate();
-            },
-            song.tracks[view.selected].mute ? 1 : 0);
-        button(
-            cs::solo, cell(r, s::compactButton),
-            [this] {
-                auto& t = song.tracks[view.selected];
-                t.solo = !t.solo;
-                if (performance)
-                    performance->playback.updateMix(song);
-                saveSong();
-                triggerAsyncUpdate();
-            },
-            song.tracks[view.selected].solo ? 1 : 0);
-        StringArray names;
-        for (auto& t : song.tracks)
-            names.add(t.name);
-        if (!performance || !performance->recording)
-            combo(cs::audioTracks, cell(r, s::fieldWidth), names, view.selected, [this](int i) {
-                view.selected = i;
-                view.selectedClip.clear();
-                defaultMonitor();
-                configureSongMonitor();
-                view.save(projectDir);
-                triggerAsyncUpdate();
+    if (!performance) {
+        button(cs::newTrack, cell(trackCommands, s::clipWidth), [this] { editTrack(true); });
+        if (firstTrack > 0)
+            button(cs::prevTracks, cell(trackCommands, s::clipWidth), [this] {
+                selectProjectTrack(std::max(0, firstTrack - 1));
+            });
+        if (firstTrack + visible < (int)song.tracks.size())
+            button(cs::nextTracks, cell(trackCommands, s::clipWidth), [this, visible] {
+                selectProjectTrack(firstTrack + visible);
             });
     }
+
 }
 
 void Studio::paintProject(Graphics& g) {
@@ -1036,39 +837,14 @@ void Studio::paintProject(Graphics& g) {
         }
         return;
     }
+    paintTransport(g);
     if (view.mixing && exporting)
         return;
     if (view.mixing)
         paintMix(g);
     if (rec) {
-        g.setColour(s::recording);
-        g.fillRect(getLocalBounds().removeFromTop(s::statusStrip + s::inset));
         g.setColour(s::record);
-        g.drawRect(getLocalBounds(), s::recordFrame);
-    }
-    auto statusArea = ruler.withY(s::inset).withHeight(s::statusStrip);
-    statusArea = statusArea.removeFromRight(s::fieldWidth);
-    g.setColour(s::chalk);
-    g.setFont(skin.font(s::heading, true));
-    g.drawText(state + "   " + clock, statusArea, Justification::centredRight);
-    auto sub = statusArea.removeFromBottom(s::caption + s::grid);
-    g.setFont(skin.font(s::caption, true));
-    g.setColour(s::muted);
-    g.drawText(String(song.grid.bpm, 1) + " BPM   " + String(song.grid.beats) + "/" +
-                   String(song.grid.unit) + "   " +
-                   String(std::max<Frame>(pos, 0) / (song.grid.rate * 60)) + ":" +
-                   String((std::max<Frame>(pos, 0) / song.grid.rate) % 60).paddedLeft('0', 2),
-               sub, Justification::centredRight);
-    if (!view.mixing && view.selected < (int)song.tracks.size()) {
-        auto& t = song.tracks[view.selected];
-        auto barArea = inputMeter.withHeight(s::grid * 2).withCentre(inputMeter.getCentre());
-        float peak =
-            t.inputs.isEmpty() ? 0 : link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak;
-        g.setColour(s::line);
-        g.fillRect(barArea);
-        g.setColour(peak >= 0.98855f ? s::clipping : s::ready);
-        g.fillRect(barArea.withWidth(
-            roundToInt(barArea.getWidth() * std::clamp((decibels(peak) + 60.f) / 60.f, 0.f, 1.f))));
+        g.fillRect(transportBounds.withHeight(s::stroke));
     }
     drawSections(g);
     const Frame first = firstBar();
@@ -1083,19 +859,49 @@ void Studio::paintProject(Graphics& g) {
         int left = x(song.grid.beat((first + i) * song.grid.beats));
         g.setColour(s::barGrid);
         g.drawVerticalLine(left, (float)axis.getY(), (float)timelineArea.getBottom());
-        g.setFont(skin.font(view.editing ? s::heading : s::caption, true));
-        g.setColour(s::muted);
-        g.drawText(String(first + i + 1), left + s::grid, axis.getY(), s::scaleWidth, axis.getHeight(),
-                   Justification::centredLeft);
+        auto next = x(song.grid.beat((first + i + 1) * song.grid.beats));
+        const auto label = String(first + i + 1);
+        const auto font = skin.font(s::caption, true);
+        if (GlyphArrangement::getStringWidth(font, label) <= next - left - s::stroke) {
+            g.setFont(font);
+            g.setColour(s::chalk);
+            g.drawText(label, left + s::stroke, axis.getY(), next - left - s::stroke, axis.getHeight(),
+                       Justification::centredLeft);
+        }
     }
+    const bool hasSolo = std::any_of(song.tracks.begin(), song.tracks.end(),
+                                     [](const Track& t) { return t.solo; });
     for (size_t i = 0; i < lanes.size(); ++i) {
-        const auto& t = song.tracks[firstTrack + i];
+        const auto trackIndex = firstTrack + i;
+        const auto& t = song.tracks[trackIndex];
         auto lane = lanes[i].withTrimmedLeft(s::trackHead);
         g.setColour(s::line);
         g.drawHorizontalLine(lane.getBottom() - 1, (float)lane.getX(), (float)lane.getRight());
-        auto ink = t.kind == "kytara"                       ? s::guitar
-                   : (t.kind == "bici" || t.kind == "midi") ? s::drums
-                                                            : s::other;
+        const auto guitarsBefore = t.kind == "kytara" ?
+            std::count_if(song.tracks.begin(), song.tracks.begin() + trackIndex,
+                          [](const Track& track) { return track.kind == "kytara"; }) : 0;
+        const auto ink = t.kind == "kytara" ? (guitarsBefore % 2 ? s::guitar2 : s::guitar)
+                       : (t.kind == "bici" || t.kind == "midi") ? s::drums
+                       : t.kind == "podklad" ? s::backing
+                       : t.voice.preset == 2 ? s::bass
+                       : t.voice.preset == 1 ? s::voice : s::other;
+        const bool quiet = t.mute || (!t.solo && hasSolo);
+        if (!view.mixing) {
+            auto head = lanes[i].withWidth(s::trackHead);
+            g.setColour(view.selected == firstTrack + (int)i ? s::panel : s::background);
+            g.fillRect(head);
+            g.setColour(ink);
+            g.fillRect(head.removeFromLeft(s::grid));
+            if (!quiet && !t.inputs.isEmpty()) {
+                const auto peak = link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak;
+                auto meter = head.reduced(s::gap, s::grid).removeFromBottom(s::traceHeight);
+                g.setColour(s::raised);
+                g.fillRect(meter);
+                g.setColour(peak >= 0.98855f ? s::clipping : s::ready);
+                g.fillRect(meter.withWidth(roundToInt(meter.getWidth() *
+                    std::clamp((decibels(peak) + 60.f) / 60.f, 0.f, 1.f))));
+            }
+        }
         auto drawClip = [&](const Clip& c, Frame firstFrame, Frame lastFrame, bool cover) {
             if (c.track == t.id && lastFrame > begin && firstFrame < last && lastFrame > firstFrame) {
                 auto cache = library.waveFor(t, c.asset);
@@ -1108,9 +914,11 @@ void Studio::paintProject(Graphics& g) {
                     g.setColour(s::panel);
                     g.fillRect(bounds);
                 }
-                g.setColour(ink.withAlpha(s::selectionOpacity));
+                const auto clipInk = quiet ? ink.withAlpha(s::disabledOpacity) : ink;
+                g.setColour(clipInk.withMultipliedAlpha(s::clipFillOpacity));
                 g.fillRect(bounds);
-                g.setColour(ink);
+                g.setColour(clipInk);
+                g.fillRect(bounds.withHeight(s::stroke));
                 for (int px = bounds.getX(); px < bounds.getRight(); ++px) {
                     auto source = c.offset + begin - c.position +
                                   (Frame)((double)(px - axis.getX()) * (last - begin) / axis.getWidth());
