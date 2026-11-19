@@ -63,6 +63,7 @@ void Studio::reveal(Frame pos) {
 void Studio::editMode(bool edit) {
     if (view.editing == edit && !browsingVersions)
         return;
+    selectedOccurrence=-1; askingRepair=false;
     view.editing = edit;
     browsingVersions = soundDeckOpen = namingPreset = false;
     drag = Drag::none;
@@ -145,6 +146,7 @@ void Studio::editOp(EditOp op) {
         status(cs::noAudio);
         return;
     }
+    song.commitClips();
     history.remember(song, label);
     pendingSoundSave = Time::getMillisecondCounterHiRes() + 1200;
     reveal(view.cursor);
@@ -161,6 +163,7 @@ void Studio::undo(bool forward) {
         return;
     preview = -1;
     previewGroup.clear();
+    selectedOccurrence=-1; askingRepair=false;
     normalizeSelection();
     view.cursor = std::min(view.cursor, song.end());
     soundDeckOpen = namingPreset = false;
@@ -201,6 +204,7 @@ void Studio::restoreVersion() {
     song = std::move(*restored);
     library = std::move(checked);
     history.remember(song, cs::versionRestored);
+    selectedOccurrence=-1; askingRepair=false;
     normalizeSelection();
     view.cursor = std::min(view.cursor, song.end());
     reveal(view.cursor);
@@ -239,6 +243,14 @@ void Studio::startRepair() {
         status(cs::pickRepair);
         return;
     }
+    for(int i=0;i<(int)song.order.size();++i) {
+        int start=song.startBar(i);
+        if (selection().from<song.barFrame(start+song.order[i].length) && selection().to>song.barFrame(start) && song.linked(i)) {
+            askingRepair=true;
+            triggerAsyncUpdate();
+            return;
+        }
+    }
     startProject(true, true);
 }
 void Studio::audition(TakeGroup& group) {
@@ -256,6 +268,7 @@ void Studio::chooseAttempt(bool keep) {
     }
     if (keep) {
         g->active = preview;
+        song.commitGroup(*g);
         history.remember(song, cs::keepAttempt);
         saveSong();
         status(cs::savedAttempt);
@@ -283,7 +296,8 @@ void Studio::discardAttempt() {
     previewGroup = g->id;
     if (performance)
         performance->playback.selectAttempt(g->id, preview);
-    history.remember(song, cs::discardAttempt);
+    song.commitGroup(*g);
+        history.remember(song, cs::discardAttempt);
     saveSong();
     status(cs::discardedAttempt);
 }
@@ -319,7 +333,8 @@ void Studio::attemptDeck(TakeGroup& g, Rect area) {
                 active->active = (int)i;
                 previewGroup = active->id;
                 preview = (int)i;
-                history.remember(song, cs::restoredTake);
+                song.commitGroup(*active);
+        history.remember(song, cs::restoredTake);
                 saveSong();
                 triggerAsyncUpdate();
                 break;
@@ -327,6 +342,7 @@ void Studio::attemptDeck(TakeGroup& g, Rect area) {
         });
 }
 void Studio::editDeck(Rect area) {
+    if (askingRepair || selectedOccurrence>=0) {sectionDeck(area); return;}
     auto span = selection();
     if (auto* group = song.groupAt(selectedTrack(), span.from, span.to)) {
         attemptDeck(*group, area);
@@ -404,6 +420,8 @@ bool Studio::editKey(const KeyPress& key) {
     }
     if (!view.editing)
         return false;
+    if (selectedOccurrence>=0 && code=='D') {tapeAction(TapeAction::repeat,selectedOccurrence+1); return true;}
+    if (selectedOccurrence>=0 && code=='X') {tapeAction(TapeAction::split); return true;}
     if (code == KeyPress::tabKey || code == KeyPress::returnKey) {
         if (!song.groupAt(selectedTrack(), selection().from, selection().to))
             return false;
@@ -546,6 +564,11 @@ void Studio::mouseDrag(const MouseEvent& e) {
         lastPan = now;
     }
     Frame at = frameAt(e.x);
+    if (drag==Drag::tapeEdge || drag==Drag::tapeMove) {
+        targetBar=(int)std::llround((double)at/song.grid.beat(1)/song.grid.beats);
+        repaint();
+        return;
+    }
     if (drag == Drag::bars)
         selectBar(song.grid.beatAt(at) / song.grid.beats, true);
     else {
@@ -570,7 +593,13 @@ void Studio::mouseDrag(const MouseEvent& e) {
 void Studio::mouseUp(const MouseEvent&) {
     if (!view.editing || drag == Drag::none)
         return;
-    if (dragged && (drag == Drag::takeLeft || drag == Drag::takeRight)) {
+    if (dragged && drag==Drag::tapeEdge)
+        tapeAction(TapeAction::resize,targetBar-song.startBar(selectedOccurrence));
+    else if (dragged && drag==Drag::tapeMove) {
+        int insertion=0;
+        while(insertion<(int)song.order.size() && targetBar>=song.startBar(insertion)+song.order[insertion].length*.5) ++insertion;
+        tapeAction(copyingSection ? TapeAction::repeat : TapeAction::move,insertion);
+    } else if (dragged && (drag == Drag::takeLeft || drag == Drag::takeRight)) {
         if (auto* group = song.groupAt(selectedTrack(), selection().from, selection().to)) {
             Frame first = 0, last = std::numeric_limits<Frame>::max();
             for (const auto& attempt : group->attempts)
@@ -583,7 +612,8 @@ void Studio::mouseUp(const MouseEvent&) {
             if (drag == Drag::takeRight && last > group->from)
                 group->to = jlimit(group->from + 1, last, dragTarget);
             pick({group->from, group->to});
-            history.remember(song, cs::trim);
+            song.commitGroup(*group);
+        history.remember(song, cs::trim);
             saveSong();
         }
     } else if (dragged && drag != Drag::bars)

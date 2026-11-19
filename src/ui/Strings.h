@@ -1,6 +1,14 @@
 #pragma once
 #include "engine/Devices.h"
 namespace rocker::cs {
+inline const juce::String sections=u8"Díly", sectionSplit=u8"Rozdělit díl zde", sectionRepeat=u8"Zopakovat díl",
+    sectionDetach=u8"Osamostatnit", sectionRestore=u8"Obnovit celou délku", sectionResize=u8"Délka výskytu",
+    sectionName=u8"Název dílu", sectionColour=u8"Barva pásky", sectionRename=u8"Uložit název",
+    sectionMove=u8"Přesunout díl", sharedRepair=u8"Opravit oba", ownRepair=u8"Jen tento výskyt",
+    repeatWarning=u8"Oprava se projeví ve všech spojených výskytech.",
+    totalBars=u8"taktů", outOf=u8" z ", linkedMark=u8"⧉", sectionCancel=u8"Zrušit";
+inline const juce::StringArray sectionNames{juce::String(u8"Úvod"),juce::String(u8"Sloka"),juce::String(u8"Refrén"),juce::String(u8"Most"),juce::String(u8"Sólo"),juce::String(u8"Závěr")};
+
 inline const juce::String repair = u8"P · Oprav takt", repairState = u8"OPRAVA", attemptLabel = u8"Pokus",
                           takeGroup = u8"Pokusy", keepAttempt = u8"Ponechat tenhle",
                           discardAttempt = u8"Zahodit pokus", nextAttempt = u8"Další pokus",

@@ -103,7 +103,18 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     bool editingTempo = false, diagnosing = false;
     int projectMonitor = 0;
     double lastTap = 0, lastArchive = 0;
-    Rect timelineArea, ruler;
+    Rect timelineArea, ruler, sectionStrip;
+    int selectedOccurrence=-1, cutBar=0, targetBar=0;
+    bool askingRepair=false, copyingSection=false;
+    juce::String sectionDraft;
+    enum class TapeAction { split, repeat, detach, restore, resize, name, colour, move };
+    void selectOccurrence(int);
+    void tapeAction(TapeAction,int value=0);
+    void sectionDeck(Rect);
+    void drawSections(juce::Graphics&);
+    void sectionDown(const juce::MouseEvent&);
+    void confirmRepair(bool independent);
+
     std::vector<Rect> lanes;
     int firstTrack = 0;
     std::map<juce::String, std::deque<std::pair<Frame, float>>> liveWaves;
@@ -138,7 +149,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int versionIndex = 0;
     bool browsingVersions = false;
     Frame anchorBar = 0;
-    enum class Drag { none, move, left, right, bars, takeLeft, takeRight };
+    enum class Drag { none, move, left, right, bars, takeLeft, takeRight, tapeEdge, tapeMove };
     Drag drag = Drag::none;
     Frame grabOffset = 0, dragTarget = 0;
     juce::Point<int> pointer;
