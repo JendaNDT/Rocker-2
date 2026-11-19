@@ -15,6 +15,13 @@ struct DrumSetup {
 struct Settings {
     std::map<juce::String, DrumSetup> drumSetups;
     int pedalKey = 0;
+    struct MidiSetup {
+        bool coupled=false, enabled=true;
+        std::map<int,int> pads;
+    };
+    juce::String midiDevice;
+    std::map<juce::String,MidiSetup> midiSetups;
+    std::map<juce::String,int> midiCorrections;
     std::vector<GuitarSound> guitarPresets;
     DeviceChoice device;
     bool visited = false, insurance = true;
