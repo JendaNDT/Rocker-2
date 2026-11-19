@@ -26,6 +26,22 @@ struct Clip {
     juce::String id, track, asset;
     Frame position = 0, offset = 0, length = 0;
 };
+struct Attempt {
+    bool operator==(const Attempt&) const = default;
+    juce::String id;
+    Frame created = 0;
+    bool discarded = false;
+    std::vector<Clip> clips;
+};
+struct TakeGroup {
+    bool operator==(const TakeGroup&) const = default;
+    juce::String id, track;
+    Frame from = 0, to = 0;
+    std::vector<Attempt> attempts;
+    int active = 0; // Zero selects the original track material.
+    int cycle() const;
+    bool discard();
+};
 struct Asset {
     bool operator==(const Asset&) const = default;
     juce::String id, path;
@@ -39,6 +55,9 @@ struct Song {
     std::vector<Track> tracks;
     std::vector<Clip> clips;
     std::vector<Asset> assets;
+    std::vector<TakeGroup> groups;
+    TakeGroup* groupAt(const juce::String& track, Frame from, Frame to);
+    bool addAttempt(Clip pass, Frame from, Frame to, Frame created);
     std::vector<Frame> dropouts;
     int bars = 8;
     Frame end() const;
@@ -56,6 +75,7 @@ struct ViewState {
     bool editing = false;
     Frame selectionStart = 0, selectionEnd = 0, firstBar = 0;
     juce::String selectedClip;
+    int leadBars = 2, tailBars = 1;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };
