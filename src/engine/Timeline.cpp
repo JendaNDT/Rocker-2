@@ -76,24 +76,26 @@ bool AudioLibrary::load(const Song& s, const File& dir) {
 }
 void Playback::updateMix(const Song& s) {
     const bool solo = std::any_of(s.tracks.begin(), s.tracks.end(), [](auto& t) { return t.solo; });
-    master.store(Decibels::decibelsToGain(s.masterDb,-96.f));
-    for(size_t i=0;i<strips.size();++i) {
-        auto& strip=*strips[i];
-        const auto& t=s.tracks[i];
+    master.store(Decibels::decibelsToGain(s.masterDb, -96.f));
+    for (size_t i = 0; i < strips.size(); ++i) {
+        auto& strip = *strips[i];
+        const auto& t = s.tracks[i];
         strip.audible.store(!t.mute && (!solo || t.solo));
-        const auto amplitude=Decibels::decibelsToGain(t.gainDb,-96.f);
-        const double p=t.pan;
-        double left=strip.channels==1 ? std::cos((p+1)*MathConstants<double>::pi/4) : (p>0 ? std::cos(p*MathConstants<double>::halfPi) : 1);
-        double right=strip.channels==1 ? std::sin((p+1)*MathConstants<double>::pi/4) : (p<0 ? std::cos(p*MathConstants<double>::halfPi) : 1);
-        strip.gain[0].store(p==1 ? 0.f : float(left)*amplitude);
-        strip.gain[1].store(p==-1 ? 0.f : float(right)*amplitude);
+        const auto amplitude = Decibels::decibelsToGain(t.gainDb, -96.f);
+        const double p = t.pan;
+        double left = strip.channels == 1 ? std::cos((p + 1) * MathConstants<double>::pi / 4)
+                                          : (p > 0 ? std::cos(p * MathConstants<double>::halfPi) : 1);
+        double right = strip.channels == 1 ? std::sin((p + 1) * MathConstants<double>::pi / 4)
+                                           : (p < 0 ? std::cos(p * MathConstants<double>::halfPi) : 1);
+        strip.gain[0].store(p == 1 ? 0.f : float(left) * amplitude);
+        strip.gain[1].store(p == -1 ? 0.f : float(right) * amplitude);
     }
 }
 Playback::Meter Playback::meter() const noexcept {
-    return {leftPeak.load(),rightPeak.load(),maxPeak.load(),loudest.load(),over.load()};
+    return {leftPeak.load(), rightPeak.load(), maxPeak.load(), loudest.load(), over.load()};
 }
 float Playback::trackPeak(size_t i) const noexcept {
-    return i<strips.size() ? strips[i]->peak.load() : 0.f;
+    return i < strips.size() ? strips[i]->peak.load() : 0.f;
 }
 void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
     auto& strip = *strips[track];
@@ -229,8 +231,8 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
     applied = word;
     next = at + size;
     const bool heard = audible.load();
-    float channelGain[]{gain[0].load(),gain[1].load()};
-    float level=0;
+    float channelGain[]{gain[0].load(), gain[1].load()};
+    float level = 0;
     // On start/seek feed the first delay samples before delivering output sample zero.
     for (int offset = restart ? -delay : 0; offset < size;) {
         int count = std::min(256, offset < 0 ? -offset : size - offset);
@@ -298,23 +300,24 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
             for (int ch = 0; ch < std::min(2, outputs); ++ch)
                 if (out[ch]) {
                     auto* source = block[std::min(ch, channels - 1)];
-                    for (int i = 0; i < count; ++i)
-                    {
-                        const float sample=source[i]*channelGain[ch];
-                        out[ch][offset+i]+=sample;
-                        level=std::max(level,std::abs(sample));
+                    for (int i = 0; i < count; ++i) {
+                        const float sample = source[i] * channelGain[ch];
+                        out[ch][offset + i] += sample;
+                        level = std::max(level, std::abs(sample));
                     }
                 }
         offset += count;
     }
-    peak.store(level);
+    blockPeak = std::max(blockPeak, level);
 }
 void Playback::mix(float* const* out, int outputs, int size, Frame at, const float* const* input,
                    int inputs, int inputOffset) noexcept {
     const ScopedNoDenormals guard;
-    const float masterGain=master.load();
-    float peaks[2]{}, maximum=maxPeak.load();
-    Frame maximumAt=loudest.load(), clipped=over.load();
+    for (auto& strip : strips)
+        strip->blockPeak = 0;
+    const float masterGain = master.load();
+    float peaks[2]{}, maximum = maxPeak.load();
+    Frame maximumAt = loudest.load(), clipped = over.load();
     for (int offset = 0; offset < size;) {
         Frame position = at + offset;
         auto next = std::upper_bound(cuts.begin(), cuts.end(), position);
@@ -332,33 +335,47 @@ void Playback::mix(float* const* out, int outputs, int size, Frame at, const flo
             float gain =
                 (float)std::min<Frame>({cutFade, position + i - before, after - position - i - 1}) /
                 cutFade;
-            for (int ch=0;ch<2;++ch) {
-                float value=gain*masterGain*block[ch][i];
-                float level=std::abs(value);
-                peaks[ch]=std::max(peaks[ch],level);
-                if(level>maximum) { maximum=level; maximumAt=position+i; }
-                if(level>1.f && clipped<0) clipped=position+i;
-                if(ch<outputs && out[ch]) out[ch][offset+i]+=value;
+            for (int ch = 0; ch < 2; ++ch) {
+                float value = gain * masterGain * block[ch][i];
+                float level = std::abs(value);
+                peaks[ch] = std::max(peaks[ch], level);
+                if (level > maximum) {
+                    maximum = level;
+                    maximumAt = position + i;
+                }
+                if (level > 1.f && clipped < 0)
+                    clipped = position + i;
+                if (ch < outputs && out[ch])
+                    out[ch][offset + i] += value;
             }
         }
         offset += n;
     }
-    leftPeak.store(peaks[0]); rightPeak.store(peaks[1]); maxPeak.store(maximum); loudest.store(maximumAt); over.store(clipped);
+    for (auto& strip : strips)
+        strip->peak.store(strip->blockPeak);
+    leftPeak.store(peaks[0]);
+    rightPeak.store(peaks[1]);
+    maxPeak.store(maximum);
+    loudest.store(maximumAt);
+    over.store(clipped);
 }
-bool renderSong(const Song& song, const AudioLibrary& library, const File& destination, Frame begin, Frame end) {
+bool renderSong(const Song& song, const AudioLibrary& library, const File& destination, Frame begin,
+                Frame end) {
     TemporaryFile output(destination);
     auto writer = waveWriter(output.getFile(), song.grid.rate, 2);
     if (!writer)
         return false;
     Playback mix(song, library);
     AudioBuffer<float> block(2, 1024);
-    if (end < 0) end = song.end() + mix.tailFrames();
-    if (begin < 0 || end <= begin) return false;
+    if (end < 0)
+        end = song.end() + 2 * song.grid.rate;
+    if (begin < 0 || end <= begin)
+        return false;
     for (Frame at = 0; at < end; at += block.getNumSamples()) {
         int count = (int)std::min<Frame>(block.getNumSamples(), end - at);
         block.clear();
         mix.mix(block.getArrayOfWritePointers(), 2, count, at);
-        const int skip = (int) std::clamp<Frame>(begin - at, 0, count);
+        const int skip = (int)std::clamp<Frame>(begin - at, 0, count);
         if (skip < count && !writer->writeFromAudioSampleBuffer(block, skip, count - skip))
             return false;
     }
@@ -456,10 +473,11 @@ bool Performance::drain() {
     return true;
 }
 void Performance::storeInputMarks(Song& song) const {
-    for(auto& t:takes)
-        if(t.inputOver>=0)
-            for(auto& track:song.tracks)
-                if(track.id==t.track) track.inputOver=t.inputOver;
+    for (auto& t : takes)
+        if (t.inputOver >= 0)
+            for (auto& track : song.tracks)
+                if (track.id == t.track)
+                    track.inputOver = t.inputOver;
 }
 void Performance::finishDisk() {
     stopping = true;
@@ -488,11 +506,12 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
             }
         for (auto& t : takes) {
             auto channel = [&](int c) { return c >= 0 && c < ni && in[c] ? in[c] + skip : nullptr; };
-            if (t.inputOver<0) {
-                auto left=channel(t.left),right=channel(t.right);
-                for(int i=0;i<n-skip;++i)
-                    if((left && std::abs(left[i])>=0.9885531f) || (right && std::abs(right[i])>=0.9885531f)) {
-                        t.inputOver=std::max<Frame>(start,clock+skip+i-compensation);
+            if (t.inputOver < 0) {
+                auto left = channel(t.left), right = channel(t.right);
+                for (int i = 0; i < n - skip; ++i)
+                    if ((left && std::abs(left[i]) >= 0.9885531f) ||
+                        (right && std::abs(right[i]) >= 0.9885531f)) {
+                        t.inputOver = std::max<Frame>(start, clock + skip + i - compensation);
                         break;
                     }
             }

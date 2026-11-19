@@ -747,15 +747,41 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
     REQUIRE(last.groups.back().attempts.size() == 2);
     CHECK(last.sections.at(last.order[2].section).name.endsWith("(2)"));
     key('3');
+    auto slider = find<Slider>(view, cs::gainLabel + " " + cs::guitar);
+    REQUIRE(slider);
+    slider->setValue(-3., sendNotificationSync);
+    key('S', ModifierKeys::ctrlModifier);
+    CHECK(read().tracks.at(0).gainDb == -3.f);
+    key(' '); // Live meters and the playhead use the same transport as Hraj.
+    test::FakeDevice::Block monitor{std::vector<float>(256)};
+    for (int i = 0; i < 9; ++i)
+        fake.process(monitor, 256);
+    view.resized();
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "18-mix", pixels);
+    key(' ');
+
     key('S');
     REQUIRE(read().tracks.at(ViewState::load(dir).selected).solo);
     fits(view);
-    for (int pixels : {1280,1920}) snapshot(view,"18-mix",pixels);
-    key('E',ModifierKeys::ctrlModifier);
-    REQUIRE(find<Button>(view,cs::exportSolo));
+    key('E', ModifierKeys::ctrlModifier);
+    REQUIRE(find<Button>(view, cs::exportSolo));
     fits(view);
-    for (int pixels : {1280,1920}) snapshot(view,"19-export",pixels);
-    click(view,cs::back);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "19-export", pixels);
+    click(view, cs::rangeOnly);
+    click(view, cs::exportSolo);
+    for (int i = 0; i < 150 && !find<Button>(view, cs::playMix); ++i) {
+        tick();
+        view.resized();
+    }
+    REQUIRE(find<Button>(view, cs::playMix));
+    auto files = dir.getChildFile("Export").findChildFiles(File::findFiles, false, "*.wav");
+    REQUIRE(files.size() == 1);
+    REQUIRE(waveReader(files[0])->lengthInSamples ==
+            ViewState::load(dir).selectionEnd - ViewState::load(dir).selectionStart);
+    click(view, cs::back);
     key('M');
     REQUIRE(read().tracks.at(ViewState::load(dir).selected).mute);
     key('1');

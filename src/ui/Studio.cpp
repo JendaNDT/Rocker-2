@@ -39,6 +39,8 @@ class Action final : public Button {
         return skin.font(mode == recording || mode == newSong ? s::heading : s::body, false, true);
     }
     void paintButton(Graphics& g, bool over, bool down) override {
+        if (!isEnabled())
+            g.beginTransparencyLayer(s::disabledOpacity);
         auto bounds = getLocalBounds().toFloat().reduced(s::hairline);
         const bool active = mode == primary || mode == selected;
         g.setColour(mode == clipButton ? s::clipping
@@ -77,6 +79,8 @@ class Action final : public Button {
             g.setColour(s::muted);
             g.drawText(shortcut, area.removeFromRight(s::keyWidth), Justification::centredRight, false);
         }
+        if (!isEnabled())
+            g.endTransparencyLayer();
     }
 
   private:

@@ -44,14 +44,14 @@ void preventSleep(bool active) {
     Desktop::setScreenSaverEnabled(!active);
 #endif
 }
-String limit(const Font& f, String value, int width) {
+} // namespace
+String Studio::limit(const Font& f, String value, int width) {
     if (GlyphArrangement::getStringWidth(f, value) <= width)
         return value;
     while (value.isNotEmpty() && GlyphArrangement::getStringWidth(f, value + String(u8"…")) > width)
         value = value.dropLastCharacters(1);
     return value + String(u8"…");
 }
-} // namespace
 void Studio::newProject() {
     editingTempo = false;
     draftTitle = cs::untitled;
@@ -85,7 +85,9 @@ void Studio::openProject(File dir) {
         return;
     }
     finishProject();
-    exporting=false; delivered={}; lastMeter={};
+    exporting = false;
+    delivered = {};
+    lastMeter = {};
     selectedOccurrence = -1;
     askingRepair = false;
     const bool sameProject = projectDir == dir;
@@ -280,7 +282,8 @@ void Studio::stopProject(bool automatic) {
     preview = -1;
     previewGroup.clear();
     auto p = std::move(performance);
-    if (!testingLoad && !diagnosing) lastMeter=p->playback.meter();
+    if (!testingLoad && !diagnosing)
+        lastMeter = p->playback.meter();
     p->finishDisk();
     if (p->recording)
         preventSleep(false);
@@ -536,17 +539,28 @@ void Studio::projectPage(Rect area) {
             repaint();
         });
     }
+    if (!view.mixing && soloNames().isNotEmpty()) {
+        auto room = top.withTrimmedRight(s::fieldWidth);
+        text(limit(skin.font(s::caption), cs::soloStatus + soloNames(), room.getWidth()), room,
+             s::caption, s::warning);
+    }
     auto modes = row(area);
     button(
-        cs::playMode, cell(modes, s::compactButton), [this] { editMode(false); }, (view.editing || view.mixing) ? 0 : 1);
+        cs::playMode, cell(modes, s::compactButton), [this] { editMode(false); },
+        (view.editing || view.mixing) ? 0 : 1);
     button(
         cs::editMode, cell(modes, s::compactButton), [this] { editMode(true); }, view.editing ? 1 : 0);
-    button(cs::mixMode,cell(modes,s::compactButton),[this] { mixMode(false); },view.mixing ? 1:0);
-    if(view.mixing) {
-        button(cs::sendMix,cell(modes,s::clipWidth),[this] { mixMode(true); });
-        auto names=soloNames();
-        text(limit(skin.font(s::body),cs::soloStatus+(names.isEmpty()?cs::noSolo:names),modes.getWidth()),modes,s::body,names.isEmpty()?s::muted:s::warning);
-        if(exporting) exportPage(area); else mixPage(area);
+    button(cs::mixMode, cell(modes, s::compactButton), [this] { mixMode(false); }, view.mixing ? 1 : 0);
+    if (view.mixing) {
+        button(cs::sendMix, cell(modes, s::clipWidth), [this] { mixMode(true); });
+        auto names = soloNames();
+        text(limit(skin.font(s::body), cs::soloStatus + (names.isEmpty() ? cs::noSolo : names),
+                   modes.getWidth()),
+             modes, s::body, names.isEmpty() ? s::muted : s::warning);
+        if (exporting)
+            exportPage(area);
+        else
+            mixPage(area);
         return;
     }
     if (!performance)
@@ -787,8 +801,10 @@ void Studio::paintProject(Graphics& g) {
         g.drawText(clock, r, Justification::centred);
         return;
     }
-    if (view.mixing && exporting) return;
-    if (view.mixing) paintMix(g);
+    if (view.mixing && exporting)
+        return;
+    if (view.mixing)
+        paintMix(g);
     if (rec) {
         g.setColour(s::recording);
         g.fillRect(getLocalBounds().removeFromTop(s::statusStrip + s::inset));
@@ -911,8 +927,13 @@ void Studio::paintProject(Graphics& g) {
 void Studio::mouseDown(const MouseEvent& event) {
     if (page != Page::project || performance || view.distant)
         return;
-    if(view.mixing && exporting) return;
-    if(view.mixing && (sectionStrip.withTrimmedLeft(s::trackHead).contains(event.getPosition()) || timelineArea.withTrimmedLeft(s::trackHead).contains(event.getPosition()))) { seekMix(frameAt(event.x)); return; }
+    if (view.mixing && exporting)
+        return;
+    if (view.mixing && (sectionStrip.withTrimmedLeft(s::trackHead).contains(event.getPosition()) ||
+                        timelineArea.withTrimmedLeft(s::trackHead).contains(event.getPosition()))) {
+        seekMix(frameAt(event.x));
+        return;
+    }
     if (sectionStrip.withTrimmedLeft(s::trackHead).contains(event.getPosition())) {
         if (!view.editing)
             editMode(true);

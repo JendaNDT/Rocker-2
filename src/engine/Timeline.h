@@ -41,7 +41,10 @@ class Playback {
     void setPunch(size_t track, Frame from, Frame to, int left, int right, bool clean);
     void mix(float* const*, int outputs, int size, Frame at, const float* const* input = nullptr,
              int inputs = 0, int inputOffset = 0) noexcept;
-    struct Meter { float left=0, right=0, maximum=0; Frame loudest=-1, over=-1; };
+    struct Meter {
+        float left = 0, right = 0, maximum = 0;
+        Frame loudest = -1, over = -1;
+    };
     Meter meter() const noexcept;
     float trackPeak(size_t index) const noexcept;
     Frame tailFrames() const { return tail; }
@@ -67,10 +70,11 @@ class Playback {
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
         std::atomic<bool> audible{true};
-        std::atomic<float> gain[2]{{1},{1}}, peak{0};
+        std::atomic<float> gain[2]{{1}, {1}}, peak{0};
         AmpCommand command;
         std::uint64_t applied = 0;
         Frame next = -1;
+        float blockPeak = 0;
         int channels = 1;
         void read(const std::vector<PlaybackClip>&, float (&block)[2][256], int count,
                   Frame at) const noexcept;
@@ -81,12 +85,13 @@ class Playback {
     bool hasClips = false;
     Frame tail = 0;
 };
-bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination, Frame begin = 0, Frame end = -1);
+bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination, Frame begin = 0,
+                Frame end = -1);
 struct Take {
     Asset asset;
     juce::String track;
     int left = -1, right = -1;
-    Frame inputOver=-1;
+    Frame inputOver = -1;
     std::unique_ptr<CaptureQueue> queue;
     std::unique_ptr<juce::AudioFormatWriter> writer;
 };

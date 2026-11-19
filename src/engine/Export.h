@@ -10,10 +10,10 @@ struct MixFile {
     Frame begin = 0;
 };
 // A range ends at its exclusive boundary. Whole-song delivery includes the effect tail.
-MixFile exportMix(const Song&, const AudioLibrary&, const juce::File&, Delivery,
-                  Frame begin = 0, Frame end = -1);
+MixFile exportMix(const Song&, const AudioLibrary&, const juce::File&, Delivery, Frame begin = 0,
+                  Frame end = -1);
 bool mp3Available();
 bool encodeMp3(const juce::File& pcm, const juce::File& destination);
 std::optional<Frame> decodedMp3Frames(const juce::File&);
 std::optional<bool> containsClick(const juce::File&, const BeatGrid&, Frame start = 0);
-}
+} // namespace rocker

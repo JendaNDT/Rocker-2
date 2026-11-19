@@ -144,6 +144,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void attemptDeck(TakeGroup&, Rect);
     void stopProject(bool automatic = false);
     void projectTick();
+    static juce::String limit(const juce::Font&, juce::String, int width);
     void mixMode(bool exportPanel);
     void mixPage(Rect);
     void exportPage(Rect);

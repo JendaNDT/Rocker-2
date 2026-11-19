@@ -121,7 +121,11 @@ var Song::json() const {
                        {"vstup", object({{"nazvy", var(t.inputs)}})},
                        {"nahravat", t.armed},
                        {"amp", t.kind == "kytara" ? t.amp.json() : var()},
-                       {"mix", object({{"mute", t.mute}, {"solo", t.solo}, {"gainDb", t.gainDb}, {"pan",t.pan}, {"vstupPres", t.inputOver}})}}));
+                       {"mix", object({{"mute", t.mute},
+                                       {"solo", t.solo},
+                                       {"gainDb", t.gainDb},
+                                       {"pan", t.pan},
+                                       {"vstupPres", t.inputOver}})}}));
     auto encode = [](const Section& sec) {
         Array<var> cs;
         for (auto& c : sec.clips)
@@ -178,7 +182,8 @@ var Song::json() const {
     return object({{"schemaVersion", 1},
                    {"nazev", title},
                    {"sampleRate", grid.rate},
-                   {"tempoBpm", grid.bpm}, {"masterDb",masterDb},
+                   {"tempoBpm", grid.bpm},
+                   {"masterDb", masterDb},
                    {"metrum", object({{"dobyVTaktu", grid.beats}, {"jednotka", grid.unit}})},
                    {"ladeni", object({{"id", tuning}, {"komorniA", 440}})},
                    {"stopy", ts},
@@ -196,7 +201,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
     Song s;
     s.title = field(v, "nazev").toString().trim();
     s.grid.rate = field(v, "sampleRate", 48000);
-    s.masterDb = jlimit(-96.f,6.f,(float)field(v,"masterDb",0));
+    s.masterDb = jlimit(-96.f, 6.f, (float)field(v, "masterDb", 0));
     s.grid.bpm = field(v, "tempoBpm", 112.);
     auto meter = field(v, "metrum");
     s.grid.beats = field(meter, "dobyVTaktu", 4);
@@ -219,11 +224,12 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         x.armed = field(t, "nahravat");
         x.mute = field(field(t, "mix"), "mute");
         x.solo = field(field(t, "mix"), "solo");
-        auto mix=field(t,"mix");
-        if (field(mix,"gainDb").isVoid()) legacyMix.insert(x.id);
-        x.gainDb=jlimit(-96.f,6.f,(float)field(mix,"gainDb",0));
-        x.pan=jlimit(-1.f,1.f,(float)field(mix,"pan",0));
-        x.inputOver=field(mix,"vstupPres",-1);
+        auto mix = field(t, "mix");
+        if (field(mix, "gainDb").isVoid())
+            legacyMix.insert(x.id);
+        x.gainDb = jlimit(-96.f, 6.f, (float)field(mix, "gainDb", 0));
+        x.pan = jlimit(-1.f, 1.f, (float)field(mix, "pan", 0));
+        x.inputOver = field(mix, "vstupPres", -1);
         s.tracks.push_back(x);
     }
     for (auto& a : items(v, "zvuky")) {
@@ -332,23 +338,30 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
     // Earlier versions duplicated mono audio at unity into each speaker.
     std::set<String> stereoAssets, recorded, stereoTracks;
     for (const auto& asset : s.assets)
-        if (asset.channels==2) stereoAssets.insert(asset.id);
-    auto inspect=[&](const std::vector<Clip>& clips) {
+        if (asset.channels == 2)
+            stereoAssets.insert(asset.id);
+    auto inspect = [&](const std::vector<Clip>& clips) {
         for (auto& clip : clips) {
             recorded.insert(clip.track);
-            if (stereoAssets.contains(clip.asset)) stereoTracks.insert(clip.track);
+            if (stereoAssets.contains(clip.asset))
+                stereoTracks.insert(clip.track);
         }
     };
     if (!legacyMix.empty()) {
         inspect(s.clips);
-        for (auto& group:s.groups) for(auto& attempt:group.attempts) inspect(attempt.clips);
-        for (auto& [id,section]:s.sections) {
+        for (auto& group : s.groups)
+            for (auto& attempt : group.attempts)
+                inspect(attempt.clips);
+        for (auto& [id, section] : s.sections) {
             inspect(section.clips);
-            for (auto& group:section.groups) for(auto& attempt:group.attempts) inspect(attempt.clips);
+            for (auto& group : section.groups)
+                for (auto& attempt : group.attempts)
+                    inspect(attempt.clips);
         }
-        for(auto& track:s.tracks)
-            if(legacyMix.contains(track.id) && recorded.contains(track.id) && track.inputs.size()<2 && !stereoTracks.contains(track.id))
-                track.gainDb=3.0103f;
+        for (auto& track : s.tracks)
+            if (legacyMix.contains(track.id) && recorded.contains(track.id) && track.inputs.size() < 2 &&
+                !stereoTracks.contains(track.id))
+                track.gainDb = 3.0103f;
     }
     for (auto m : items(v, "vypadky"))
         if ((Frame)m >= 0)
@@ -387,7 +400,8 @@ bool ViewState::save(const File& d) const {
                                                                 {"zdalky", distant},
                                                                 {"klik", click},
                                                                 {"odpocet", countIn},
-                                                                {"strihej", editing}, {"michej",mixing},
+                                                                {"strihej", editing},
+                                                                {"michej", mixing},
                                                                 {"vyberOd", selectionStart},
                                                                 {"vyberDo", selectionEnd},
                                                                 {"prvniTakt", firstBar},
@@ -409,7 +423,8 @@ ViewState ViewState::load(const File& d) {
             juce::jlimit<Frame>(0, 999999, field(v, "prvniTakt")),
             field(v, "vybranyKlip").toString(),
             jlimit(0, 8, (int)field(v, "predstih", 2)),
-            jlimit(0, 8, (int)field(v, "dohra", 1)), (bool)field(v,"michej",false)};
+            jlimit(0, 8, (int)field(v, "dohra", 1)),
+            (bool)field(v, "michej", false)};
 }
 std::unique_ptr<AudioFormatWriter> waveWriter(const File& file, int rate, int channels) {
     std::unique_ptr<OutputStream> stream = file.createOutputStream();

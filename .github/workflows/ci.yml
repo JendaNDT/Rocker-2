@@ -56,6 +56,14 @@ jobs:
               detail = result.stdout[-6000:].replace("%", "%25").replace("\n", "%0A").replace("\r", "%0D")
               print(f"::error title=StudioSuite::{detail}")
           raise SystemExit(result.returncode)
+      - name: MP3 encoder result (A-12)
+        if: runner.os == 'Windows'
+        shell: python
+        run: |
+          import subprocess
+          result = subprocess.run(["build/StudioTests_artefacts/Release/StudioTests.exe", "A-12*"])
+          # Catch2 returns 4 when every selected case explicitly skips.
+          raise SystemExit(0 if result.returncode == 4 else result.returncode)
       - name: Debug audio callback audit
         if: runner.os == 'macOS'
         run: |
