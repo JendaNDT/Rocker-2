@@ -5,7 +5,8 @@
 [Setup]
 AppId={{E16900AC-A2E7-458B-BD35-3EFA90DE39FC}
 AppName=Rocker 2
-AppVersion=1.0.0
+AppVersion={#AppSemVer}
+VersionInfoVersion={#AppSemVer}
 AppPublisher=Rocker 2
 DefaultDirName={localappdata}\Programs\Rocker 2
 DefaultGroupName=Rocker 2

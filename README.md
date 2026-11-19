@@ -4,17 +4,15 @@ Domácí studio pro kytaru a bicí. Můžeš nahrát bicí, dohrát k nim kytaru
 
 Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hotové aplikace. Během vývoje se každá etapa ověřuje automaticky.
 
-## Závěrečné sestavení E18
+## Jak poznáš sestavení 1.1.0
 
-Pro společné zkoušky si stáhni balík pro svůj počítač. Přihlas se na GitHub a v tabulce u svého systému klikni na **Aplikace**. Stažený ZIP obsahuje další ZIP se samotnou aplikací. Pro Windows je přiložen i instalátor. Balík pro Mac funguje na čipech Apple i Intel. [Závěrečné balíky a snímky](https://github.com/JendaNDT/Rocker-2/pull/21)
-
-[Postup společných ručních zkoušek](docs/PREDANI.md#3-ruční-zkoušky)
+Ve verzi 1.1.0 najdeš vlevo samostatný **Metronom** a ve skladbě režimy **Hraj**, **Stříhej** a **Míchej**. Číslo verze najdeš také ve vlastnostech aplikace. Balík pro Mac vyžaduje **macOS 26.0 nebo novější** a obsahuje aplikaci pro Apple Silicon i Intel. [Sestavení na GitHubu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Amain) · [Postup společných ručních zkoušek](docs/PREDANI.md#3-ruční-zkoušky)
 
 ## Rozložení 1b
 
 Na levé liště jsou **Úvod**, **Nápady**, režimy **Hraj / Stříhej / Míchej**, **Metronom**, **Ladička** a **Zapojení**. Ve skladbě jsou přehrávání a nahrávání dole. U každé stopy ji můžeš připravit, ztlumit nebo pustit sólo. Pravý panel se mění podle režimu. V Míchej ho můžeš sbalit tlačítkem v záhlaví, aby časová osa měla víc místa. [Plán redesignu](docs/07_PLAN_REDESIGNU_1B.md)
 
-V transportu klikni na **Klik**, **Rytmus** nebo **Bez kliku**, pokud chceš vodítko jedním stiskem zapnout nebo vypnout. Chceš-li změnit jeho druh, hlasitost nebo zvuk, otevři **Metronom** z lišty nebo klikni na BPM ve skladbě. Tempo můžeš naťukat osmi stisky mezerníku a vyzkoušet tlačítkem **Přehrát**. Volba **Použít ve skladbě** uloží nastavení a vrátí tě na stejný takt. Odpočet se nastavuje zvlášť.
+V transportu klikni na **Klik**, **Rytmus** nebo **Bez kliku**, pokud chceš vodítko jedním stiskem zapnout nebo vypnout. Chceš-li změnit jeho druh, hlasitost nebo zvuk, otevři **Metronom** z lišty nebo klikni na BPM ve skladbě. Tempo můžeš naťukat osmi stisky mezerníku a vyzkoušet tlačítkem **Přehrát**. Volba **Použít ve skladbě** uloží nastavení a vrátí tě na stejný takt. Odpočet se nastavuje zvlášť. Pokud se uložení nezdaří, Metronom zůstane otevřený. Po uvolnění místa nebo obnovení přístupu ke složce stiskni **Použít ve skladbě** ještě jednou.
 
 ### Když metronom neslyšíš
 
@@ -25,20 +23,22 @@ Ve skladbě **K** zapíná nebo vypíná vodítko i během přehrávání a nahr
 
 **Smyčka** v transportu přehrává označené takty opakovaně. Pokud chceš uložit každý průchod jako nový pokus, použij **Stříhej → Nahrávat dokola**. Pro přepínání pokusů zmáčkni **Tab**, volbu potvrď **Enterem**.
 
-## Stažení v1.0.0 a spuštění
+## Stažení a spuštění
+
+Na stránce vydání zkontroluj číslo verze. Pro zkoušky redesignu vyber **1.1.0** nebo odpovídající sestavení z Actions podle bodu 4. [Přehled vydání](https://github.com/JendaNDT/Rocker-2/releases)
 
 | Počítač | Co stáhnout |
 |---|---|
-| Windows, Intel nebo AMD | [Instalátor x64](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Setup-x64.exe) nebo [přenosný ZIP](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Windows-x64.zip) |
-| Windows, procesor ARM (například Snapdragon) | [Instalátor ARM64](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Setup-ARM64.exe) nebo [přenosný ZIP](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Windows-ARM64.zip) |
-| Mac s čipem Apple | [ZIP s aplikací pro Mac](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Mac.zip) |
+| Windows, Intel nebo AMD | [Instalátor x64](https://github.com/JendaNDT/Rocker-2/releases/latest/download/Rocker2-Setup-x64.exe) nebo [přenosný ZIP](https://github.com/JendaNDT/Rocker-2/releases/latest/download/Rocker2-Windows-x64.zip) |
+| Windows, procesor ARM (například Snapdragon) | [Instalátor ARM64](https://github.com/JendaNDT/Rocker-2/releases/latest/download/Rocker2-Setup-ARM64.exe) nebo [přenosný ZIP](https://github.com/JendaNDT/Rocker-2/releases/latest/download/Rocker2-Windows-ARM64.zip) |
+| Mac | [ZIP s aplikací pro Mac](https://github.com/JendaNDT/Rocker-2/releases/latest/download/Rocker2-Mac.zip) |
 
 1. Ve Windows najdeš typ procesoru v **Nastavení → Systém → O systému → Typ systému**. Spusť odpovídající instalátor pod svým běžným účtem. Používáš-li ZIP, rozbal jej a otevři **Rocker 2.exe**. U SmartScreenu při spuštění souboru z tohoto vydání otevři **Další informace → Přesto spustit**. Při odinstalování zůstanou tvoje skladby na disku.
 2. Na Macu rozbal ZIP, přesuň **Rocker 2.app** do Aplikací a spusť ji. Povol vstup mikrofonu pro nahrávání a měřiče. Pokud macOS zastaví první spuštění, otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít**.
-3. V **Zapojení** vyber zvukovku a vyzkoušej tón ve sluchátkách. Na úvod se dostaneš tlačítkem **Úvodní obrazovka**. [Vydání, snímky a kontrolní součty](https://github.com/JendaNDT/Rocker-2/releases/tag/v1.0.0)
+3. V **Zapojení** vyber zvukovku a vyzkoušej tón ve sluchátkách. Na úvod se dostaneš tlačítkem **Úvodní obrazovka**. [Vydání, snímky a kontrolní součty](https://github.com/JendaNDT/Rocker-2/releases/latest)
 4. Vývojová sestavení jsou také na GitHub Actions. Otevři zelený běh **Rocker 2**, dole v **Artifacts** zvol aplikaci nebo snímky pro svůj systém. GitHub při stahování z Actions vyžaduje přihlášení. [Běhy sestavení](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml)
 
-V sestavení E18 můžeš na Macu v nabídce **Poslat mix…** zvolit **M4A (AAC) · 256 kb/s**, pokud chceš menší soubor k poslechu.
+Na Macu můžeš v nabídce **Poslat mix…** zvolit **M4A (AAC) · 256 kb/s**, pokud chceš menší soubor k poslechu.
 
 ## Přenos skladby a kontrola sestavy
 

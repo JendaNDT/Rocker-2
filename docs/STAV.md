@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## Příprava vydání 1.1.0
+
+Při zablokovaném zápisu dostaneš u výběru pokusu a při změně tempa zprávu o tom, co se podařilo uložit. Stejnou volbu můžeš po obnovení zápisu zopakovat. Číslo pro aplikaci, instalátory a vydání určuje společný soubor VERSION. Balík pro Mac vyžaduje macOS 26.0 nebo novější na čipu Apple i Intel. [Zkoušky a balíky této změny](https://github.com/JendaNDT/Rocker-2/pull/25)
+
 ## Kontrola aplikace a metronomu
 
 Zkoušky výchozí verze zopakovaly ticho po spuštění z Nápadů, zablokované přepnutí kliku během hraní a přerušení zvuku při oznámení systému o zařízeních. Při 112 BPM se samostatný klik navíc po několika taktech rozešel s přesnou polohou doby. Nové zkoušky měří výstup po spuštění z jednotlivých obrazovek, zapnutí za běhu, mono i stereo při 44,1, 48 a 96 kHz, ztrátu výstupu a absenci kliku v uloženém záběru. Poslech konkrétní zvukovky čeká na ruční zkoušku. [Návod](../README.md#když-metronom-neslyšíš) · [Testy, balíky a snímky](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Akontrola-metronomu)

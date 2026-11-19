@@ -2,6 +2,8 @@
 
 ## 1. Hotovo
 
+Při výběru pokusu Rocker potvrdí uložení až po zápisu na disk. Pokud selže zápis tempa, Metronom zůstane otevřený. Pokud se tempo uložilo a selhal až zápis voleb kliku, hláška to rozliší. Po odstranění příčiny stačí znovu stisknout stejné tlačítko. Sestavení 1.1.0 pro Mac vyžaduje macOS 26.0 nebo novější. [Opravy ukládání a ověření balíků](https://github.com/JendaNDT/Rocker-2/pull/25)
+
 Samostatný Metronom zahraje při otevření z Nápadů i ze skladby s vypnutým klikem. Ve skladbě můžeš vodítko přepnout klávesou K také během záznamu. Automatická kontrola sleduje oba výstupy až po zvukové vzorky, čas jednotlivých úderů a čistý uložený záznam. V balíku sestavení najdeš srovnávací WAV s osmi údery při 112 BPM. [Návod k poslechu](../README.md#když-metronom-neslyšíš) · [Běhy a balíky opravy](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Akontrola-metronomu)
 
 Ve skladbě přibyly akce pro poslech a opakování právě uloženého záběru, zachování místa při přepnutí režimu, vypnutí odposlechu během záznamu a volba náhradního vstupu u konkrétní stopy. Před změnou automatická zkouška zachytila všechny čtyři původní potíže. Výsledky běhů, snímky a balíky patří ke konkrétní revizi v PR. [PR č. 23](https://github.com/JendaNDT/Rocker-2/pull/23) · [Návod](../README.md#jak-si-poslechnout-poslední-pokus)
@@ -18,7 +20,7 @@ Vyzkoušet skutečnou zvukovku, celou píseň, poslech exportu a znovuotevření
 
 **Čeká na Jendu po vydání.** Nahraj stejný riff dvakrát, porovnej pokusy a přepni během poslechu na Stříhej. S přímým odposlechem na zvukovce zkus vypnout odposlech v Rockeru. Nakonec při krátkém záznamu odpoj zvukovku, ověř zachráněný úsek a přiřaď vstup zpět.
 
-1. Stáhni balík redesignu pro svůj počítač. Otevři Zapojení a vyber skutečnou zvukovku. Poslechni zkušební tón a zkus měřič kytary.
+1. Stáhni sestavení 1.1.0 pro svůj počítač. Otevři Zapojení a vyber skutečnou zvukovku. Poslechni zkušební tón a zkus měřič kytary.
 2. Změň složku skladeb a nahraj riff do Nápadů. Přehraj jej a založ z něj píseň. Otevři Metronom, vyzkoušej dva zvuky při různých hlasitostech a použij Rytmus ve skladbě.
 3. V režimu Stříhej označ takty. Zkus je nahrát dokola pětkrát a vyber pokus pomocí Tab. Poznamenej, jak zní návrat na začátek smyčky.
 4. Přidej bicí, podle potřeby baskytaru nebo zpěv. Zkus přehození předvoleb a dokonči celou píseň. V Míchej sbal pravý panel a porovnej šířku osy. Přehraj vývoz pro telefon a zkus vložit samostatné stopy do jiného studia.
