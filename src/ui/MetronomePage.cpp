@@ -32,7 +32,7 @@ void Studio::stopMetronome() {
 }
 
 void Studio::startMetronome() {
-    if (!link.online)
+    if (!link.online || link.caps.outputChannels == 0)
         return;
     Song clockSong;
     clockSong.grid = metroGrid;
@@ -107,8 +107,9 @@ void Studio::metronomePage(Rect workspace) {
     main.removeFromTop(s::gap);
     auto controls = main.removeFromTop(s::transport).withSizeKeepingCentre(
         2 * s::nameWidth + s::gap, s::transport);
+    const bool audible = link.online && link.caps.outputChannels > 0;
     button(metronome ? cs::stopSong : cs::playSong, controls.removeFromLeft(s::nameWidth),
-           [this] { toggleMetronome(); }, primary)->setEnabled(link.online);
+           [this] { toggleMetronome(); }, primary)->setEnabled(audible);
     controls.removeFromLeft(s::gap);
     button(metroTapping ? cs::tapCancel : cs::tap, controls, [this] {
         metroTapping = !metroTapping;
@@ -116,8 +117,10 @@ void Studio::metronomePage(Rect workspace) {
         triggerAsyncUpdate();
     });
     auto caption = main.removeFromTop(s::button).withSizeKeepingCentre(s::fieldWidth, s::button);
-    text(link.online ? metroTapping ? cs::tapHint + " " + String(metroTaps.size()) + " / 8" : String{}
-                     : cs::noDeviceSong, caption, s::caption, link.online ? s::muted : s::warning);
+    auto note = !link.online ? cs::noDeviceSong : !audible ? cs::noOutput
+                 : metroTapping ? cs::tapHint + " " + String(metroTaps.size()) + " / 8" : String{};
+    text(limit(skin.font(s::caption), note, caption.getWidth()), caption, s::caption,
+         audible ? s::muted : s::warning);
 
     auto panel = inspectorBounds.reduced(s::inset);
     auto row = [&] {

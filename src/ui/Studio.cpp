@@ -847,17 +847,18 @@ void Studio::makeHome(Rect area) {
         text(cs::emptySongs, area.removeFromTop(s::button), s::body, s::muted);
         return;
     }
+    const bool paginate = recent.size() > std::max(1, area.getHeight() / s::workspaceHeader);
+    auto pagination = paginate ? area.removeFromBottom(s::button) : Rect{};
     const int visible = std::max(1, area.getHeight() / s::workspaceHeader);
     recentOffset = jlimit(0, std::max(0, recent.size() - visible), recentOffset);
-    if (recent.size() > visible) {
-        auto pagination = area.removeFromBottom(s::button);
+    if (paginate) {
         button(cs::prevTracks, pagination.removeFromLeft(s::clipWidth), [this, visible] {
-            recentOffset -= std::max(1, visible - 1);
+            recentOffset -= visible;
             triggerAsyncUpdate();
         })->setEnabled(recentOffset > 0);
         pagination.removeFromLeft(s::gap);
         button(cs::nextTracks, pagination.removeFromLeft(s::clipWidth), [this, visible] {
-            recentOffset += std::max(1, visible - 1);
+            recentOffset += visible;
             triggerAsyncUpdate();
         })->setEnabled(recentOffset + visible < recent.size());
     }

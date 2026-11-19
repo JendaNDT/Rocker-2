@@ -1497,6 +1497,9 @@ TEST_CASE("A-17 redesign keeps the transport stable and gives the mixer a collap
     settings.lastSong = dir.getFullPathName();
     REQUIRE(settings.save(temp.file));
     Studio studio(fake, temp.file);
+    fits(studio);
+    for (int pixels : {1280, 1920})
+        snapshot(studio, "40-uvod-skladba", pixels);
     click(studio, cs::resume);
     fits(studio);
     const auto bounds = [&](const String& title) {
