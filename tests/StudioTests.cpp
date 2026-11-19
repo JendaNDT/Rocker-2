@@ -590,7 +590,7 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
                  poll < 60 && !rescue.findChildFiles(File::findFiles, false, "*.json").isEmpty(); ++poll)
                 tick();
             auto journals = rescue.findChildFiles(File::findFiles, false, "*.json");
-            INFO(journals.isEmpty() ? std::string{} : journals[0].loadFileAsString().toStdString());
+            INFO((journals.isEmpty() ? std::string{} : journals[0].loadFileAsString().toStdString()));
             REQUIRE(journals.isEmpty());
             view.resized();
             auto saved = Song::load(folder, bad);
