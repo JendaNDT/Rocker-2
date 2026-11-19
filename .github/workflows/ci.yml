@@ -88,11 +88,24 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./packaging/check-installer.ps1 -TargetArch ${{ matrix.arch }}
+      - name: Build and verify the universal Mac application
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          prefix="$(brew --prefix llvm)"
+          cmake -S . -B build-universal -G "Ninja Multi-Config" -DBUILD_TESTING=OFF \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DFETCHCONTENT_SOURCE_DIR_JUCE="$PWD/build/_deps/juce-src" -DFETCHCONTENT_SOURCE_DIR_MINIZ="$PWD/build/_deps/miniz-src" \
+            -DFETCHCONTENT_SOURCE_DIR_LIBSAMPLERATE="$PWD/build/_deps/libsamplerate-src" \
+            -DCMAKE_C_COMPILER="$prefix/bin/clang" -DCMAKE_CXX_COMPILER="$prefix/bin/clang++"
+          cmake --build build-universal --config Release --target Rocker2 --parallel 3
+          app="build-universal/Rocker2_artefacts/Release/Rocker 2.app/Contents/MacOS/Rocker 2"
+          lipo -verify_arch arm64 x86_64 "$app"
+          lipo -archs "$app"
       - name: Package macOS
         if: runner.os == 'macOS'
         run: |
           mkdir pack
-          cp -R "build/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
+          cp -R "build-universal/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
           cp build/_deps/miniz-src/LICENSE pack/miniz-LICENSE.txt
           cp assets/drums/CC0-1.0.txt pack/Drums-CC0.txt
           cp build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
