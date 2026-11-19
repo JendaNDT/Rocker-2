@@ -1,6 +1,6 @@
 # Rocker 2 · čtyři vylepšení při nahrávání
 
-Plán navazuje na [redesign 1b](07_PLAN_REDESIGNU_1B.md) ve verzi `375ed0f` z [PR č. 22](https://github.com/JendaNDT/Rocker-2/pull/22). Popisuje práci ve skladbě. Všechny čtyři kroky čekají na implementaci. První přijde na řadu poslech záběru, protože ho muzikant využije po každém pokusu.
+Plán navazuje na [redesign 1b](07_PLAN_REDESIGNU_1B.md) ve verzi `375ed0f` z [PR č. 22](https://github.com/JendaNDT/Rocker-2/pull/22). Popisuje práci ve skladbě. Změny a výsledky zkoušek všech čtyř kroků jsou v [PR č. 23](https://github.com/JendaNDT/Rocker-2/pull/23).
 
 ## 1. Po zastavení si poslechnout záběr nebo nahrát další
 

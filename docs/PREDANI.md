@@ -1,6 +1,8 @@
-# Předání Rockeru 2 · redesign 1b
+# Předání Rockeru 2 · nahrávání a odposlech
 
 ## 1. Hotovo
+
+Ve skladbě přibyly akce pro poslech a opakování právě uloženého záběru, zachování místa při přepnutí režimu, vypnutí odposlechu během záznamu a volba náhradního vstupu u konkrétní stopy. Před změnou automatická zkouška zachytila všechny čtyři původní potíže. Výsledky běhů, snímky a balíky patří ke konkrétní revizi v PR. [PR č. 23](https://github.com/JendaNDT/Rocker-2/pull/23) · [Návod](../README.md#jak-si-poslechnout-poslední-pokus)
 
 Redesign přidává boční lištu, stálý transport, ovládání stop, sbalitelný panel mixu, samostatný Metronom a nový Úvod, Ladičku i Zapojení. Automatická kontrola vykreslí obrazovky v 1280 × 720 i 1920 × 1080 při 150 %. [Plán](07_PLAN_REDESIGNU_1B.md) · [Sestavení redesignu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aredesign-1b)
 
@@ -12,6 +14,8 @@ Vyzkoušet skutečnou zvukovku, celou píseň, poslech exportu a znovuotevření
 
 ## 3. Ruční zkoušky
 
+**Čeká na Jendu po vydání.** Nahraj stejný riff dvakrát, porovnej pokusy a přepni během poslechu na Stříhej. S přímým odposlechem na zvukovce zkus vypnout odposlech v Rockeru. Nakonec při krátkém záznamu odpoj zvukovku, ověř zachráněný úsek a přiřaď vstup zpět.
+
 1. Stáhni balík redesignu pro svůj počítač. Otevři Zapojení a vyber skutečnou zvukovku. Poslechni zkušební tón a zkus měřič kytary.
 2. Změň složku skladeb a nahraj riff do Nápadů. Přehraj jej a založ z něj píseň. Otevři Metronom, vyzkoušej dva zvuky při různých hlasitostech a použij Rytmus ve skladbě.
 3. V režimu Stříhej označ takty. Zkus je nahrát dokola pětkrát a vyber pokus pomocí Tab. Poznamenej, jak zní návrat na začátek smyčky.
@@ -19,6 +23,8 @@ Vyzkoušet skutečnou zvukovku, celou píseň, poslech exportu a znovuotevření
 5. Další den stejnou píseň otevři a zkontroluj návrat k posledním změnám. Uveď sestavu a případné rozdíly mezi Windows a Macem. [Základní návod](../README.md#co-vyzkoušet-po-vydání)
 
 ## 4. Rozhodnutí
+
+Po odpojení celého zařízení musí uživatel jeho vstup znovu přiřadit. JUCE zpřístupňuje název zvukovky a stejný název může patřit jinému přístroji. Samotné ticho na vstupu jeho přiřazení zachová. [Rozhodnutí o přiřazení a zkratkách](ROZHODNUTI.md#pokusy-a-prirazeni-vstupu)
 
 Ruční zkoušky čekají na skutečnou sestavu. Smyčka přehrávání a nahrávání dokola mají vlastní ovládání. Nahrávání používá souvislý záznam a oddělené pokusy ve výběru. [Rozhodnutí E18](ROZHODNUTI.md#e18--nahrávání-dokola) · [Rozhodnutí k redesignu](ROZHODNUTI.md#redesign-1b)
 

@@ -94,6 +94,13 @@ Chceš-li zahrát stejný riff několikrát, přepni na **Stříhej**, vyber sto
 4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. Při přehrávání použije kytarová stopa vlastní nastavení aparátu.
 5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
 
+## Jak si poslechnout poslední pokus
+
+- Po stisku Stop počkej na název stopy, číslo pokusu a **uloženo**. **Poslechnout pokus** (F5) přehraje záběr od začátku s doprovodem. **Nahrát další** (F6) spustí další pokus od stejného místa se stejnými vstupy. Ve **Stříhej** vyber na stopě skupinu pokusů a klikni na číslo. **Enter** ponechá vybranou verzi.
+- Klávesy **1**, **2** a **3** přepínají mezi Hraj, Stříhej a Míchej. Při poslechu můžeš přejít na střih a zůstat u stejného taktu a stopy.
+- Pokud slyšíš kytaru dvakrát, otevři u jejího vstupu **Slyšíš kytaru dvakrát?**. Vypnutím odposlechu v aplikaci můžeš poslouchat kytaru přímo přes zvukovku. Nahrávání i doprovod pokračují.
+- Když u stopy uvidíš **odpojen**, připoj zvukovku a klikni na **Vybrat vstup**. Zkontroluj název zařízení a potvrď vstup pro tuhle stopu. U stereo stopy můžeš výslovně zvolit **Použít jeden vstup**. Při přerušení záznamu ti Rocker oznámí, co se podařilo uložit.
+
 ## Jak poslat mix
 
 1. Otevři skladbu a stiskni **3 Míchej**. Pusť přehrávání mezerníkem. V řádku kytary uprav hlasitost a polohu ve sluchátkách. Dvojklik vrátí jezdec na 0 dB nebo doprostřed. **S** nechá znít vybranou stopu, **M** ji ztlumí. Nahoře uvidíš jména stop se zapnutým sólem.

@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## Poslech posledního pokusu a vstupy
+
+Kontrola skladby po záběru pokrývá poslech, opakování různě dlouhých záběrů, výběr původního pokusu a současné nahrávání více vstupů. Další zkoušky sledují přechod mezi režimy během přehrávání, živý odposlech, přerušení zápisu a přepojení konkrétní stopy. Poslech na fyzické zvukovce čeká na ruční zkoušku po vydání. [Implementační plán](08_PLAN_DOLADENI_UX.md) · [Výsledky, balíky a snímky](https://github.com/JendaNDT/Rocker-2/pull/23)
+
 ## Redesign 1b
 
 Nový rám sdružuje režimy skladby a nástroje na jedné boční liště. V Hraj, Stříhej i Míchej drží přehrávání a záznam stejnou polohu. Stříhej má výběr, díly a pokusy v pravém panelu. Panel mixu se dá sbalit. Metronom umí samostatný odposlech, ťukání, volbu zvuku a hlasitosti. Úvod, Ladička a Zapojení používají stejné rozložení. Testy s falešnou zvukovkou pokrývají přesnost kliku, polohu tlačítek, otevření starší skladby, nahrávání dokola i export. Poslech a hraní čekají na ruční zkoušku. [Plán](07_PLAN_REDESIGNU_1B.md) · [Sestavení redesignu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aredesign-1b)
