@@ -119,9 +119,9 @@ void Studio::remapPage(Rect area) {
             text(names[remapIndex], line(), s::body);
         else
             combo(cs::trackLabel, line(), names, remapIndex, [this](int i) {
-            remapIndex = i;
-            triggerAsyncUpdate();
-        });
+                remapIndex = i;
+                triggerAsyncUpdate();
+            });
         auto& track = song.tracks[remapIndex];
         auto& routes = remapped[(size_t)remapIndex];
         text(cs::oldInput + " · " +
@@ -130,7 +130,7 @@ void Studio::remapPage(Rect area) {
         if (track.kind != "midi") {
             StringArray options{cs::noneAssigned};
             options.addArray(link.caps.inputs);
-            for (int c = 0; c < std::max(1, track.inputs.size()); ++c) {
+            for (int c = 0; c < std::max(1, routes.size()); ++c) {
                 combo(cs::newInput + " " + String(c + 1), line(), options,
                       std::max(0, options.indexOf(routes[c])), [this, c](int i) {
                           auto& ports = remapped[(size_t)remapIndex];
@@ -146,6 +146,13 @@ void Studio::remapPage(Rect area) {
         if (laptop)
             text(cs::fallback, line(), s::body, s::warning);
     }
+    if (singleRemap >= 0 && remapped[remapIndex].size() == 2 && !link.caps.inputs.isEmpty())
+        button(cs::useMono, line().withWidth(s::nameWidth), [this] {
+            auto& pair = remapped[remapIndex];
+            auto port = pair[0].isEmpty() ? pair[1] : pair[0];
+            pair = StringArray{port.isEmpty() ? link.caps.inputs[0] : port};
+            triggerAsyncUpdate();
+        });
     auto actions = line();
     auto* apply = button(
         cs::apply, actions.removeFromLeft(s::clipWidth),

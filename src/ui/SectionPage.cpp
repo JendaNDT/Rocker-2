@@ -86,6 +86,7 @@ void Studio::tapeAction(TapeAction action, int value) {
     }
     selectOccurrence(index);
     reveal(view.cursor);
+    savedTake.reset();
     saveSong(label);
     saveView();
     status(label);

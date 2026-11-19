@@ -268,7 +268,7 @@ class Studio final : public juce::Component,
         Span audio, selection;
         juce::StringArray tracks, assets;
         std::map<juce::String, juce::String> attempts;
-        juce::String family, track;
+        juce::String family, track, confirmation;
         Frame start = 0, previousEnd = 0;
         int number = 1;
         bool loop = false;
@@ -277,6 +277,7 @@ class Studio final : public juce::Component,
     bool savedTakeAvailable() const;
     void rememberTake(const Performance&, size_t firstAsset);
     void takeActions(Rect&);
+    void runTakeAction(TakeAction);
     void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr, bool looping = false,
                       TakeAction action = TakeAction::normal);
     void startRepair(bool looping = false);

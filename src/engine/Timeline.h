@@ -85,7 +85,7 @@ class Playback {
         AmpCommand command;
         std::uint64_t applied = 0;
         Frame next = -1;
-        float blockPeak = 0;
+        float blockPeak = 0, punchLevel = 1.f;
         int channels = 1;
         void read(const std::vector<PlaybackClip>&, float (&block)[2][256], int count,
                   Frame at) const noexcept;

@@ -3,6 +3,7 @@
 #include "ui/Studio.h"
 #include "ui/Strings.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <numbers>
 #include <cmath>
 using namespace rocker;
@@ -1568,6 +1569,8 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
     REQUIRE(song.save(dir));
     ViewState view;
     view.click = view.countIn = false;
+    view.leadBars = view.tailBars = 0;
+    view.selectionEnd = song.barFrame(1);
     REQUIRE(view.save(dir));
     Settings config;
     config.visited = true;
@@ -1588,6 +1591,21 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         song.bars = 24;
         song.grid.bpm = 300;
         song.grid.beats = 1;
+        const auto backing = dir.getChildFile("Zvuk/pulse.wav");
+        REQUIRE(backing.getParentDirectory().createDirectory().wasOk());
+        auto writer = waveWriter(backing, song.grid.rate, 1);
+        REQUIRE(writer);
+        auto signal = [](int at) { return float((at % 1009) + 1) / 2048.f; };
+        const int duration = int(song.end());
+        AudioBuffer<float> sample(1, duration);
+        for (int at = 0; at < duration; ++at)
+            sample.setSample(0, at, signal(at));
+        REQUIRE(writer->writeFromAudioSampleBuffer(sample, 0, duration));
+        writer.reset();
+        song.tracks.push_back({"pulse", "Podklad", "podklad"});
+        song.tracks.back().pan = -1.f;
+        song.assets.push_back({"a", "Zvuk/pulse.wav", duration, 1});
+        song.clips.push_back({"c", "pulse", "a", 0, 0, duration});
         REQUIRE(song.save(dir));
         click(studio, cs::home);
         click(studio, cs::resume);
@@ -1600,9 +1618,14 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         CHECK(state.firstBar <= 16);
         CHECK(state.firstBar + state.zoom > 16);
         capture("43-prechod-v-taktu");
+        int expected = 150 * 1024;
         for (const char key : std::string("312132")) {
             REQUIRE(studio.keyPressed(KeyPress(key)));
             studio.resized();
+            auto continuedAudio = process(0, 128);
+            CHECK(std::abs(continuedAudio[0][0] - signal(expected)) < .00001f);
+            CHECK(std::abs(continuedAudio[0][127] - signal(expected + 127)) < .00001f);
+            expected += 128;
             const auto continued = ViewState::load(dir);
             CHECK(continued.trackId == "g");
             CHECK(continued.zoom == state.zoom);
@@ -1612,12 +1635,22 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         REQUIRE(find<Button>(studio, cs::stopSong));
         fits(studio);
     }
+    SECTION("Opening a reordered song retains the track by identity") {
+        click(studio, cs::home);
+        song.tracks.insert(song.tracks.begin(), {"b", "Basa", "jine", {"In 2"}});
+        REQUIRE(song.save(dir));
+        click(studio, cs::resume);
+        auto* tracks = find<ComboBox>(studio, cs::audioTracks);
+        REQUIRE(tracks);
+        CHECK(tracks->getText() == "Kytara");
+    }
     SECTION("One press plays the saved range and repeat keeps the original") {
         click(studio, cs::recordSong);
         process(.25f, 4096);
         click(studio, cs::stopSong);
         capture("42-ulozeny-pokus");
-        click(studio, cs::listenTake);
+        REQUIRE(studio.keyPressed(KeyPress(KeyPress::F5Key)));
+        studio.resized();
         auto heard = process(0, 4096);
         CHECK(std::abs(heard[0][1500]) > .05f);
         CHECK(heard[0][4095] == 0.f);
@@ -1639,7 +1672,8 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         CHECK(heard[0][3072] == 0.f);
         tick();
         studio.resized();
-        click(studio, cs::repeatTake);
+        REQUIRE(studio.keyPressed(KeyPress(KeyPress::F6Key)));
+        studio.resized();
         process(.4f, 8192);
         click(studio, cs::stopSong);
         click(studio, cs::editMode);
@@ -1668,6 +1702,7 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         fake.process({std::vector<float>(4096, .2f), std::vector<float>(4096, .1f)}, 4096);
         click(studio, cs::stopSong);
         CHECK(studio.statusText().contains("Kytara, Basa"));
+        CHECK(studio.statusText().contains(cs::savedTakeLabel));
         bool bad = false;
         auto recorded = Song::load(dir, bad);
         REQUIRE(recorded);
@@ -1721,6 +1756,28 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         REQUIRE(wave->read(&check, 0, 1, 2000, true, false));
         CHECK(std::abs(check.getSample(0, 0) - .25f) < .001f);
     }
+    SECTION("Punch monitoring switches live for both clean and amplified guitar") {
+        click(studio, cs::home);
+        song.tracks.front().amp.enabled = true;
+        REQUIRE(song.save(dir));
+        click(studio, cs::resume);
+        const int mode = GENERATE(1, 2);
+        chooseItem(studio, cs::listen, mode);
+        click(studio, cs::editMode);
+        REQUIRE(studio.keyPressed(KeyPress('P')));
+        studio.resized();
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        auto sounding = process(.2f, 4096);
+        CHECK(FloatVectorOperations::findMaximum(sounding[0].data(), 4096) > .001f);
+        click(studio, cs::monitorHelp);
+        click(studio, cs::monitorDisable);
+        auto muted = process(.2f, 8192);
+        CHECK(std::abs(muted[0].back()) < .0001f);
+        CHECK(fake.active->live.monitor == Monitor::off);
+        click(studio, cs::monitorRestore);
+        auto restored = process(.2f, 4096);
+        CHECK(FloatVectorOperations::findMaximum(restored[0].data(), 4096) > .001f);
+    }
     SECTION("No receipt for an empty count-in or failed atomic commit") {
         click(studio, cs::countIn);
         click(studio, cs::recordSong);
@@ -1751,6 +1808,14 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         REQUIRE(missing);
         CHECK(missing->getTooltip().contains(cs::channel(1)));
         CHECK_FALSE(missing->getTooltip().contains(cs::channel(0)));
+        click(studio, cs::chooseInput);
+        click(studio, cs::useMono);
+        click(studio, cs::apply);
+        bool bad = false;
+        auto mono = Song::load(dir, bad);
+        REQUIRE(mono);
+        CHECK(mono->tracks.front().inputs.size() == 1);
+        CHECK(mono->tracks.back().inputs[0] == "In 1");
         fake.disconnect();
         fake.attached = true;
         fake.channels = 2;
@@ -1758,7 +1823,6 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         studio.resized();
         click(studio, cs::chooseInput);
         chooseItem(studio, cs::newInput + " 1", 1);
-        chooseItem(studio, cs::newInput + " 2", 2);
         click(studio, cs::apply);
         CHECK_FALSE(find<Button>(studio, cs::chooseInput));
         CHECK(find<Button>(studio, cs::chooseInput + cs::divider + "Basa"));

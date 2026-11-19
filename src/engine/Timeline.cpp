@@ -359,6 +359,18 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
                                         input[port][inputOffset + offset + i];
             }
         }
+        // A room or cabinet can keep sounding after its input is muted.
+        // Fade only this punched strip, leaving the backing and the capture queue untouched.
+        if (punchTo > punchFrom && offset >= 0 && (monitor == 0 || punchLevel < 1.f)) {
+            const float step = 1.f / float(fade);
+            for (int i = 0; i < count; ++i) {
+                const float target = monitor == 0 ? 1.f - envelope(at + offset + i, punchFrom, punchTo, fade)
+                                                  : 1.f;
+                punchLevel += std::clamp(target - punchLevel, -step, step);
+                for (int ch = 0; ch < channels; ++ch)
+                    block[ch][i] *= punchLevel;
+            }
+        }
         if (heard && offset >= 0)
             for (int ch = 0; ch < std::min(2, outputs); ++ch)
                 if (out[ch]) {
@@ -960,7 +972,8 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
         if (family.isNotEmpty()) {
             Frame previousEnd = record.getProperty("konecPredchoziho", at);
             auto end = std::max(previousEnd, position + pass.length);
-            if (!next.addAttempt(pass, at, end, record.getProperty("vznik", 0), false, family))
+            if (!next.addAttempt(pass, at, end, record.getProperty("vznik", 0), false, family,
+                                 journal.getFileNameWithoutExtension()))
                 return false;
         } else if (to <= from) {
             next.clips.push_back(std::move(pass));

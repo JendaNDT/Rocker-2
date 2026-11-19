@@ -39,11 +39,9 @@ void Studio::mixMode(bool panel) {
     if (!view.mixing) {
         view.firstBar = firstBar();
         pendingModeReveal = true;
+        if (view.selected < firstTrack || view.selected >= firstTrack + (int)lanes.size())
+            firstTrack = view.selected;
     }
-    if (!view.mixing)
-        firstTrack = std::min(firstTrack, view.selected);
-    if (!view.mixing && (view.selected >= firstTrack + (int)lanes.size()))
-        firstTrack = view.selected;
     exporting = panel;
     view.mixing = true;
     view.editing = false;
@@ -110,11 +108,7 @@ void Studio::mixPage(Rect area) {
         auto nameArea = row.removeFromLeft(s::mixNameWidth).reduced(s::grid, 0);
         auto label = button(
             limit(skin.font(s::body, false, true), t.name, nameArea.getWidth() - 2 * s::inset), nameArea,
-            [this, i] {
-                view.selected = i;
-                saveView();
-                triggerAsyncUpdate();
-            }, view.selected == i ? 1 : 0);
+            [this, i] { selectProjectTrack(i); }, view.selected == i ? 1 : 0);
         label->setTooltip(t.name);
         label->setEnabled(!performance || !performance->recording);
         mixSlider(cs::gainLabel + " " + t.name, row.removeFromLeft(s::mixGainWidth), t.gainDb, false,
@@ -134,7 +128,14 @@ void Studio::mixPage(Rect area) {
         toggle(cs::mute, cs::muteShort, false, t.mute, muteActive);
         toggle(cs::solo, cs::soloShort, true, t.solo, soloActive);
         auto details = head.removeFromTop(s::button);
-        if (t.kind == "kytara")
+        auto missing = missingPorts(t);
+        if (missing.isNotEmpty()) {
+            auto route = details.removeFromLeft(s::mixNameWidth);
+            button(cs::chooseInput + cs::divider + t.name, route,
+                   [this, i] { beginRemap(i); }, plain, {}, Icon::none, cs::chooseInput)->setEnabled(!performance);
+            auto warning = details.removeFromLeft(s::mixGainWidth);
+            text(limit(skin.font(s::caption), missing, warning.getWidth()), warning, s::caption, s::warning);
+        } else if (t.kind == "kytara")
             text(limit(skin.font(s::caption), t.amp.name, s::mixNameWidth - 2 * s::grid),
                  details.removeFromLeft(s::mixNameWidth).reduced(s::grid, 0), s::caption, s::guitar);
         else

@@ -207,6 +207,7 @@ void Studio::restoreVersion() {
         status(cs::songSaveError);
         return;
     }
+    savedTake.reset();
     song = std::move(*restored);
     library = std::move(checked);
     history.remember(song, cs::versionRestored);
@@ -265,10 +266,13 @@ void Studio::startRepair(bool looping) {
     askingLoop = false;
 }
 void Studio::selectKitAttempt(Playback& playback, const TakeGroup& group, int index) {
-    for (auto& g : song.groups)
-        if (g.from == group.from && g.to == group.to && (song.linkedTrack(g.track, group.track) || g.sameSession(group)) &&
-            g.attempts.size() == group.attempts.size())
+    for (auto& g : song.groups) {
+        if (g.sameSession(group))
+            playback.selectAttempt(g.id, g.correspondingAttempt(group, index));
+        else if (g.from == group.from && g.to == group.to && song.linkedTrack(g.track, group.track) &&
+                 g.attempts.size() == group.attempts.size())
             playback.selectAttempt(g.id, index);
+    }
 }
 void Studio::audition(TakeGroup& group) {
     view.cursor = std::max<Frame>(0, group.from - song.grid.beat(song.grid.beats));

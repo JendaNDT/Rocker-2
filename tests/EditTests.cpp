@@ -236,3 +236,27 @@ TEST_CASE("A drum kit keeps offsets, cuts, take choices and destinations togethe
         CHECK(take.attempts.front().discarded);
     }
 }
+
+TEST_CASE("A repeat spanning an extra section follows the chosen recording across the song") {
+    Song song;
+    song.title = "Riff";
+    song.tracks.push_back({"g", "Kytara", "kytara"});
+    song.bars = 4;
+    REQUIRE(song.splitSection(2));
+    const auto bar = song.barFrame(1);
+    REQUIRE(song.addAttempt({"a", "g", "a", 0, 0, bar}, 0, bar, 10, false, "series", "short"));
+    REQUIRE(song.addAttempt({"b", "g", "b", 0, 0, 3 * bar}, 0, 3 * bar, 11, false, "series", "long"));
+    REQUIRE(song.groups.size() == 2);
+    auto first = song.groups.front();
+    REQUIRE(first.attempts.size() == 2);
+    REQUIRE(song.groups.back().attempts.size() == 1);
+    first.active = 1;
+    song.commitGroup(first);
+    CHECK(song.groups.front().active == 1);
+    CHECK(song.groups.back().active == 0);
+    auto last = song.groups.back();
+    last.active = 1;
+    song.commitGroup(last);
+    CHECK(song.groups.front().active == 2);
+    CHECK(song.groups.back().active == 1);
+}

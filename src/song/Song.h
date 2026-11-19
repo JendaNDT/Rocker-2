@@ -39,6 +39,7 @@ struct Attempt {
     Frame created = 0;
     bool discarded = false;
     std::vector<Clip> clips;
+    juce::String recordingId;
 };
 struct TakeGroup {
     bool operator==(const TakeGroup&) const = default;
@@ -50,6 +51,7 @@ struct TakeGroup {
     bool sameSession(const TakeGroup& other) const {
         return retakeFamily.isNotEmpty() && retakeFamily == other.retakeFamily;
     }
+    int correspondingAttempt(const TakeGroup& source, int index) const;
     int cycle() const;
     bool discard();
 };
@@ -81,7 +83,7 @@ struct Song {
     std::vector<TakeGroup> groups;
     TakeGroup* groupAt(const juce::String& track, Frame from, Frame to);
     bool addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded = false,
-                    const juce::String& family = {});
+                    const juce::String& family = {}, const juce::String& recordingId = {});
     std::vector<Frame> dropouts;
     int bars = 8;
     float masterDb = 0;

@@ -104,8 +104,9 @@ void Studio::rememberTake(const Performance& p, size_t firstAsset) {
     for (const auto& t : song.tracks)
         if (take.tracks.contains(t.id))
             names.add(t.name);
-    status(names.joinIntoString(", ") + cs::divider + cs::attemptLabel + " " + String(take.number) +
-           cs::divider + cs::savedTakeLabel);
+    take.confirmation = names.joinIntoString(", ") + cs::divider + cs::attemptLabel + " " +
+                        String(take.number) + cs::divider + cs::savedTakeLabel;
+    status(take.confirmation);
     if (p.retakeFamily.isNotEmpty())
         pick({take.start, take.previousEnd});
     savedTake = std::move(take);
@@ -132,6 +133,14 @@ bool Studio::savedTakeAvailable() const {
     return true;
 }
 
+void Studio::runTakeAction(TakeAction action) {
+    if (performance && !comparing)
+        return;
+    if (comparing)
+        stopProject();
+    startProject(action == TakeAction::repeat, false, nullptr, false, action);
+}
+
 void Studio::takeActions(Rect& area) {
     if ((performance && !comparing) || !savedTakeAvailable())
         return;
@@ -140,12 +149,7 @@ void Studio::takeActions(Rect& area) {
         area.removeFromRight(s::grid);
         return buttonArea;
     };
-    auto activate = [this](TakeAction action) {
-        if (comparing)
-            stopProject();
-        startProject(action == TakeAction::repeat, false, nullptr, false, action);
-    };
-    button(cs::repeatTake, place(), [activate] { activate(TakeAction::repeat); });
-    button(cs::listenTake, place(), [activate] { activate(TakeAction::listen); }, primary);
+    button(cs::repeatTake, place(), [this] { runTakeAction(TakeAction::repeat); }, plain, "F6");
+    button(cs::listenTake, place(), [this] { runTakeAction(TakeAction::listen); }, primary, "F5");
 }
 } // namespace rocker

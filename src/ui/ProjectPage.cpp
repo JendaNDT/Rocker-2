@@ -632,6 +632,7 @@ void Studio::projectPage(Rect area) {
                         openProject(folder);
                         return;
                     }
+                    savedTake.reset();
                     song.title = draftTitle.trim();
                     song.grid.bpm = bpm;
                     song.grid.beats = draftBeats;
@@ -680,6 +681,10 @@ void Studio::projectPage(Rect area) {
     }
     if (view.distant) {
         auto footer = area.removeFromBottom(s::footer);
+        if (!performance && savedTakeAvailable()) {
+            auto actions = area.removeFromBottom(s::button);
+            takeActions(actions);
+        }
         button(cs::normal, cell(footer, s::nameWidth), [this] { toggleDistant(); });
         button(performance ? cs::stopSong : cs::recordSong, cell(footer, s::nameWidth), [this] {
             if (performance)
@@ -813,8 +818,13 @@ void Studio::projectPage(Rect area) {
              String(projectDir.getBytesFreeOnVolume() / (3600. * 4 * channels * song.grid.rate), 1) +
              " h",
          disk, s::caption, s::muted, true, false, true);
-    if (!mismatched || message != cs::rateMismatch(song.grid.rate, link.current.rate))
-        text(limit(skin.font(s::caption), message, notice.getWidth()), notice, s::caption, s::warning);
+    if (!mismatched || message != cs::rateMismatch(song.grid.rate, link.current.rate)) {
+        const bool confirmed = savedTake && (message == savedTake->confirmation ||
+                                             (message.isEmpty() && !performance));
+        auto label = confirmed ? savedTake->confirmation : message;
+        text(limit(skin.font(s::caption), label, notice.getWidth()), notice, s::caption,
+             confirmed ? s::ready : s::warning);
+    }
     sectionStrip = area.removeFromTop(s::workspaceRuler / 2);
     text(cs::sections, sectionStrip.withWidth(s::trackHead).withTrimmedLeft(s::inset),
          s::caption, s::navigationInk, false, true);
@@ -882,8 +892,9 @@ void Studio::paintProject(Graphics& g) {
         String track = isPositiveAndBelow(view.selected, (int)song.tracks.size())
                            ? song.tracks[view.selected].name
                            : String{};
-        g.drawText(track + cs::divider + cs::attemptLabel + " " +
-                       String(view.savedTakes + (saved ? 0 : 1)),
+        auto captureLabel = saved ? savedTake->confirmation
+                                  : track + cs::divider + cs::attemptLabel + " " + String(view.savedTakes + 1);
+        g.drawText(captureLabel,
                    note, Justification::centred);
         g.setFont(skin.font(s::distantBar, true));
         String bar = counting ? clock : String(beat / song.grid.beats + 1);

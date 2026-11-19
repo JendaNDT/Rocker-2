@@ -214,12 +214,18 @@ void Studio::paintTransport(Graphics& g) {
     g.drawText(state, position, Justification::centredLeft);
     auto info = transportInfo;
     StringArray destinations;
+    bool inputMissing = false;
     for (const auto& track : song.tracks)
-        if (recordingNow ? performance->captures(track.id) : track.armed)
+        if (recordingNow ? performance->captures(track.id) : track.armed) {
             destinations.add(track.name);
+            inputMissing |= !recordingNow && (track.kind == "midi" ? activeMidi.isEmpty()
+                                                : track.inputs.isEmpty() || missingPorts(track).isNotEmpty());
+        }
     if (!destinations.isEmpty()) {
         auto action = info.removeFromTop(s::caption + s::grid);
-        g.drawText(recordingNow ? cs::recordingInto : cs::readyToRecord, action,
+        if (inputMissing)
+            g.setColour(s::warning);
+        g.drawText(recordingNow ? cs::recordingInto : inputMissing ? cs::inputUnavailable : cs::readyToRecord, action,
                    Justification::centredLeft);
     }
     auto value = destinations.isEmpty() ? cs::noneArmed : destinations.joinIntoString(", ");
@@ -271,17 +277,17 @@ void Studio::projectTrack(int i, Rect bounds) {
         route->setEnabled(!performance);
         route->setTooltip(lost);
     } else {
-    auto* arm = button(qualified(armLabel), armArea, [this, i] {
-        auto& t = song.tracks[i];
-        const bool enable = !t.armed;
-        for (auto& member : song.tracks)
-            if (song.linkedTrack(member.id, t.id))
-                member.armed = enable;
-        saveSong();
-        triggerAsyncUpdate();
-    }, t.armed ? armActive : plain, {}, Icon::none, armLabel);
-    arm->setToggleState(t.armed, dontSendNotification);
-    arm->setEnabled(!performance);
+        auto* arm = button(qualified(armLabel), armArea, [this, i] {
+            auto& track = song.tracks[i];
+            const bool enable = !track.armed;
+            for (auto& member : song.tracks)
+                if (song.linkedTrack(member.id, track.id))
+                    member.armed = enable;
+            saveSong();
+            triggerAsyncUpdate();
+        }, t.armed ? armActive : plain, {}, Icon::none, armLabel);
+        arm->setToggleState(t.armed, dontSendNotification);
+        arm->setEnabled(!performance);
     }
     auto toggle = [&](const String& description, const String& label, bool solo, int style) {
         toggles.removeFromLeft(s::grid);
@@ -333,13 +339,13 @@ void Studio::playInspector(Rect area) {
     text(limit(skin.font(s::workspaceTitle, false, true), t.name, title.getWidth()), title,
          s::workspaceTitle, s::chalk, false, true);
     auto connection = row(t.kind == "kytara" ? s::inspectorRow : s::caption + s::grid);
-    if (t.kind == "kytara")
+    if (t.kind == "kytara" && lost.isEmpty())
         button(cs::monitorHelp, connection.removeFromRight(s::nameWidth), [this] {
             monitorHelpOpen = !monitorHelpOpen;
             triggerAsyncUpdate();
         });
     text(limit(skin.font(s::caption, true), input, connection.getWidth()), connection,
-         s::caption, s::muted, true);
+         s::caption, lost.isEmpty() ? s::muted : s::warning, true);
     if (!monitorHelpOpen && (t.kind == "kytara" || t.kind == "jine")) {
         text(cs::voicePanel.toUpperCase(), row(s::caption + s::grid), s::section, s::navigationInk,
              false, true);

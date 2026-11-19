@@ -373,8 +373,9 @@ void Studio::refresh(bool notify) {
     activityBeforePluck.clear();
     const auto previous = link.current;
     const bool wasOnline = link.online;
-    const bool recording=performance && performance->recording;
-    if(performance) stopProject();
+    const bool recording = performance && performance->recording;
+    if (performance)
+        stopProject();
     const auto outcome = recording && savedTake ? cs::interruptedTake : recording ? message : String{};
     link.rescan(settings.device);
     laptop = link.online &&
@@ -1202,6 +1203,11 @@ bool Studio::keyPressed(const KeyPress& key) {
         if (page == Page::project && view.distant &&
             (key == KeyPress::escapeKey || key == KeyPress::F11Key)) {
             toggleDistant();
+            return true;
+        }
+        if (page == Page::project && (code == KeyPress::F5Key || code == KeyPress::F6Key) &&
+            settings.pedalKey != code && savedTakeAvailable()) {
+            runTakeAction(code == KeyPress::F5Key ? TakeAction::listen : TakeAction::repeat);
             return true;
         }
         const bool pedal = settings.pedalKey != 0 && code == settings.pedalKey;

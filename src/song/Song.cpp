@@ -43,6 +43,15 @@ bool safeWave(const String& p) {
            (p.endsWithIgnoreCase(".wav") || p.endsWithIgnoreCase(".mid"));
 }
 } // namespace
+int TakeGroup::correspondingAttempt(const TakeGroup& source, int index) const {
+    if (!sameSession(source) || !index)
+        return index;
+    const auto& key = source.attempts.at(size_t(index - 1)).recordingId;
+    for (size_t i = 0; i < attempts.size(); ++i)
+        if (attempts[i].recordingId == key)
+            return int(i + 1);
+    return 0;
+}
 int TakeGroup::cycle() const {
     int result = active;
     do {
@@ -63,11 +72,12 @@ TakeGroup* Song::groupAt(const String& track, Frame from, Frame to) {
             return &group;
     return nullptr;
 }
-bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded, const String& family) {
+bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded, const String& family,
+                      const String& recordingId) {
     if (from < 0 || to <= from || pass.length <= 0 || pass.position >= to)
         return false;
     if (family.isEmpty() && (discarded ? pass.position + pass.length <= from
-                  : pass.position > from || pass.length < to - pass.position))
+                                       : pass.position > from || pass.length < to - pass.position))
         return false;
     auto append = [&](std::vector<TakeGroup>& list, Clip clip, Frame a, Frame b) {
         auto it = std::find_if(list.begin(), list.end(), [&](const TakeGroup& group) {
@@ -81,7 +91,7 @@ bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool disca
         }
         it->from = std::min(it->from, a);
         it->to = std::max(it->to, b);
-        it->attempts.push_back({Uuid().toString(), created, discarded, {std::move(clip)}});
+        it->attempts.push_back({Uuid().toString(), created, discarded, {std::move(clip)}, recordingId});
         if (!discarded)
             it->active = (int)it->attempts.size();
     };
@@ -168,6 +178,7 @@ var Song::json() const {
                     recorded.add(clipJson(clip));
                 attempts.add(object({{"id", attempt.id},
                                      {"vznik", attempt.created},
+                                     {"zaber", attempt.recordingId},
                                      {"kos", attempt.discarded},
                                      {"klipy", recorded}}));
             }
@@ -335,6 +346,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
             for (const auto& entry : items(raw, "varianty")) {
                 Attempt attempt{field(entry, "id").toString(), field(entry, "vznik"),
                                 field(entry, "kos")};
+                attempt.recordingId = field(entry, "zaber").toString();
                 for (auto& c : items(entry, "klipy"))
                     if (auto clip = parseClip(c, true); clip && clip->track == g.track)
                         attempt.clips.push_back(*clip);

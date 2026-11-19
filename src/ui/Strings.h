@@ -2,6 +2,7 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String inputUnavailable = u8"Chybí vstup", useMono = u8"Použít jeden vstup";
 inline const juce::String chooseInput = u8"Vybrat vstup", inputLost = u8"odpojen",
     connectInput = u8"Připoj zvukovku nebo vyber dostupný vstup v Zapojení.",
     interruptedTake = u8"Nahrávání přerušeno. Zapsaná část je ve skladbě.";
