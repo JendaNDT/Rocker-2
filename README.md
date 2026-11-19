@@ -6,7 +6,7 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-3**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E3](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-3)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-4**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E4](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-4)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
@@ -19,6 +19,17 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 3. Zapni **Klik** a **Odpočet**. **F11** zvětší stav a číslo taktu pro hráče za bicími. Stiskni **R**, po čtyřech dobách nahraj osm taktů a dalším **R** zastav. **F11** tě vrátí na časovou osu. Mezera přehrává a zastavuje.
 4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. Při přehrávání použije kytarová stopa vlastní nastavení aparátu.
 5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
+
+## Jak vystřihnout a přesunout dva takty
+
+1. Otevři nahranou skladbu, zastav přehrávání a stiskni **2** pro **Stříhej**. Klikni na název stopy, kterou chceš upravit. **Oddálit** nebo **−** zobrazí víc taktů. **Další takty** posune pohled doprava.
+2. Klikni na číslo **5** a se stisknutým **Shift** klikni na **6**. Modrý pruh pokryje oba takty. Chyť výběr uvnitř průběhu vybrané stopy a táhni jeho začátek na **9**. Výběr se přichytí na dobu. **Alt** při tažení umožní volnou polohu.
+3. Stiskni **D**. Kopie obou taktů se objeví hned za přesunutým úsekem. Přesun, opakování a vložení na obsazené místo nahradí zvuk vybrané stopy v cílovém rozsahu. **Ctrl+Z** vrací jednotlivé kroky, **Ctrl+Y** je provede znovu.
+4. Kliknutím do klipu umístíš ukazatel a klávesou **X** klip rozstřihneš. **Ctrl+C** kopíruje výběr, **Ctrl+V** vloží kopii na ukazatel vybrané stopy. **Delete** výběr smaže. Každá úprava ponechá zdrojový WAV na disku.
+5. Chyť levý nebo pravý okraj klipu. Nad ukazatelem se otevře čtyřnásobná lupa s průběhem, mřížkou a polohou okraje. Okraj můžeš vytáhnout až na hranici původní nahrávky.
+6. V nabídce **Soubor** vyber dřívější datum a čas a stiskni **Obnovit tuto verzi**. Rocker před obnovením uloží i současný stav. Posledních 50 verzí najdeš i po novém spuštění. [Výběr taktů](docs/zkousky/E4/strihej.png) · [Lupa při tažení](docs/zkousky/E4/lupa.png)
+
+**Ruční zkouška E4 po vydání.** Na vlastní nahrávce proveď kroky 1–3, přehraj přechod a dvakrát stiskni Ctrl+Z. Zapiš, zda šel vybraný úsek umístit přesně na začátek taktu 9, jestli se vrátil původní poslech a co při ovládání překáželo.
 
 ## Jak změnit zvuk nahrané kytary
 
