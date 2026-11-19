@@ -7,6 +7,7 @@ class FakeDevice final : public DeviceSystem {
   public:
     using Block = std::vector<std::vector<float>>;
     int channels = 2, outputs = 2, rate = 48000;
+    bool separate=false;
     bool core = false, asio = true, laptop = false, attached = true;
     juce::Array<juce::MidiDeviceInfo> midi;
     juce::String selectedMidi;
@@ -42,6 +43,7 @@ class FakeDevice final : public DeviceSystem {
         caps.rates = {static_cast<double>(rate)};
         caps.buffers = {64, 128, 256};
         caps.outputChannels = outputs;
+        caps.separateClocks=separate;
         caps.inputLatency = 121;
         caps.outputLatency = 252;
         d.rate = rate;
