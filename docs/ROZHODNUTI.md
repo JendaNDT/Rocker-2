@@ -78,3 +78,12 @@ Zvuky a pokusy jsou uložené jednou u dílu. Každý výskyt si pamatuje svůj 
 Konec zkráceného výskytu se ztišuje posledních 5 ms. První vzorek po hraně začíná na nule a zvuk následujícího dílu nabíhá 5 ms. Na hraně se vyčistí dozvuk aparátu, poloha dalšího taktu zůstane přesná. Prolnutí pokusů uvnitř dílu má nadále 10 ms.
 
 Při tempu s necelou délkou doby ve vzorcích se poloha na době převádí přes číslo doby a zaokrouhlí se až v cílovém výskytu. Prosté sčítání dvou zaokrouhlených vzdáleností by mohlo posunout opravu o jeden vzorek.
+
+## E7 · hlasitost a soubor pro posluchače
+
+| Otázka | Volba a důvod | Alternativa |
+|---|---|---|
+| Hlasitost starší nahrávky | Starší mono stopa s nahrávkou dostane při prvním otevření +3,01 dB. Vyrovná tím útlum nového panorámování uprostřed a zachová hlasitost v obou sluchátkách. Nová stopa začíná na 0 dB. | Otevřít starší mono nahrávky o 3 dB tišeji. |
+| Výběr a dozvuk | Celá skladba dostane dvě sekundy na dozvuk. Výběr končí přesně na zvolené hranici. Před jeho začátkem se zpracuje předchozí zvuk, aby na začátku výběru byla slyšet stejná ozvěna jako při přehrávání celé skladby. | Exportovat výběr s nově spuštěným aparátem a přidat mu samostatný dozvuk. |
+| Opakovaný export | Každý export má vlastní soubor ve složce Export u skladby. U přebuzeného mixu nabízí Rocker snížení o přesah špičky plus 1 dB rezervy a výpočet nového souboru. | Zapisovat přes předchozí export. |
+| MP3 | Ve Windows použijeme systémový stereo kodér pro 320 kb/s při 44,1 kHz. Pokud systém takový kodér nenabídne, hráč vidí důvod u šedé volby MP3. | Přibalit další kodér a jeho licenci. Dokument 02 požaduje Media Foundation. |

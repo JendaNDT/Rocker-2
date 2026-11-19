@@ -6,7 +6,7 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-6**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E6](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-6)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-7**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E7](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-7)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
@@ -19,6 +19,14 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 3. Zapni **Klik** a **Odpočet**. **F11** zvětší stav a číslo taktu pro hráče za bicími. Stiskni **R**, po čtyřech dobách nahraj osm taktů a dalším **R** zastav. **F11** tě vrátí na časovou osu. Mezera přehrává a zastavuje.
 4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. Při přehrávání použije kytarová stopa vlastní nastavení aparátu.
 5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
+
+## Jak poslat mix
+
+1. Otevři skladbu a stiskni **3 Míchej**. Pusť přehrávání mezerníkem. V řádku kytary uprav hlasitost a polohu ve sluchátkách. Dvojklik vrátí jezdec na 0 dB nebo doprostřed. **S** nechá znít vybranou stopu, **M** ji ztlumí. Nahoře uvidíš jména stop se zapnutým sólem.
+2. Dole sleduj **Celkem**. U značky **PŘEBUZENÝ MIX** klikni na takt a uber celkovou hlasitost. **PŘEBUZENÝ VSTUP** označuje přebuzení při nahrávání. V tom případě uber vstupní zesílení na zvukovce a nahraj úsek znovu.
+3. Stiskni **Ctrl+E**. Vyber celou skladbu nebo takty označené v režimu Stříhej. WAV 24 bit / 48 kHz se hodí pro další práci, WAV 16 bit / 44,1 kHz pro běžné přehrávače. Pro telefon můžeš ve Windows vybrat **MP3 · 320 kb/s**, pokud je systémový kodér dostupný.
+4. Klikni na **Vytvořit soubor**. Pokud zůstalo zapnuté sólo, potvrď **Exportovat se sólem**, nebo se vrať a vypni ho. Po dokončení se otevře složka s výsledkem. Tlačítko **Přehrát výsledný soubor** ho otevře v přehrávači. Při překročení 0 dBFS uvidíš takt a nabídku ubrat hlasitost a opakovat export.
+5. **Po vydání** porovnej poslech ve studiu s výsledkem. Pro M-03 exportuj WAV se zapnutým klikem, v Diagnostice zvol **Hledat klik v souboru** a vyber WAV při stejném tempu skladby. Pro M-13 otevři MP3 ve Windows i v telefonu a ověř začátek, konec a délku. [Sestavení a snímky E7](https://github.com/JendaNDT/Rocker-2/pull/8)
 
 ## Jak zopakovat refrén
 
