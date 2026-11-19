@@ -53,6 +53,9 @@ struct ViewState {
     Frame cursor = 0;
     int selected = 0, zoom = 8;
     bool distant = false, click = true, countIn = true;
+    bool editing = false;
+    Frame selectionStart = 0, selectionEnd = 0, firstBar = 0;
+    juce::String selectedClip;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };
