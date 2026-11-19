@@ -191,6 +191,8 @@ void Studio::exportPage(Rect area) {
         auto b = button(
             labels[i], choices.removeFromLeft(s::nameWidth).reduced(s::grid, 0),
             [this, choice] {
+                if (format != choice)
+                    delivered = {};
                 format = choice;
                 triggerAsyncUpdate();
             },
