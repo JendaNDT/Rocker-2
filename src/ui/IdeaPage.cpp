@@ -322,10 +322,14 @@ void Studio::ideaPage(Rect area) {
             triggerAsyncUpdate();
         },
         ideaClick ? 1 : 0);
-    if (ideaClick)
-        combo(cs::tempo, actions, {"80", "96", "112", "128", "144"},
-              std::clamp(int((ideaTempo - 80) / 16), 0, 4), [this](int i) { ideaTempo = 80 + i * 16; });
-    else if (link.caps.inputs.size() > 1)
+    if (ideaClick) {
+        const auto label = String(ideaTempo, 1).replaceCharacter('.', ',') + " BPM" + cs::divider +
+                           String(ideaBeats) + "/" + String(ideaUnit);
+        auto* tempo = button(cs::tempo, actions.removeFromLeft(s::labelWidth),
+                             [this] { openMetronome(); }, plain, {}, Icon::none, label);
+        tempo->setTooltip(label);
+        tempo->getProperties().set("number", true);
+    } else if (link.caps.inputs.size() > 1)
         combo(cs::chooseIdeaInput, actions, inputNames(), link.audio.ideaPort.load(), [this](int i) {
             link.audio.ideaPort = i;
             if (link.audio.ideaInput)

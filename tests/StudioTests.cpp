@@ -1424,6 +1424,17 @@ TEST_CASE("A-17 the transport toggles the selected guide and the standalone metr
     click(view, cs::guideOff);
     CHECK(ViewState::load(dir).click);
     CHECK(ViewState::load(dir).rhythm);
+    click(view, cs::ideas);
+    click(view, cs::navMetro);
+    chooseItem(view, cs::clickMode, 0);
+    click(view, "5/4");
+    click(view, cs::tempoMore);
+    click(view, cs::applyIdeaTempo);
+    REQUIRE(view.currentPage() == Page::ideas);
+    auto* tempo = find<Button>(view, cs::tempo);
+    REQUIRE(tempo);
+    CHECK(tempo->getTooltip() == String(u8"113,0 BPM · 5/4"));
+    fits(view);
 }
 
 TEST_CASE("A-17 A-33 loop recording keeps passes and Tab compares them from the editing view") {
