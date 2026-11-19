@@ -138,7 +138,9 @@ TEST_CASE("A-19 independent mono and stereo assets retain pitch and duration thr
                         c, i, float(.3 * std::sin(2 * std::numbers::pi * (c ? 660 : 440) * i / rate)));
             REQUIRE(writer->writeFromAudioSampleBuffer(signal, 0, frames));
         }
-        auto imported = importAudio(file, t.dir, 48000);
+        String detail;
+        auto imported = importAudio(file, t.dir, 48000, &detail);
+        INFO(detail.toStdString());
         REQUIRE(imported);
         auto output = waveReader(t.dir.getChildFile(imported->path));
         REQUIRE(output);
