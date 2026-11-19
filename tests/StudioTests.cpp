@@ -1267,6 +1267,8 @@ TEST_CASE("A-25 ideas record, preview and become songs with a custom song folder
     };
     play(94);
     key('R');
+    fake.changed();
+    REQUIRE(view.currentPage() == Page::ideas);
     for (int i = 0; i < 15; ++i) {
         play(12);
         tick();
@@ -1969,5 +1971,60 @@ TEST_CASE("Metronome preview and live toggles respect the song and keep its tran
             REQUIRE(dry->read(&data, 0, data.getNumSamples(), 0, true, false));
             CHECK(data.getMagnitude(0, data.getNumSamples()) == 0.f);
         }
+    }
+}
+
+TEST_CASE("Metronome reaches mono and stereo outputs at the device rate", "[metronome]") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    fake.channels = 0;
+    fake.rate = GENERATE(44100, 48000, 96000);
+    fake.outputs = GENERATE(0, 1, 2);
+    Settings config;
+    config.visited = true;
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    click(view, cs::navMetro);
+    auto* play = find<Button>(view, cs::playSong);
+    REQUIRE(play);
+    if (fake.outputs == 0) {
+        CHECK_FALSE(play->isEnabled());
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::spaceKey)));
+        view.resized();
+        CHECK_FALSE(find<Button>(view, cs::stopSong));
+        fits(view);
+        return;
+    }
+    click(view, cs::playSong);
+    const int frames = int(std::llround(8 * fake.rate * 60. / 112.));
+    AudioBuffer<float> captured(fake.outputs, frames);
+    const int sizes[]{64, 127, 256, 512};
+    for (int pos = 0, block = 0; pos < frames; ++block) {
+        const int length = std::min(sizes[block % 4], frames - pos);
+        auto out = fake.process({}, length);
+        for (int ch = 0; ch < fake.outputs; ++ch)
+            captured.copyFrom(ch, pos, out[ch].data(), length);
+        pos += length;
+    }
+    for (int ch = 0; ch < fake.outputs; ++ch) {
+        for (int beat = 0; beat < 8; ++beat) {
+            const auto at = int(std::llround(beat * fake.rate * 60. / 112.));
+            const auto next = int(std::llround((beat + 1) * fake.rate * 60. / 112.));
+            CHECK(std::abs(captured.getSample(ch, at) - .16f) < 1.e-6f);
+            CHECK(captured.getMagnitude(ch, at + fake.rate / 80, next - at - fake.rate / 80) == 0.f);
+        }
+    }
+    const auto path = SystemStats::getEnvironmentVariable("ROCKER_METRONOME_WAV", {});
+    if (fake.rate == 48000 && fake.outputs == 2 && path.isNotEmpty()) {
+        TemporaryFile temporary{File(path)};
+        std::unique_ptr<OutputStream> stream = temporary.getFile().createOutputStream();
+        REQUIRE(stream);
+        auto writer = WavAudioFormat().createWriterFor(stream, AudioFormatWriterOptions{}
+            .withSampleRate(fake.rate).withNumChannels(2).withBitsPerSample(16));
+        REQUIRE(writer);
+        REQUIRE(writer->writeFromAudioSampleBuffer(captured, 0, frames));
+        writer.reset();
+        REQUIRE(temporary.overwriteTargetFileWithTemporary());
     }
 }
