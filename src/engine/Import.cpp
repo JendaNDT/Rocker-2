@@ -6,7 +6,7 @@ namespace rocker {
 using namespace juce;
 bool supportsImport(const File& file) {
     auto ext = file.getFileExtension().toLowerCase();
-#if JUCE_WINDOWS
+#if JUCE_WINDOWS || JUCE_MAC
     if (ext == ".m4a" || ext == ".aac")
         return true;
 #endif
@@ -19,13 +19,17 @@ std::optional<Asset> importAudio(const File& input, const File& project, int rat
     };
     if (!supportsImport(input) || !input.existsAsFile() || rate <= 0)
         return fail("Invalid source or project rate");
+#if JUCE_WINDOWS
     TemporaryFile decoded(".wav");
+#endif
     auto media = input;
+#if JUCE_WINDOWS
     if (input.hasFileExtension("m4a;aac")) {
         if (!decodeSystemAudio(input, decoded.getFile()))
             return fail("System decoder");
         media = decoded.getFile();
     }
+#endif
     AudioFormatManager formats;
     formats.registerBasicFormats();
     std::unique_ptr<AudioFormatReader> reader(formats.createReaderFor(media));
