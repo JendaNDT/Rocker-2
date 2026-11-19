@@ -842,6 +842,13 @@ TEST_CASE("A-17 E8 an idea becomes a starred riff and a song with an imported ba
         tick();
         view.resized();
     }
+    click(view, cs::deleteIdea);
+    REQUIRE(find<Button>(view, cs::answers[0]));
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "31-kos-napadu", pixels);
+    click(view, cs::answers[2]);
+    REQUIRE(find<Button>(view, cs::deleteIdea));
     click(view, cs::ideaStar);
     auto* note = find<TextEditor>(view, cs::note);
     REQUIRE(note);

@@ -124,8 +124,15 @@ bool Ideas::update(const Idea& x) {
         }
     return false;
 }
-bool Ideas::remove(const String&, const std::function<bool(const File&)>&) {
-    return false;
+bool Ideas::remove(const String& id, const std::function<bool(const File&)>& trash) {
+    auto next = entries;
+    if (std::erase_if(next, [&](const Idea& entry) { return entry.id == id; }) == 0)
+        return false;
+    if (!trash(wave(id)))
+        return false;
+    entries = std::move(next);
+    // The loader ignores missing WAVs even if replacing the catalog fails.
+    return save(entries);
 }
 std::optional<Song> Ideas::toSong(const Idea& x, const File& dir, const String& title,
                                   const String& trackName) const {

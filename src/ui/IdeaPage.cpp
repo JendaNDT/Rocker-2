@@ -34,6 +34,7 @@ const Idea* Studio::pickedIdea() const {
     return nullptr;
 }
 void Studio::chooseIdea(const Idea& idea) {
+    pendingIdeaRemoval.clear();
     stopPreview();
     ideaId = idea.id;
     ideaNote = idea.note;
@@ -407,6 +408,28 @@ void Studio::ideaPage(Rect area) {
             x->star ? 1 : 0);
         button(cs::useIdea, cell(buttons, s::nameWidth), [this] { makeIdeaSong(); }, 1);
         button(cs::tapIdea, cell(buttons, s::clipWidth), [this] { playIdea(true); });
+        if (pendingIdeaRemoval != x->id) {
+            button(cs::deleteIdea, cell(buttons, s::nameWidth), [this, id = x->id] {
+                pendingIdeaRemoval = id;
+                triggerAsyncUpdate();
+            })->setEnabled(!ideaRecording && !ideaPreview && !preparingPreview.valid());
+        }
+        if (pendingIdeaRemoval == x->id) {
+            auto confirm = row(details);
+            text(cs::recycleIdea, cell(confirm, s::labelWidth));
+            button(cs::answers[0], cell(confirm, s::compactButton), [this, id = x->id] {
+                pendingIdeaRemoval.clear();
+                if (ideaRecording || savingIdea.valid() || preparingPreview.valid() || ideaPreview)
+                    return;
+                const bool removed =
+                    ideas->remove(id, [](const File& file) { return file.moveToTrash(); });
+                status(removed ? cs::ideaRemoved : cs::ideaDeleteError);
+            });
+            button(cs::answers[2], cell(confirm, s::compactButton), [this] {
+                pendingIdeaRemoval.clear();
+                triggerAsyncUpdate();
+            });
+        }
         auto note = row(details);
         field(cs::note, cell(note, s::fieldWidth + s::nameWidth), ideaNote);
         button(cs::saveNote, cell(note, s::clipWidth), [this] {
@@ -474,7 +497,7 @@ void Studio::chooseImport() {
     if (importing.valid() || performance)
         return;
     auto types = String("*.wav;*.aif;*.aiff;*.flac;*.ogg;*.oga;*.opus;*.mp3");
-#if JUCE_WINDOWS
+#if JUCE_WINDOWS || JUCE_MAC
     types += ";*.m4a;*.aac";
 #endif
     importChooser = std::make_unique<FileChooser>(cs::addBacking, File{}, types);
