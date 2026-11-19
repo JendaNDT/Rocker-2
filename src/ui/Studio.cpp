@@ -59,16 +59,17 @@ class Action final : public Button {
             g.beginTransparencyLayer(s::disabledOpacity);
         auto bounds = getLocalBounds().toFloat().reduced(s::hairline);
         if (isRail() || isRound()) {
-            const auto ink = mode == roundPlay ? s::background : isRail() && !over && mode != railCurrent
-                                                               ? s::muted : s::chalk;
+            const auto ink = mode == roundPlay || mode == roundRecording ? s::background
+                           : mode == railCurrent ? s::accent
+                           : isRail() && !over ? s::muted : s::chalk;
             if (isRail()) {
                 if (mode == railCurrent || over || down) {
-                    g.setColour(s::raised);
-                    g.fillRoundedRectangle(bounds, s::panelRadius);
+                    g.setColour(skin.colour(mode == railCurrent ? s::accentSurface : s::raised));
+                    g.fillRoundedRectangle(bounds, skin.controlRadius());
                 }
                 auto top = getLocalBounds().withTrimmedBottom(s::inset - s::grid);
-                paintIcon(g, icon, ink, top.withSizeKeepingCentre(s::icon, s::icon).toFloat());
-                g.setColour(ink);
+                paintIcon(g, icon, skin.colour(ink), top.withSizeKeepingCentre(s::icon, s::icon).toFloat());
+                g.setColour(skin.colour(ink));
                 g.setFont(titleFont());
                 g.drawText(shownTitle(), titleArea(), Justification::centred, false);
                 if (shortcut.isNotEmpty()) {
@@ -77,25 +78,26 @@ class Action final : public Button {
                                              .removeFromTop(s::caption), Justification::topRight);
                 }
                 if (mode == railCurrent) {
-                    g.setColour(s::chalk);
+                    g.setColour(skin.colour(s::accent));
                     g.fillRoundedRectangle(bounds.withWidth(s::railIndicator)
                                                .reduced(0, s::gap), s::stroke);
                 }
             } else {
-                g.setColour(mode == roundPlay ? s::chalk : mode == roundRecording ? s::recording
-                                                               : over || down ? s::raised : s::panel);
-                g.fillEllipse(bounds);
-                g.setColour(mode == roundRecord || mode == roundRecording ? s::record : s::barGrid);
-                g.drawEllipse(bounds, s::stroke);
+                g.setColour(skin.colour(mode == roundPlay ? s::chalk : mode == roundRecording ? s::recording
+                                                               : over || down ? s::raised : s::panel));
+                const auto corner = skin.isDark() ? bounds.getWidth() / 2 : float(s::lightTransportRadius);
+                g.fillRoundedRectangle(bounds, corner);
+                g.setColour(skin.colour(mode == roundRecord || mode == roundRecording ? s::record : s::line));
+                g.drawRoundedRectangle(bounds, corner, s::stroke);
                 if (mode == roundRecord) {
-                    g.setColour(s::record);
+                    g.setColour(skin.colour(s::record));
                     g.fillEllipse(bounds.withSizeKeepingCentre(s::icon, s::icon));
                 } else {
-                    paintIcon(g, icon, ink, bounds.withSizeKeepingCentre(s::icon, s::icon));
+                    paintIcon(g, icon, skin.colour(ink), bounds.withSizeKeepingCentre(s::icon, s::icon));
                 }
             }
             if (hasKeyboardFocus(true)) {
-                g.setColour(s::selection);
+                g.setColour(skin.colour(s::selection));
                 g.drawRoundedRectangle(bounds, s::panelRadius, s::stroke);
             }
             if (!isEnabled())
@@ -104,24 +106,26 @@ class Action final : public Button {
         }
         const bool active = mode == primary || mode == selected;
         const bool toggle = mode == pillOff || mode == pillOn;
-        const auto radius = toggle ? s::transportPillRadius : s::radius;
-        g.setColour(mode == armActive ? s::record.withAlpha(s::armedOpacity)
-                    : mode == muteActive ? s::warning : mode == soloActive ? s::selection
-                    : mode == clipButton ? s::clipping
-                    : active           ? s::chalk
-                                       : (down || over ? s::barGrid : s::raised));
+        const auto radius = toggle && skin.isDark() ? s::transportPillRadius : skin.controlRadius();
+        const auto face = active || mode == soloActive ? s::accent
+                        : mode == muteActive ? s::warning : mode == clipButton ? s::clipping
+                        : over || down ? s::barGrid : s::raised;
+        g.setColour(mode == armActive ? skin.colour(s::record).withAlpha(s::armedOpacity) : skin.colour(face));
         g.fillRoundedRectangle(bounds, radius);
-        g.setColour(hasKeyboardFocus(true) ? s::selection : mode == armActive ? s::record : s::line);
+        const auto edge = hasKeyboardFocus(true) ? s::selection : mode == armActive ? s::record
+                        : active ? s::accent : s::line;
+        g.setColour(skin.colour(edge));
         g.drawRoundedRectangle(bounds, radius, hasKeyboardFocus(true) ? s::stroke : s::hairline);
-        const auto titleInk = active || mode == clipButton || mode == muteActive || mode == soloActive
-                              ? s::background : mode == armActive ? s::armedInk : s::chalk;
-        g.setColour(titleInk);
+        const auto titleInk = active || mode == soloActive ? s::onAccent
+                            : mode == clipButton || mode == muteActive ? s::background
+                            : mode == armActive ? s::armedInk : s::chalk;
+        g.setColour(skin.colour(titleInk));
         auto area = getLocalBounds().reduced(s::inset, 0);
         auto symbol = area.withWidth(s::icon).withSizeKeepingCentre(s::icon, s::icon).toFloat();
         if (mode == recording) {
-            g.setColour(s::record);
+            g.setColour(skin.colour(s::record));
             g.fillEllipse(symbol.reduced(s::stroke));
-            g.setColour(s::chalk);
+            g.setColour(skin.colour(s::chalk));
         } else if (mode == newSong) {
             g.drawLine(symbol.getX(), symbol.getCentreY(), symbol.getRight(), symbol.getCentreY(),
                        s::stroke);
@@ -139,15 +143,15 @@ class Action final : public Button {
         if (toggle) {
             auto led = titleBounds.removeFromLeft(s::inset)
                            .withSizeKeepingCentre(s::transportLed, s::transportLed);
-            g.setColour(mode == pillOn ? s::ready : s::barGrid);
+            g.setColour(skin.colour(mode == pillOn ? s::ready : s::barGrid));
             g.fillEllipse(led.toFloat());
         }
         if (icon != Icon::none) {
             auto iconBounds = shownTitle() == " " ? getLocalBounds()
                                                   : titleBounds.removeFromLeft(s::icon + s::gap);
-            paintIcon(g, icon, titleInk, iconBounds.withSizeKeepingCentre(s::icon, s::icon).toFloat());
+            paintIcon(g, icon, skin.colour(titleInk), iconBounds.withSizeKeepingCentre(s::icon, s::icon).toFloat());
         }
-        g.setColour(titleInk);
+        g.setColour(skin.colour(titleInk));
         g.setFont(titleFont());
         g.drawText(shownTitle(), titleBounds,
                    mode == recording || mode == newSong ? Justification::centredLeft
@@ -155,7 +159,7 @@ class Action final : public Button {
                    false);
         if (shortcut.isNotEmpty()) {
             g.setFont(skin.font(s::caption, true));
-            g.setColour(s::muted);
+            g.setColour(skin.colour(active ? s::onAccent : s::muted));
             g.drawText(shortcut, area.removeFromRight(s::keyWidth), Justification::centredRight, false);
         }
         if (!isEnabled())
@@ -178,7 +182,7 @@ class InputRow final : public Component {
         addAndMakeVisible(editor);
         editor.setName(cs::channel(index));
         editor.setFont(skin.font(s::body));
-        editor.setTextToShowWhenEmpty(cs::nameHint, s::muted);
+        editor.setTextToShowWhenEmpty(cs::nameHint, skin.colour(s::muted));
         editor.setText(name, false);
         editor.onTextChange = [this, rename] { rename(editor.getText()); };
         addChildComponent(clip);
@@ -202,10 +206,10 @@ class InputRow final : public Component {
         clip.setBounds(area.removeFromRight(s::clipWidth));
     }
     void paint(Graphics& g) override {
-        g.fillAll(s::panel);
+        g.fillAll(skin.colour(s::panel));
         auto area = getLocalBounds().reduced(s::inset, 0);
         g.setFont(skin.font(s::body, true));
-        g.setColour(s::chalk);
+        g.setColour(skin.colour(s::chalk));
         g.drawText(cs::channel(channel), area.removeFromLeft(s::levelWidth), Justification::centredLeft);
         area.removeFromLeft(s::nameWidth + s::gutter);
         area.removeFromRight(s::clipWidth + s::gap);
@@ -215,19 +219,19 @@ class InputRow final : public Component {
                                  : String(cs::silence);
         g.drawText(label, value, Justification::centred, false);
         auto meter = area.withSizeKeepingCentre(area.getWidth(), s::gap);
-        g.setColour(s::raised);
+        g.setColour(skin.colour(s::raised));
         g.fillRect(meter);
         auto extent = [&](float level) {
             return roundToInt(meter.getWidth() * jlimit(0.0f, 1.0f, (decibels(level) + 60.0f) / 60.0f));
         };
-        g.setColour(reading.clipped ? s::clipping : s::ready);
+        g.setColour(skin.colour(reading.clipped ? s::clipping : s::ready));
         g.fillRect(meter.withWidth(extent(reading.peak)));
         if (reading.held > 0) {
-            g.setColour(s::chalk);
+            g.setColour(skin.colour(s::chalk));
             g.fillRect(meter.withX(meter.getX() + std::max(0, extent(reading.held) - s::stroke))
                            .withWidth(s::stroke));
         }
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.fillRect(getLocalBounds().removeFromBottom(s::hairline));
     }
     bool fits() const {
@@ -242,7 +246,7 @@ class InputRow final : public Component {
     Connection& link;
     int channel;
     Reading reading{};
-    TextEditor editor;
+    ThemedEditor editor;
     Action clip;
 };
 } // namespace
@@ -251,18 +255,48 @@ Theme::Theme() {
     heavy = Typeface::createSystemTypefaceFor(BinaryData::InterSemiBold_ttf,
                                               BinaryData::InterSemiBold_ttfSize);
     digits = Typeface::createSystemTypefaceFor(BinaryData::Mono_ttf, BinaryData::Mono_ttfSize);
-    setColour(ComboBox::textColourId, s::chalk);
-    setColour(PopupMenu::backgroundColourId, s::panel);
-    setColour(PopupMenu::textColourId, s::chalk);
-    setColour(PopupMenu::highlightedBackgroundColourId, s::raised);
-    setColour(PopupMenu::highlightedTextColourId, s::chalk);
-    setColour(TextEditor::backgroundColourId, s::raised);
-    setColour(TextEditor::textColourId, s::chalk);
-    setColour(TextEditor::outlineColourId, s::line);
-    setColour(TextEditor::focusedOutlineColourId, s::selection);
-    setColour(TextEditor::highlightColourId, s::selection.withAlpha(s::selectionOpacity));
-    setColour(CaretComponent::caretColourId, s::chalk);
-    setColour(ScrollBar::thumbColourId, s::faint);
+    setDark(Desktop::getInstance().isDarkModeActive());
+}
+bool Theme::applyAppearance(Appearance preference, bool systemDark) {
+    const bool next = preference == Appearance::system ? systemDark : preference == Appearance::dark;
+    if (dark == next)
+        return false;
+    setDark(next);
+    return true;
+}
+void Theme::setDark(bool useDark) {
+    dark = useDark;
+    setColour(ComboBox::textColourId, colour(s::chalk));
+    setColour(TooltipWindow::backgroundColourId, colour(s::panel));
+    setColour(TooltipWindow::textColourId, colour(s::chalk));
+    setColour(TooltipWindow::outlineColourId, colour(s::line));
+    setColour(AlertWindow::backgroundColourId, colour(s::panel));
+    setColour(AlertWindow::textColourId, colour(s::chalk));
+    setColour(AlertWindow::outlineColourId, colour(s::line));
+    setColour(TextButton::buttonColourId, colour(s::raised));
+    setColour(TextButton::buttonOnColourId, colour(s::accent));
+    setColour(TextButton::textColourOffId, colour(s::chalk));
+    setColour(TextButton::textColourOnId, colour(s::onAccent));
+    setColour(PopupMenu::backgroundColourId, colour(s::panel));
+    setColour(PopupMenu::textColourId, colour(s::chalk));
+    setColour(PopupMenu::highlightedBackgroundColourId, colour(s::accentSurface));
+    setColour(PopupMenu::highlightedTextColourId, colour(s::accent));
+    setColour(TextEditor::backgroundColourId, colour(s::raised));
+    setColour(TextEditor::textColourId, colour(s::chalk));
+    setColour(TextEditor::outlineColourId, colour(s::line));
+    setColour(TextEditor::focusedOutlineColourId, colour(s::selection));
+    setColour(TextEditor::highlightColourId, colour(s::selection).withAlpha(s::selectionOpacity));
+    setColour(CaretComponent::caretColourId, colour(s::chalk));
+    setColour(ScrollBar::thumbColourId, colour(s::faint));
+    setColour(Label::textColourId, colour(s::chalk));
+    setColour(TextEditor::highlightedTextColourId, colour(s::chalk));
+    setColour(ResizableWindow::backgroundColourId, colour(s::background));
+}
+void ThemedEditor::lookAndFeelChanged() {
+    TextEditor::lookAndFeelChanged();
+    applyColourToAllText(findColour(textColourId), false);
+    if (const auto* theme = dynamic_cast<Theme*>(&getLookAndFeel()))
+        setTextToShowWhenEmpty(getTextToShowWhenEmpty(), theme->colour(s::muted));
 }
 Font Theme::font(float size, bool mono, bool bold) const {
     auto face = mono ? digits : (bold ? heavy : regular);
@@ -271,29 +305,71 @@ Font Theme::font(float size, bool mono, bool bold) const {
 Font Theme::getPopupMenuFont() { return font(s::body); }
 Font Theme::getComboBoxFont(ComboBox& c) { return font(s::body, c.getProperties().contains("number")); }
 void Theme::positionComboBoxText(ComboBox& c, Label& l) {
+    if (c.getName() == cs::appearance) {
+        l.setBounds(0, 0, 0, s::menuHeight);
+        return;
+    }
     l.setBounds(c.getLocalBounds().reduced(s::gap, 0).withTrimmedRight(s::icon));
     l.setFont(getComboBoxFont(c));
     l.setBorderSize({});
 }
-void Theme::drawComboBox(Graphics& g, int w, int h, bool, int, int, int, int, ComboBox& c) {
+void Theme::drawComboBox(Graphics& g, int w, int h, bool down, int, int, int, int, ComboBox& c) {
     auto r = Rectangle<float>(0, 0, (float)w, (float)h).reduced(s::hairline);
-    g.setColour(s::raised);
-    g.fillRoundedRectangle(r, s::radius);
-    g.setColour(c.hasKeyboardFocus(true) ? s::selection : s::line);
-    g.drawRoundedRectangle(r, s::radius, s::hairline);
+    if (c.getName() == cs::appearance) {
+        if (down || c.isMouseOver(true)) {
+            g.setColour(colour(s::raised));
+            g.fillRoundedRectangle(r, controlRadius());
+        }
+        const auto ink = colour(c.hasKeyboardFocus(true) ? s::accent : s::muted);
+        const auto disc = r.withTrimmedBottom(s::inset).withSizeKeepingCentre(s::icon, s::icon);
+        g.setColour(ink);
+        g.drawEllipse(disc, s::stroke);
+        g.saveState();
+        g.reduceClipRegion(disc.withWidth(disc.getWidth() / 2).toNearestInt());
+        g.fillEllipse(disc);
+        g.restoreState();
+        g.setFont(font(s::railLabel, false, true));
+        g.drawText(cs::appearance, r.removeFromBottom(s::inset), Justification::centred);
+        if (c.hasKeyboardFocus(true))
+            g.drawRoundedRectangle(c.getLocalBounds().toFloat().reduced(s::hairline), controlRadius(), s::stroke);
+        return;
+    }
+    g.setColour(colour(s::raised));
+    g.fillRoundedRectangle(r, controlRadius());
+    g.setColour(colour(c.hasKeyboardFocus(true) ? s::selection : s::line));
+    g.drawRoundedRectangle(r, controlRadius(), s::hairline);
     Path p;
     auto x = w - s::inset;
     auto y = h / 2;
     p.startNewSubPath(x - s::grid, y - s::stroke);
     p.lineTo(x, y + s::stroke);
     p.lineTo(x + s::grid, y - s::stroke);
-    g.setColour(s::chalk);
+    g.setColour(colour(s::chalk));
     g.strokePath(p, PathStrokeType(s::stroke));
 }
 Studio::Studio(DeviceSystem& sys, File path, File root)
     : devices(sys), settingsFile(std::move(path)), settings(Settings::load(settingsFile)), link(sys),
       page(settings.visited ? Page::home : Page::device) {
+    appearanceSelector.setName(cs::appearance);
+    appearanceSelector.setTitle(cs::appearance);
+    appearanceSelector.addItemList(cs::appearanceModes, 1);
+    appearanceSelector.setSelectedItemIndex(static_cast<int>(settings.appearance), dontSendNotification);
+    appearanceSelector.onChange = [this] {
+        const auto previous = settings.appearance;
+        settings.appearance = static_cast<Appearance>(appearanceSelector.getSelectedItemIndex());
+        if (!settings.save(settingsFile)) {
+            settings.appearance = previous;
+            appearanceSelector.setSelectedItemIndex(static_cast<int>(previous), dontSendNotification);
+            AlertWindow::showMessageBoxAsync(MessageBoxIconType::WarningIcon, cs::appearance,
+                                             cs::settingsError, cs::dismiss, this);
+            return;
+        }
+        updateAppearance();
+    };
+    addChildComponent(appearanceSelector);
     setLookAndFeel(&skin);
+    updateAppearance();
+    Desktop::getInstance().addDarkModeSettingListener(this);
     setWantsKeyboardFocus(true);
     viewport.setViewedComponent(&rows, false);
     viewport.setScrollBarsShown(true, false);
@@ -325,7 +401,20 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
         }
     startTimerHz(30);
 }
+void Studio::darkModeSettingChanged() {
+    if (settings.appearance == Appearance::system)
+        updateAppearance();
+}
+void Studio::updateAppearance() {
+    appearanceSelector.setTooltip(cs::appearance + cs::divider +
+                                 cs::appearanceModes[static_cast<int>(settings.appearance)]);
+    if (skin.applyAppearance(settings.appearance, Desktop::getInstance().isDarkModeActive())) {
+        sendLookAndFeelChange();
+        repaint();
+    }
+}
 Studio::~Studio() {
+    Desktop::getInstance().removeDarkModeSettingListener(this);
     if (fileTask.valid())
         fileTask.wait();
     devices.midiChanged = {};
@@ -542,18 +631,18 @@ void Studio::identifyGuitar() {
 void Studio::handleAsyncUpdate() { rebuild(); }
 void Studio::resized() { rebuild(); }
 void Studio::paint(Graphics& g) {
-    g.fillAll(s::background);
+    g.fillAll(skin.colour(s::background));
     const auto content = getLocalBounds().withTrimmedLeft(navigationBounds.getWidth());
     if (workspaceHeading.isEmpty()) {
-        g.setColour(s::panel);
+        g.setColour(skin.colour(s::panel));
         g.fillRect(content.withHeight(s::header));
     }
     paintWorkspace(g);
     for (auto r : panels) {
-        g.setColour(s::panel);
+        g.setColour(skin.colour(s::panel));
         g.fillRoundedRectangle(r.toFloat(), s::radius);
     }
-    g.setColour(s::line);
+    g.setColour(skin.colour(s::line));
     if (transportBounds.isEmpty() && workspaceHeading.isEmpty()) {
         g.fillRect(content.getX(), s::header, content.getWidth(), s::hairline);
         g.fillRect(content.getX(), getHeight() - s::footer, content.getWidth(), s::hairline);
@@ -565,7 +654,7 @@ void Studio::paint(Graphics& g) {
     if (page == Page::home || page == Page::ideas)
         paintIdeas(g);
     for (const auto& [shape, ink] : homePreview) {
-        g.setColour(ink);
+        g.setColour(skin.colour(ink));
         g.fillRect(shape);
     }
     if (page == Page::live) {
@@ -575,12 +664,12 @@ void Studio::paint(Graphics& g) {
                 return juce::roundToInt(track.getWidth() *
                                         std::clamp((decibels(amplitude) + 60.f) / 60.f, 0.f, 1.f));
             };
-            g.setColour(s::line);
+            g.setColour(skin.colour(s::line));
             g.fillRect(track);
-            g.setColour(clipped ? s::clipping : s::ready);
+            g.setColour(skin.colour(clipped ? s::clipping : s::ready));
             g.fillRect(track.withWidth(position(value)));
             if (held > 0) {
-                g.setColour(s::chalk);
+                g.setColour(skin.colour(s::chalk));
                 g.fillRect(
                     track.withX(track.getX() + std::min(position(held), track.getWidth() - s::stroke))
                         .withWidth(s::stroke));
@@ -590,7 +679,7 @@ void Studio::paint(Graphics& g) {
         drawMeter(inputBar, in.peak, in.held, in.clipped);
         drawMeter(outputBar, link.audio.live.outputPeak.load(), 0, false);
         auto icon = routeSymbol.toFloat();
-        g.setColour(s::guitar);
+        g.setColour(skin.colour(s::guitar));
         if (!icon.isEmpty()) {
             auto centre = icon.getCentre();
             if (guitarSource == 0 || guitarSource == 3) {
@@ -609,13 +698,13 @@ void Studio::paint(Graphics& g) {
     if (page == Page::tuner)
         paintTuner(g);
     for (const auto& item : textLines) {
-        g.setColour(item.ink);
+        g.setColour(skin.colour(item.ink));
         g.setFont(item.font);
         g.drawText(item.value, item.bounds,
                    item.right ? Justification::centredRight : Justification::centredLeft, false);
     }
 }
-void Studio::text(String value, Rect r, int size, Colour ink, bool mono, bool bold, bool right) {
+void Studio::text(String value, Rect r, int size, s::Ink ink, bool mono, bool bold, bool right) {
     auto f = skin.font(size, mono, bold);
     if (size == s::section)
         f.setExtraKerningFactor(s::tracking);
@@ -670,7 +759,8 @@ void Studio::rebuild() {
     if (getWidth() <= 0)
         return;
     auto workspace = getLocalBounds();
-    if (page != Page::project || !view.distant)
+    appearanceSelector.setVisible(page != Page::project || !view.distant);
+    if (appearanceSelector.isVisible())
         navigation(workspace.removeFromLeft(s::railWidth));
     if (page == Page::metronome && !fileTask.valid()) {
         metronomePage(workspace);

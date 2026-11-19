@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## Dva vzhledy v sestavení 1.2.0
+
+Na levé liště přibyla volba vzhledu pro celý Rocker. Zkoušky přepínají vzhled uprostřed záběru i za přehrávání, čtou uložené vzorky a ověřují návrat k poslední volbě po novém spuštění. Snímky 49 a 50 ukazují stejný uložený pokus v obou vzhledech. [Návod](../README.md#světlý-a-tmavý-vzhled-v-sestavení-120) · [Sestavení, zkoušky a snímky](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Avzhled-svetly-tmavy)
+
 ## Příprava vydání 1.1.0
 
 Při zablokovaném zápisu dostaneš u výběru pokusu a při změně tempa zprávu o tom, co se podařilo uložit. Stejnou volbu můžeš po obnovení zápisu zopakovat. Číslo pro aplikaci, instalátory a vydání určuje společný soubor VERSION. Balík pro Mac vyžaduje macOS 26.0 nebo novější na čipu Apple i Intel. [Zkoušky a balíky této změny](https://github.com/JendaNDT/Rocker-2/pull/25)

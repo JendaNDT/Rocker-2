@@ -59,7 +59,9 @@ void Studio::navigation(Rect bounds) {
          [mode] { mode(2); }, workspace || (hasSong && canLeave), "2", s::railModeHeight);
     item(cs::mixMode, cs::navMix, Icon::mixMode, workspace && view.mixing,
          [mode] { mode(3); }, workspace || (hasSong && canLeave), "3", s::railModeHeight);
-    rail = rail.withTop(rail.getBottom() - 3 * (s::railItemHeight + s::grid));
+    rail = rail.withTop(rail.getBottom() - 4 * (s::railItemHeight + s::grid));
+    appearanceSelector.setBounds(rail.removeFromTop(s::railItemHeight));
+    rail.removeFromTop(s::grid);
     item(cs::navMetro, cs::navMetro, Icon::metronome, page == Page::metronome,
          [this] { if (page != Page::metronome) openMetronome(); }, canLeave);
     item(cs::tuner, cs::tuner, Icon::tuner, page == Page::tuner || page == Page::customTuning,
@@ -81,21 +83,21 @@ void Studio::deviceStatus(Rect bounds) {
 
 void Studio::paintWorkspace(Graphics& g) {
     if (!navigationBounds.isEmpty()) {
-        g.setColour(s::panel);
+        g.setColour(skin.colour(s::rail));
         g.fillRect(navigationBounds);
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.fillRect(navigationBounds.withLeft(navigationBounds.getRight() - s::hairline));
     }
     for (auto band : {workspaceHeading, transportBounds, inspectorBounds}) {
         if (band.isEmpty())
             continue;
-        g.setColour(s::panel);
+        g.setColour(skin.colour(band == inspectorBounds ? s::panel : s::headerSurface));
         g.fillRect(band);
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.fillRect(band.withHeight(s::hairline));
     }
     if (inspectorBounds.getWidth() > 0) {
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.fillRect(inspectorBounds.withWidth(s::hairline));
     }
 }
@@ -204,7 +206,7 @@ void Studio::paintTransport(Graphics& g) {
     auto position = transportPosition;
     auto time = position.removeFromTop(s::workspaceFooter / 2);
     auto bars = time.removeFromLeft(time.getWidth() * 2 / 3);
-    g.setColour(s::chalk);
+    g.setColour(skin.colour(s::chalk));
     g.setFont(skin.font(s::counter, true));
     g.drawText(limit(skin.font(s::counter, true), clock, bars.getWidth()), bars,
                Justification::centredLeft);
@@ -212,7 +214,7 @@ void Studio::paintTransport(Graphics& g) {
     g.setFont(skin.font(s::section, true));
     g.drawText(String(seconds / 60) + ":" + String(seconds % 60).paddedLeft('0', 2), time,
                Justification::centredRight);
-    g.setColour(counting ? s::warning : recordingNow ? s::armedInk : s::muted);
+    g.setColour(skin.colour(counting ? s::warning : recordingNow ? s::armedInk : s::muted));
     g.setFont(skin.font(s::caption, false, true));
     g.drawText(state, position, Justification::centredLeft);
     auto info = transportInfo;
@@ -227,19 +229,19 @@ void Studio::paintTransport(Graphics& g) {
     if (!destinations.isEmpty()) {
         auto action = info.removeFromTop(s::caption + s::grid);
         if (inputMissing)
-            g.setColour(s::warning);
+            g.setColour(skin.colour(s::warning));
         g.drawText(recordingNow ? cs::recordingInto : inputMissing ? cs::inputUnavailable : cs::readyToRecord, action,
                    Justification::centredLeft);
     }
     auto value = destinations.isEmpty() ? cs::noneArmed : destinations.joinIntoString(", ");
     auto names = info.removeFromTop(s::workspaceTitle);
-    g.setColour(s::chalk);
+    g.setColour(skin.colour(s::chalk));
     g.drawText(limit(skin.font(s::caption, false, true), value, names.getWidth()), names,
                Justification::centredLeft);
     if (recordingNow)
         if (auto loop = performance->loopSpan()) {
             const auto pass = 1 + std::max<Frame>(0, performance->cursor.load() - loop->from) / loop->length();
-            g.setColour(s::armedInk);
+            g.setColour(skin.colour(s::armedInk));
             g.drawText(performance->loopStopping() ? cs::postRoll
                                                    : cs::attemptLabel + " " + String(pass),
                        info, Justification::centredLeft);

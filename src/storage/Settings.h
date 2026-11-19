@@ -12,7 +12,9 @@ struct DrumSetup {
     juce::StringArray ports, names;
     bool stereo = false, wide = true;
 };
+enum class Appearance { system, light, dark };
 struct Settings {
+    Appearance appearance = Appearance::system;
     std::map<juce::String, DrumSetup> drumSetups;
     juce::String libraryPath, clockOverride;
     int pedalKey = 0;

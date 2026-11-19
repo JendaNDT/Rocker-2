@@ -64,6 +64,7 @@ Settings Settings::load(const juce::File& file) {
             if (e.value.isInt())
                 result.midiCorrections[e.name.toString()] = juce::jlimit(-48000, 48000, int(e.value));
     result.pedalKey = integer("pedal", 0, 0, 0x7fffffff);
+    result.appearance = static_cast<Appearance>(integer("appearance", 0, 0, static_cast<int>(Appearance::dark)));
     result.clickVolume = integer("clickVolume", 100, 0, 100);
     result.clickSound = integer("clickSound", 0, 0, 2);
     auto kits = data.getProperty("bici", {});
@@ -121,6 +122,7 @@ bool Settings::save(const juce::File& file) const {
     auto* object = new juce::DynamicObject;
     juce::var data(object);
     object->setProperty("schemaVersion", 1);
+    object->setProperty("appearance", static_cast<int>(appearance));
     object->setProperty("visited", visited);
     object->setProperty("pojistka", insurance);
     object->setProperty("driver", static_cast<int>(device.driver));

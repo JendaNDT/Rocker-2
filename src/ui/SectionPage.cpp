@@ -9,8 +9,8 @@ const StringArray colours{"uvod", "sloka", "refren", "most", "solo", "zaver"};
 int palette(const String& key) {
     return std::max(0, colours.indexOf(key));
 }
-Colour sectionInk(int index) {
-    const Colour inks[]{s::intro, s::verse, s::chorus, s::bridge, s::solo, s::ending};
+s::Ink sectionInk(int index) {
+    const s::Ink inks[]{s::intro, s::verse, s::chorus, s::bridge, s::solo, s::ending};
     return inks[index];
 }
 } // namespace
@@ -182,22 +182,22 @@ void Studio::drawSections(Graphics& g) {
         p.lineTo(tape.getRight() - s::tapeCut, tape.getBottom());
         p.lineTo(tape.getX(), tape.getBottom());
         p.closeSubPath();
-        g.setColour(ink);
+        g.setColour(skin.colour(ink));
         g.fillPath(p);
         if (selectedOccurrence == i) {
-            g.setColour(s::selection);
+            g.setColour(skin.colour(s::selection));
             g.strokePath(p, PathStrokeType(s::stroke));
         }
-        g.setColour(s::background);
+        g.setColour(skin.colour(s::background));
         g.setFont(skin.font(s::body, false, true));
         if (linked && box.getWidth() > s::icon + s::gap) {
             auto badge = box.removeFromRight(s::icon + s::grid)
                              .withSizeKeepingCentre(s::icon, s::icon)
                              .reduced(s::grid);
             g.drawRect(badge.translated(-s::grid / 2, -s::grid / 2), s::stroke);
-            g.setColour(ink);
+            g.setColour(skin.colour(ink));
             g.fillRect(badge.translated(s::grid / 2, s::grid / 2));
-            g.setColour(s::background);
+            g.setColour(skin.colour(s::background));
             g.drawRect(badge.translated(s::grid / 2, s::grid / 2), s::stroke);
         }
         String duration = String(length) + (length < full ? cs::outOf + String(full) : String{});
@@ -225,15 +225,15 @@ void Studio::drawSections(Graphics& g) {
         stripe = stripe.removeFromBottom(s::grid * 2).getIntersection(axis);
         Graphics::ScopedSaveState clip(g);
         g.reduceClipRegion(stripe);
-        g.setColour(s::panel);
+        g.setColour(skin.colour(s::panel));
         g.fillRect(stripe);
-        g.setColour(sectionInk(palette(song.sections.at(o.section).colour)));
+        g.setColour(skin.colour(sectionInk(palette(song.sections.at(o.section).colour))));
         for (int x = stripe.getX() - stripe.getHeight(); x < stripe.getRight(); x += s::grid)
             g.drawLine((float)x, (float)stripe.getBottom(), (float)(x + stripe.getHeight()),
                        (float)stripe.getY(), s::hairline);
     }
     if (dragged && (drag == Drag::tapeEdge || drag == Drag::tapeMove)) {
-        g.setColour(s::chalk);
+        g.setColour(skin.colour(s::chalk));
         g.fillRect(pixelAt(song.barFrame(targetBar)), axis.getY(), s::stroke, axis.getHeight());
     }
 }

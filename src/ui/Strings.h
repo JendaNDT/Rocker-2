@@ -2,6 +2,8 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String appearance = u8"Vzhled", dismiss = u8"Zavřít";
+inline const juce::StringArray appearanceModes{juce::String(u8"Podle systému"), juce::String(u8"Světlý"), juce::String(u8"Tmavý")};
 inline const juce::String inputUnavailable = u8"Chybí vstup", useMono = u8"Použít jeden vstup";
 inline const juce::String chooseInput = u8"Vybrat vstup", inputLost = u8"odpojen",
     connectInput = u8"Připoj zvukovku nebo vyber dostupný vstup v Zapojení.",

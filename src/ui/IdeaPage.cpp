@@ -458,9 +458,9 @@ void Studio::paintIdeas(Graphics& g) {
     auto draw = [&](Rect r, const auto& peaks) {
         if (peaks.empty() || r.isEmpty())
             return;
-        g.setColour(s::raised);
+        g.setColour(skin.colour(s::raised));
         g.fillRect(r);
-        g.setColour(s::guitar);
+        g.setColour(skin.colour(s::guitar));
         int count = (int)peaks.size();
         for (int i = 0; i < count; ++i) {
             float h = std::max(1.f, peaks[i] * r.getHeight() / 2);
@@ -469,10 +469,10 @@ void Studio::paintIdeas(Graphics& g) {
         }
     };
     if (ideaRecording && !ideaTrace.isEmpty()) {
-        g.setColour(s::recording);
+        g.setColour(skin.colour(s::recording));
         g.drawRect(getLocalBounds(), s::recordFrame);
         g.setFont(skin.font(s::counter, true));
-        g.setColour(s::chalk);
+        g.setColour(skin.colour(s::chalk));
         g.drawText(duration(ideaRecording->recorded(), link.current.rate),
                    getLocalBounds().reduced(s::margin, s::inset).removeFromTop(s::header),
                    Justification::centredRight);

@@ -4,9 +4,11 @@ Domácí studio pro kytaru a bicí. Můžeš nahrát bicí, dohrát k nim kytaru
 
 Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hotové aplikace. Během vývoje se každá etapa ověřuje automaticky.
 
-## Jak poznáš sestavení 1.1.0
+## Světlý a tmavý vzhled v sestavení 1.2.0
 
-Ve verzi 1.1.0 najdeš vlevo samostatný **Metronom** a ve skladbě režimy **Hraj**, **Stříhej** a **Míchej**. Číslo verze najdeš také ve vlastnostech aplikace. Balík pro Mac vyžaduje **macOS 26.0 nebo novější** a obsahuje aplikaci pro Apple Silicon i Intel. [Sestavení na GitHubu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Amain) · [Postup společných ručních zkoušek](docs/PREDANI.md#3-ruční-zkoušky)
+Na levé liště nad Metronomem otevři **Vzhled**. Výchozí volba **Podle systému** sleduje světlý nebo tmavý režim Windows či macOS i při otevřené aplikaci. **Světlý** používá porcelánové plochy a inkoustově modré ovládání. **Tmavý** kombinuje grafitové plochy s jantarovým zvýrazněním. Ruční volbu si Rocker pamatuje i po zavření.
+
+Vzhled můžeš přepnout uprostřed přehrávání nebo nahrávání. Tlačítka najdeš na stejném místě a záznam v obou režimech poznáš podle červeného označení. Číslo verze najdeš také ve vlastnostech aplikace. Balík pro Mac vyžaduje **macOS 26.0 nebo novější** a obsahuje aplikaci pro Apple Silicon i Intel. [Sestavení na GitHubu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Amain) · [Postup společných ručních zkoušek](docs/PREDANI.md#3-ruční-zkoušky)
 
 ## Rozložení 1b
 
@@ -25,7 +27,7 @@ Ve skladbě **K** zapíná nebo vypíná vodítko i během přehrávání a nahr
 
 ## Stažení a spuštění
 
-Na stránce vydání zkontroluj číslo verze. Pro zkoušky redesignu vyber **1.1.0** nebo odpovídající sestavení z Actions podle bodu 4. [Přehled vydání](https://github.com/JendaNDT/Rocker-2/releases)
+Na stránce vydání zkontroluj číslo verze. Pro světlý a tmavý vzhled stáhni sestavení **1.2.0** z Actions podle bodu 4. [Přehled vydání](https://github.com/JendaNDT/Rocker-2/releases)
 
 | Počítač | Co stáhnout |
 |---|---|

@@ -100,6 +100,56 @@ TEST_CASE("Settings round trip, partial fields and corrupt files") {
     REQUIRE(t.file.replaceWithText("{!!!"));
     CHECK(Settings::load(t.file).device == DeviceChoice{});
 }
+TEST_CASE("System appearance follows the desktop and explicit palettes stay fixed", "[appearance]") {
+    ScopedJuceInitialiser_GUI gui;
+    Theme skin;
+    for (const bool desktopDark : {false, true, false}) {
+        skin.applyAppearance(Appearance::system, desktopDark);
+        CHECK(skin.isDark() == desktopDark);
+        for (const auto fixed : {Appearance::dark, Appearance::light}) {
+            skin.applyAppearance(fixed, desktopDark);
+            CHECK_FALSE(skin.applyAppearance(fixed, !desktopDark));
+            CHECK(skin.isDark() == (fixed == Appearance::dark));
+        }
+    }
+    Temp temp;
+    REQUIRE(temp.dir.createDirectory().wasOk());
+    for (auto json : {"{}", "{\"appearance\":-1}", "{\"appearance\":8}", "{\"appearance\":\"dark\"}"}) {
+        REQUIRE(temp.file.replaceWithText(json));
+        CHECK(Settings::load(temp.file).appearance == Appearance::system);
+    }
+    test::FakeDevice device;
+    Studio view(device, temp.file);
+    CHECK(view.theme().isDark() == Desktop::getInstance().isDarkModeActive());
+    auto* selector = find<ComboBox>(view, cs::appearance);
+    REQUIRE(selector);
+    CHECK(selector->isVisible());
+    CHECK(selector->getSelectedItemIndex() == 0);
+}
+TEST_CASE("Changing appearance preserves an unfinished song name and text selection", "[appearance]") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    Settings settings;
+    settings.visited = true;
+    REQUIRE(settings.save(temp.file));
+    test::FakeDevice device;
+    Studio studio(device, temp.file);
+    click(studio, cs::song);
+    auto* title = find<TextEditor>(studio, cs::titleSong);
+    auto* selector = find<ComboBox>(studio, cs::appearance);
+    REQUIRE(title);
+    REQUIRE(selector);
+    title->setText(u8"Noční jízda");
+    title->setHighlightedRegion({1, 5});
+    for (const int choice : {2, 1}) {
+        selector->setSelectedItemIndex(choice, sendNotificationSync);
+        REQUIRE(find<TextEditor>(studio, cs::titleSong) == title);
+        CHECK(title->getText() == String(u8"Noční jízda"));
+        CHECK(title->getHighlightedRegion() == Range<int>(1, 5));
+        CHECK(title->findColour(TextEditor::textColourId) == studio.theme().colour(style::chalk));
+        fits(studio);
+    }
+}
 TEST_CASE("A-17 real screen layouts and snapshots") {
     ScopedJuceInitialiser_GUI gui;
     Temp t;
@@ -1613,6 +1663,62 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         for (int pixels : {1280, 1920})
             snapshot(studio, scene, pixels);
     };
+    SECTION("Appearance switches during capture without restarting the transport") {
+        auto* choice = find<ComboBox>(studio, cs::appearance);
+        REQUIRE(choice);
+        REQUIRE(choice->getSelectedItemIndex() == 0);
+        REQUIRE(choice->getNumItems() == 3);
+        choice->setSelectedItemIndex(1, sendNotificationSync);
+        capture("46-hraj-svetly");
+        const auto light = studio.createComponentSnapshot(studio.getLocalBounds());
+        click(studio, cs::recordSong);
+        process(.25f, 4096);
+        choice->setSelectedItemIndex(2, sendNotificationSync);
+        process(-.5f, 4096);
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        capture("47-nahravam-tmavy");
+        click(studio, cs::stopSong);
+        bool damaged = false;
+        const auto stored = Song::load(dir, damaged);
+        REQUIRE(stored);
+        REQUIRE(stored->assets.size() == 1);
+        auto audio = waveReader(dir.getChildFile(stored->assets.front().path));
+        REQUIRE(audio);
+        REQUIRE(audio->lengthInSamples == 8192);
+        AudioBuffer<float> check(1, 8192);
+        REQUIRE(audio->read(&check, 0, 8192, 0, true, false));
+        CHECK(check.getSample(0, 2048) == .25f);
+        CHECK(check.getSample(0, 6144) == -.5f);
+        capture("48-hraj-tmavy");
+        auto* play = find<Button>(studio, cs::playSong);
+        REQUIRE(play);
+        const auto playBounds = play->getBounds();
+        const auto dark = studio.createComponentSnapshot(studio.getLocalBounds());
+        CHECK(light.getPixelAt(1, 1).getBrightness() > dark.getPixelAt(1, 1).getBrightness());
+        click(studio, cs::listenTake);
+        CHECK(std::abs(process(0, 1024)[0][800]) > .05f);
+        choice->setSelectedItemIndex(1, sendNotificationSync);
+        CHECK(std::abs(process(0, 1024)[0][800]) > .05f);
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        click(studio, cs::stopSong);
+        play = find<Button>(studio, cs::playSong);
+        REQUIRE(play);
+        CHECK(play->getBounds() == playBounds);
+        capture("49-pokus-svetly");
+        choice->setSelectedItemIndex(2, sendNotificationSync);
+        capture("50-pokus-tmavy");
+        test::FakeDevice reopenedDevice;
+        Studio reopened(reopenedDevice, temp.file);
+        auto* restored = find<ComboBox>(reopened, cs::appearance);
+        REQUIRE(restored);
+        REQUIRE(restored->getSelectedItemIndex() == 2);
+        restored->setSelectedItemIndex(0, sendNotificationSync);
+        test::FakeDevice thirdDevice;
+        Studio automatic(thirdDevice, temp.file);
+        auto* systemChoice = find<ComboBox>(automatic, cs::appearance);
+        REQUIRE(systemChoice);
+        CHECK(systemChoice->getSelectedItemIndex() == 0);
+    }
     SECTION("A selected attempt can be saved again after a write failure") {
         click(studio, cs::recordSong);
         process(.25f, 4096);

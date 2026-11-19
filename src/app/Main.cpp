@@ -4,7 +4,9 @@
 namespace rocker {
 class Window final : public juce::DocumentWindow {
   public:
-    Window(DeviceSystem& devices) : DocumentWindow(cs::app, style::background, allButtons) {
+    Window(DeviceSystem& devices)
+        : DocumentWindow(cs::app, style::background.get(juce::Desktop::getInstance().isDarkModeActive()),
+                         allButtons) {
         setUsingNativeTitleBar(true);
         setResizable(true, false);
         setResizeLimits(style::minWidth, style::minHeight, style::maxWindow, style::maxWindow);

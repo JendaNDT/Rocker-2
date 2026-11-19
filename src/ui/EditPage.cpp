@@ -733,7 +733,7 @@ void Studio::paintEditOverlay(Graphics& g) {
     auto axis = ruler.withTrimmedLeft(s::trackHead).withBottom(timelineArea.getBottom());
     Graphics::ScopedSaveState save(g);
     g.reduceClipRegion(axis);
-    g.setColour(s::beatGrid);
+    g.setColour(skin.colour(s::beatGrid));
     for (int i = 0; i < visibleBars(); ++i)
         for (int b = 1; b < song.grid.beats; ++b) {
             int x = pixelAt(song.grid.beat((firstBar() + i) * song.grid.beats + b));
@@ -745,9 +745,9 @@ void Studio::paintEditOverlay(Graphics& g) {
                 continue;
             auto badge =
                 lanes[i].withLeft(pixelAt(group.from)).withRight(pixelAt(group.to)).withHeight(s::button);
-            g.setColour(s::raised);
+            g.setColour(skin.colour(s::raised));
             g.fillRect(badge);
-            g.setColour(s::chalk);
+            g.setColour(skin.colour(s::chalk));
             g.setFont(skin.font(s::caption));
             StringArray numbers{"1"};
             for (size_t n = 0; n < group.attempts.size(); ++n)
@@ -765,9 +765,9 @@ void Studio::paintEditOverlay(Graphics& g) {
         span.to = std::max(dragTarget, span.from + 1);
     if (span.valid()) {
         auto bounds = axis.withLeft(pixelAt(span.from)).withRight(pixelAt(span.to));
-        g.setColour(s::selection.withAlpha(s::selectionOpacity));
+        g.setColour(skin.colour(s::selection).withAlpha(s::selectionOpacity));
         g.fillRect(bounds);
-        g.setColour(s::selection);
+        g.setColour(skin.colour(s::selection));
         g.drawRect(bounds, s::stroke);
     }
 }
@@ -779,9 +779,9 @@ void Studio::paintOverChildren(Graphics& g) {
                    .constrainedWithin(getLocalBounds());
     Graphics::ScopedSaveState save(g);
     g.reduceClipRegion(box);
-    g.setColour(s::raised);
+    g.setColour(skin.colour(s::raised));
     g.fillRect(box);
-    g.setColour(s::chalk);
+    g.setColour(skin.colour(s::chalk));
     g.setFont(skin.font(s::body, true));
     auto title = box.removeFromTop(s::button);
     auto beat = song.grid.beatAt(dragTarget);
@@ -793,7 +793,7 @@ void Studio::paintOverChildren(Graphics& g) {
     Frame begin = dragTarget - std::llround(box.getWidth() * 0.5 * perPixel);
     for (Frame b = song.grid.beatAt(begin); song.grid.beat(b) < begin + box.getWidth() * perPixel; ++b) {
         int x = box.getX() + roundToInt((song.grid.beat(b) - begin) / perPixel);
-        g.setColour(b % song.grid.beats == 0 ? s::barGrid : s::beatGrid);
+        g.setColour(skin.colour(b % song.grid.beats == 0 ? s::barGrid : s::beatGrid));
         g.drawVerticalLine(x, box.getY(), box.getBottom());
     }
     for (auto& c : song.clips)
@@ -813,13 +813,13 @@ void Studio::paintOverChildren(Graphics& g) {
                           box.getHeight() / 2;
                 bool active = drag == Drag::left ? at >= dragTarget && at < c.position + c.length
                                                  : at >= c.position && at < dragTarget;
-                g.setColour(active ? s::chalk : s::faint);
+                g.setColour(skin.colour(active ? s::chalk : s::faint));
                 g.drawVerticalLine(box.getX() + i, box.getCentreY() - h,
                                    box.getCentreY() + h + s::hairline);
             }
             break;
         }
-    g.setColour(s::selection);
+    g.setColour(skin.colour(s::selection));
     g.fillRect(box.getCentreX(), box.getY(), s::stroke, box.getHeight());
 }
 } // namespace rocker
