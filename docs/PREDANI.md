@@ -2,6 +2,8 @@
 
 ## 1. Hotovo
 
+V sestavení 1.2.0 otevři vlevo **Vzhled** a vyber **Podle systému**, **Světlý** nebo **Tmavý**. Volba se ukládá pro celý počítačový účet a platí pro všechny skladby. Snímky stejného pokusu mají v balíku názvy začínající na 49 a 50. [Sestavení a snímky](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Avzhled-svetly-tmavy)
+
 Při výběru pokusu Rocker potvrdí uložení až po zápisu na disk. Pokud selže zápis tempa, Metronom zůstane otevřený. Pokud se tempo uložilo a selhal až zápis voleb kliku, hláška to rozliší. Po odstranění příčiny stačí znovu stisknout stejné tlačítko. Sestavení 1.1.0 pro Mac vyžaduje macOS 26.0 nebo novější. [Opravy ukládání a ověření balíků](https://github.com/JendaNDT/Rocker-2/pull/25)
 
 Samostatný Metronom zahraje při otevření z Nápadů i ze skladby s vypnutým klikem. Ve skladbě můžeš vodítko přepnout klávesou K také během záznamu. Automatická kontrola sleduje oba výstupy až po zvukové vzorky, čas jednotlivých úderů a čistý uložený záznam. V balíku sestavení najdeš srovnávací WAV s osmi údery při 112 BPM. [Návod k poslechu](../README.md#když-metronom-neslyšíš) · [Běhy a balíky opravy](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Akontrola-metronomu)
@@ -20,13 +22,16 @@ Vyzkoušet skutečnou zvukovku, celou píseň, poslech exportu a znovuotevření
 
 **Čeká na Jendu po vydání.** Nahraj stejný riff dvakrát, porovnej pokusy a přepni během poslechu na Stříhej. S přímým odposlechem na zvukovce zkus vypnout odposlech v Rockeru. Nakonec při krátkém záznamu odpoj zvukovku, ověř zachráněný úsek a přiřaď vstup zpět.
 
-1. Stáhni sestavení 1.1.0 pro svůj počítač. Otevři Zapojení a vyber skutečnou zvukovku. Poslechni zkušební tón a zkus měřič kytary.
+1. Stáhni sestavení 1.2.0 pro svůj počítač. Otevři Zapojení a vyber skutečnou zvukovku. Poslechni zkušební tón a zkus měřič kytary.
 2. Změň složku skladeb a nahraj riff do Nápadů. Přehraj jej a založ z něj píseň. Otevři Metronom, vyzkoušej dva zvuky při různých hlasitostech a použij Rytmus ve skladbě.
 3. V režimu Stříhej označ takty. Zkus je nahrát dokola pětkrát a vyber pokus pomocí Tab. Poznamenej, jak zní návrat na začátek smyčky.
 4. Přidej bicí, podle potřeby baskytaru nebo zpěv. Zkus přehození předvoleb a dokonči celou píseň. V Míchej sbal pravý panel a porovnej šířku osy. Přehraj vývoz pro telefon a zkus vložit samostatné stopy do jiného studia.
 5. Další den stejnou píseň otevři a zkontroluj návrat k posledním změnám. Uveď sestavu a případné rozdíly mezi Windows a Macem. [Základní návod](../README.md#co-vyzkoušet-po-vydání)
+6. Zvol v Rockeru **Podle systému**. Přepni vzhled ve Windows nebo macOS a sleduj změnu na otevřené skladbě. Pak vyber opačný vzhled přímo v Rockeru, zavři jej a znovu otevři. Zkontroluj také čitelnost tlačítka záznamu a přebuzení při běžném světle v místnosti.
 
 ## 4. Rozhodnutí
+
+Obě schválené palety, jejich použití a výchozí volbu popisuje [rozhodnutí o vzhledu](ROZHODNUTI.md#světlý-a-tmavý-vzhled).
 
 Po odpojení celého zařízení musí uživatel jeho vstup znovu přiřadit. JUCE zpřístupňuje název zvukovky a stejný název může patřit jinému přístroji. Samotné ticho na vstupu jeho přiřazení zachová. [Rozhodnutí o přiřazení a zkratkách](ROZHODNUTI.md#pokusy-a-prirazeni-vstupu)
 

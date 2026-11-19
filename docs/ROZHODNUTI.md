@@ -190,3 +190,9 @@ Ikony Lucide 0.460.0 se kreslí z vložených SVG. Licence je u souborů a v bal
 ## Samostatný poslech metronomu
 
 Otevření Metronomu připraví ke cvičení Klik nebo naposledy zvolený druh vodítka v dané skladbě či Nápadech. Dřívější převzetí vypnutého vodítka způsobovalo, že po stisku Přehrát doby jen blikaly. Kdo chce cvičit podle světla, může přímo zvolit Bez kliku. Uložená hlasitost včetně nuly platí i pro cvičení a při nule aplikace vysvětlí, kde ji zesílit. Do skladby se volba přenese tlačítkem Použít ve skladbě.
+
+## Světlý a tmavý vzhled
+
+Jenda zvolil oba návrhy pro vzhled aplikace. Tmavá paleta „Grafit a jantar“ a světlá paleta „Porcelán a inkoust“ rozšiřují původní návrh v 01 / 5.2. Obě používají Inter pro popisky a JetBrains Mono pro čísla. V tmavém provedení má přehrávání kulatá tlačítka, ve světlém mírně zaoblené čtverce. Polohy, popisky a klávesy jsou společné. Červená značí záznam v obou režimech.
+
+Při prvním spuštění i po přechodu ze starší verze se použije vzhled systému. Přepínač na levé liště je dostupný i během záznamu. Volba se ukládá do nastavení uživatele, aby stejná skladba mohla na druhém počítači převzít jeho vzhled.

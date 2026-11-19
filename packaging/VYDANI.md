@@ -1,5 +1,7 @@
 Rocker 2 je české domácí studio pro kytaru a bicí. Nápad můžeš zachytit jednou klávesou, přidat další stopy, opravit takt a poslat hotový mix. Aplikace pracuje místně bez účtu a připojení k internetu.
 
+Na levé liště otevři **Vzhled** a zvol **Světlý**, **Tmavý** nebo **Podle systému**. Volba vydrží i po dalším spuštění.
+
 Vlevo najdeš Metronom a režimy Hraj, Stříhej a Míchej. Klik můžeš během nahrávání zapnout klávesou **K**. Po záběru si můžeš poslední pokus hned přehrát nebo jej zopakovat. Pokud se zápis přeruší, můžeš výběr pokusu nebo tempo potvrdit znovu.
 
 | Počítač | Soubor ke stažení |
