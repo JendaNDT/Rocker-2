@@ -1357,3 +1357,34 @@ TEST_CASE("A-17 E15 voice presets and controls stay available from a song track"
     chooseItem(view, cs::presetTitle, 0);
     CHECK_FALSE(find<Slider>(view, cs::voiceCompression));
 }
+
+TEST_CASE("A-17 E16 guide cycles between click, rhythm and silence and remembers the choice") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    const auto dir = temp.dir.getChildFile("Skladby/Guide");
+    Song song;
+    song.title = "Guide";
+    song.bars = 2;
+    song.tracks = {{"g", "Guitar", "kytara", {"In 1"}}};
+    REQUIRE(song.save(dir));
+    Settings config;
+    config.visited = true;
+    config.lastSong = dir.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    click(view, cs::resume);
+    click(view, cs::songClick);
+    CHECK(ViewState::load(dir).rhythm);
+    click(view, cs::home);
+    click(view, cs::resume);
+    CHECK(find<Button>(view, cs::guideRhythm));
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "34-vodici-rytmus", pixels);
+    click(view, cs::guideRhythm);
+    CHECK_FALSE(ViewState::load(dir).click);
+    click(view, cs::guideOff);
+    CHECK(ViewState::load(dir).click);
+    CHECK_FALSE(ViewState::load(dir).rhythm);
+}

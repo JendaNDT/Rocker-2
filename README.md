@@ -35,6 +35,8 @@ V Míchej otevři **Poslat mix… → Stopy zvlášť → Uložit stopy**. V `Ex
 
 Stopu typu **Jiná** můžeš použít pro zpěv nebo baskytaru. Ve skladbě klikni u stopy na **Zvuk stopy** a vyber **Zpěv**, **Baskytara** nebo **Bez úprav**. Basy, středy, výšky, komprese a dozvuk se projeví při přehrávání a exportu. Zdrojovou nahrávku můžeš později použít i s jiným nastavením.
 
+V režimu Hraj stiskni tlačítko **Klik** pro přechod na **Rytmus**. Další stisk zvolí **Bez kliku** a pak zase Klik. Rocker si nastavení pamatuje pro každou skladbu. Odpočet používá klik. Rytmus slyšíš během hraní ve sluchátkách, záznam vstupů a soubory exportu zůstávají čisté.
+
 ## Co vyzkoušet po vydání
 
 - **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.

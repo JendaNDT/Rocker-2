@@ -1,5 +1,5 @@
 #pragma once
-#include "MidiDrums.h"
+#include "GuideRhythm.h"
 #include <atomic>
 #include <thread>
 
@@ -115,7 +115,7 @@ struct Take {
 class Performance {
   public:
     Performance(const Song&, const AudioLibrary&, Frame start, bool recording, bool click,
-                int countBeats);
+                int countBeats, bool rhythm = false);
     ~Performance();
     bool arm(const Song&, const juce::File&, const juce::StringArray& ports, int delay,
              bool useWorker = true, int midiDelay = 0);
@@ -149,6 +149,7 @@ class Performance {
     std::thread worker, readAhead;
     std::atomic<bool> stopping{false};
     Frame nextBeat, beatIndex;
+    std::optional<GuideRhythm> guide;
     int clickAge = -1;
     bool accent = false;
 };

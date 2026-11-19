@@ -1,21 +1,21 @@
-# Předání Rockeru 2 po E15
+# Předání Rockeru 2 po E16
 
 ## 1. Hotovo
 
-Na stopě Jiná otevři **Zvuk stopy**. Předvolby **Zpěv** a **Baskytara** přidají ekvalizér, kompresi a dozvuk. K suchému zvuku se vrátíš volbou **Bez úprav**. [Zkoušky E15, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/18)
+V režimu Hraj přepínej tlačítkem Klik mezi klikem, rytmem a tichem. Rytmus uslyšíš jen během hraní. [Zkoušky E16, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/19)
 
 ## 2. Zbývá
 
-E16 až E18 podle dokumentu 06. Další etapa přidá jednoduchý doprovodný rytmus do sluchátek. [Plán](06_PLAN_OPRAV_A_VYLEPSENI.md)
+E17 a E18 podle dokumentu 06. Další etapa přidá export pro poslech na telefonu. [Plán](06_PLAN_OPRAV_A_VYLEPSENI.md)
 
 ## 3. Ruční zkoušky
 
-Po E18 nahraj zpěv nebo baskytaru. Při přehrávání přepni předvolby a vyexportuj mix. Hraní celé písničky, poslech a měření čekají na ruční zkoušku po E18.
+Po E18 si při hraní zkus vybrat vodítko, které ti vyhovuje. Vyexportuj nahrávku a poslechni, že vodicí rytmus zůstává jen ve sluchátkách. Celá písnička, poslech a měření čekají až po E18.
 
 ## 4. Rozhodnutí
 
-Zpracování zvuku je součást přehrávání a exportu. Nastavení přenáší atomická hodnota a připravená paměť. [Rozhodnutí E15](ROZHODNUTI.md#e15--zpěv-a-baskytara)
+Klik, rytmus a ticho se přepínají jedním tlačítkem. Odpočet používá původní klik. [Rozhodnutí E16](ROZHODNUTI.md#e16--vodicí-rytmus-ve-sluchátkách)
 
-## 5. Prompt pro E16
+## 5. Prompt pro E17
 
-Přečti dokumenty 01 až 06 a toto předání. Proveď E16 ve větvi `etapa-16` po malých commitech. Vzhled a rozložení tvoř od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5. Napiš A-31, ověř časování po dobu deseti minut a bitově shodný export. Zvuk do sluchátek přidej z připravených vzorků při dodržení pravidel zvukového vlákna. Ověř Windows x64, Windows ARM64 a Mac, přilož snímky, otevři český PR a aktualizuj dokumentaci. Ruční zkoušky přijdou po E18.
+Přečti dokumenty 01 až 06 a toto předání. Proveď E17 ve větvi `etapa-17` po malých commitech. Vzhled a rozložení tvoř od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5. Napiš A-32, ověř měření podle signálů EBU Tech 3341 a cílovou hlasitost se skutečnou špičkou. Měření a omezení prováděj mimo zvukové vlákno. Ověř Windows x64, Windows ARM64 a Mac, přilož snímky, otevři český PR a aktualizuj dokumentaci. Ruční zkoušky přijdou po E18.

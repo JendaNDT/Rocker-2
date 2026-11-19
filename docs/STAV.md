@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## E16 · vodicí rytmus
+
+V Hraj lze přepnout mezi Klikem, Rytmem a tichem. A-31 porovnává každý zvukový vzorek vodítka po deseti minutách a ověřuje shodu vývozu s vodítkem a bez něj. Poslech a nahrávání na skutečné sestavě čekají po E18. [Zkoušky a sestavení](https://github.com/JendaNDT/Rocker-2/pull/19)
+
 ## E15 · zvuk zpěvu a baskytary
 
 Stopa Jiná nabízí předvolby Bez úprav, Zpěv a Baskytara. Parametry se ukládají se skladbou a lze je měnit během přehrávání. A-30 porovnává zvuk při čtyřech velikostech bloku, znovuotevření a nedotčený WAV. Poslech a zkoušky celé skladby přijdou po E18. [Zkoušky a sestavení](https://github.com/JendaNDT/Rocker-2/pull/18)
