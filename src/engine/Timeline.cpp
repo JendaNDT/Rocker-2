@@ -135,6 +135,7 @@ void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
     auto& strip = *strips[track];
     strip.command.publish(sound.values, sound.enabled, recall);
 }
+void Playback::setVoice(size_t, const VoiceSound&, bool) {}
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
     cutFade = std::max(1, roundToInt(.005 * s.grid.rate));
     int bar = 0;

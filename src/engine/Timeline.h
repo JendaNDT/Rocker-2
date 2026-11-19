@@ -41,6 +41,7 @@ class Playback {
     void prefetch(Frame from, Frame to) const;
     bool empty() const { return !hasClips; }
     void setSound(size_t track, const GuitarSound&, bool recall);
+    void setVoice(size_t track, const VoiceSound&, bool recall);
     void selectAttempt(const juce::String& group, int index);
     void setPunch(size_t track, Frame from, Frame to, int left, int right, bool clean);
     void mix(float* const*, int outputs, int size, Frame at, const float* const* input = nullptr,
