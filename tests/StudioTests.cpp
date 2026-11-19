@@ -1851,3 +1851,123 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         REQUIRE(find<Button>(studio, cs::stopSong));
     }
 }
+
+TEST_CASE("Metronome practice delivers stereo beats from the normal entry points", "[metronome]") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    Settings config;
+    config.visited = true;
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    SECTION("Home") {}
+    SECTION("Ideas") { click(view, cs::ideas); }
+    SECTION("Play without a song") { click(view, cs::livePage); }
+    SECTION("Setup") { click(view, cs::setup); }
+    click(view, cs::navMetro);
+    click(view, cs::playSong);
+    BeatGrid grid;
+    for (int beat = 0; beat < 16; ++beat) {
+        const int length = int(grid.beat(beat + 1) - grid.beat(beat));
+        auto output = fake.process({}, length);
+        REQUIRE(output.size() == 2);
+        REQUIRE(output[0] == output[1]);
+        INFO(beat);
+        CHECK(std::abs(output[0].front() - .16f) < 1.e-6f);
+        CHECK(output[0].back() == 0.f);
+    }
+    chooseItem(view, cs::clickMode, 2);
+    auto silent = fake.process({}, int(grid.beat(2)));
+    CHECK(std::all_of(silent[0].begin(), silent[0].end(), [](float v) { return v == 0.f; }));
+    chooseItem(view, cs::clickMode, 0);
+    auto* volume = find<Slider>(view, cs::clickLevel);
+    REQUIRE(volume);
+    volume->setValue(0., sendNotificationSync);
+    silent = fake.process({}, int(grid.beat(1)));
+    CHECK(std::all_of(silent[0].begin(), silent[0].end(), [](float v) { return v == 0.f; }));
+    volume->setValue(40., sendNotificationSync);
+    CHECK(std::abs(fake.process({}, 128)[0][0] - .064f) < 1.e-6f);
+    fits(view);
+}
+
+TEST_CASE("Metronome survives device list notifications and handles unplugging", "[metronome]") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    Settings config;
+    config.visited = true;
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    click(view, cs::navMetro);
+    click(view, cs::playSong);
+    CHECK(fake.process({}, int(BeatGrid{}.beat(1)))[0][0] > .1f);
+    fake.changed();
+    REQUIRE(view.currentPage() == Page::metronome);
+    CHECK(fake.process({}, 128)[1][0] > .1f);
+    fake.disconnect();
+    view.resized();
+    CHECK(view.currentPage() == Page::device);
+    CHECK_FALSE(fake.active);
+}
+
+TEST_CASE("Metronome preview and live toggles respect the song and keep its transport running", "[metronome]") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    const auto dir = temp.dir.getChildFile("Skladby/Klik");
+    Song song;
+    song.title = "Klik";
+    song.bars = 4;
+    song.tracks = {{"g", "Guitar", "kytara", {"In 1"}, true}};
+    REQUIRE(song.save(dir));
+    ViewState stored;
+    stored.click = false;
+    stored.countIn = false;
+    stored.rhythm = GENERATE(false, true);
+    REQUIRE(stored.save(dir));
+    Settings config;
+    config.visited = true;
+    config.lastSong = dir.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    click(view, cs::resume);
+    auto level = [&](int beat) {
+        auto block = fake.process({}, int(song.grid.beat(beat + 1) - song.grid.beat(beat)));
+        REQUIRE(block[0] == block[1]);
+        return *std::max_element(block[0].begin(), block[0].end());
+    };
+    SECTION("Standalone preview is audible and Back preserves song settings") {
+        click(view, cs::navMetro);
+        click(view, cs::playSong);
+        CHECK(level(0) > .01f);
+        click(view, cs::back);
+        REQUIRE(view.currentPage() == Page::project);
+        CHECK_FALSE(ViewState::load(dir).click);
+    }
+    SECTION("Mouse and K reach the running playback or recording") {
+        const bool recording = GENERATE(false, true);
+        click(view, recording ? cs::recordSong : cs::playSong);
+        CHECK(level(0) == 0.f);
+        click(view, cs::guideOff);
+        CHECK(level(1) > .01f);
+        REQUIRE(view.keyPressed(KeyPress('K')));
+        view.resized();
+        CHECK(level(2) == 0.f);
+        REQUIRE(view.keyPressed(KeyPress('k')));
+        view.resized();
+        CHECK(level(3) > .01f);
+        click(view, cs::stopSong);
+        if (recording) {
+            bool damaged = false;
+            auto saved = Song::load(dir, damaged);
+            REQUIRE(saved);
+            REQUIRE(saved->assets.size() == 1);
+            auto dry = waveReader(dir.getChildFile(saved->assets[0].path));
+            REQUIRE(dry);
+            REQUIRE(dry->lengthInSamples == song.grid.beat(4));
+            AudioBuffer<float> data(1, int(dry->lengthInSamples));
+            REQUIRE(dry->read(&data, 0, data.getNumSamples(), 0, true, false));
+            CHECK(data.getMagnitude(0, data.getNumSamples()) == 0.f);
+        }
+    }
+}
