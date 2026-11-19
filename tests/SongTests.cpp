@@ -403,3 +403,71 @@ TEST_CASE("Recover a capture crossing a section boundary into source-aligned cli
     REQUIRE(recoverTake(song, w.dir, journal));
     CHECK(song.clips.size() == 2);
 }
+
+TEST_CASE("Mix export preserves ranges, channel power, overload locations and deterministic dither") {
+    Workspace w;
+    Song s;
+    s.title="Mix"; s.grid={96000,4,4,120}; s.bars=2;
+    s.tracks={{"a","Guitar","jine"}};
+    auto file=w.dir.getChildFile("Zvuk/input.wav");
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer=waveWriter(file,96000,1);
+    REQUIRE(writer);
+    AudioBuffer<float> signal(1,1920);
+    for (int i=0;i<1920;++i) signal.setSample(0,i,.9f);
+    REQUIRE(writer->writeFromAudioSampleBuffer(signal,0,1920));writer.reset();
+    auto start=s.barFrame(1);
+    s.assets={{"w","Zvuk/input.wav",1920,1}};
+    s.clips={{"c","a","w",start,0,1920}};
+    AudioLibrary library; REQUIRE(library.load(s,w.dir));
+    Playback live(s,library);
+    AudioBuffer<float> block(2,512);
+    block.clear(); live.mix(block.getArrayOfWritePointers(),2,512,start+500);
+    auto peak=live.meter(); CHECK(std::abs(peak.left-.9/std::sqrt(2.))<1e-6); CHECK(peak.left==peak.right);
+    s.tracks[0].pan=-1; s.masterDb=6; live.updateMix(s);
+    block.clear(); live.mix(block.getArrayOfWritePointers(),2,512,start+1100);
+    CHECK(live.meter().right==0); CHECK(live.meter().over==start+1100);
+    for(auto format:{Delivery::wave24,Delivery::wave16}) {
+        auto dest=w.dir.getChildFile("range.wav");
+        auto rendered=exportMix(s,library,dest,format,start,start+9600);
+        REQUIRE(rendered.ok); CHECK(rendered.meter.maximum>1.5f);
+        REQUIRE(rendered.meter.over>=start); CHECK(rendered.meter.over<start+1920);
+        auto r=waveReader(dest); REQUIRE(r);
+        CHECK(r->lengthInSamples==(format==Delivery::wave24?4800:4410));
+        CHECK(r->bitsPerSample==(format==Delivery::wave24?24:16));
+        CHECK_FALSE(r->usesFloatingPointData);
+        AudioBuffer<float> tail(2,256);REQUIRE(r->read(&tail,0,256,3200,true,true));
+        if(format==Delivery::wave16) {CHECK(tail.getMagnitude(0,256)>0);CHECK(tail.getMagnitude(0,256)<=1.f/32768);}
+        else CHECK(tail.getMagnitude(0,256)==0);
+        r.reset();
+        MemoryBlock a,b; REQUIRE(dest.loadFileAsData(a)); REQUIRE(exportMix(s,library,dest,format,start,start+9600).ok); REQUIRE(dest.loadFileAsData(b)); CHECK(a==b);
+    }
+}
+TEST_CASE("M-03 detector recognizes the monitor metronome and rejects the delivered song") {
+    Workspace w;
+    Song s;
+    s.title="Click";s.grid={48000,4,4,160};s.bars=1;
+    auto file=w.dir.getChildFile("test.wav");
+    REQUIRE(exportMix(s,{},file,Delivery::wave24).ok);
+    REQUIRE(containsClick(file,s.grid)==false);
+    Performance p(s,{},0,false,true,0);
+    AudioBuffer<float> capture(2,(int)p.end); capture.clear();
+    p.process(nullptr,0,capture.getArrayOfWritePointers(),2,capture.getNumSamples());
+    auto injected=w.dir.getChildFile("headphones.wav");
+    auto writer=waveWriter(injected,48000,2);
+    REQUIRE(writer); REQUIRE(writer->writeFromAudioSampleBuffer(capture,0,capture.getNumSamples())); writer.reset();
+    REQUIRE(containsClick(injected,s.grid)==true);
+}
+TEST_CASE("A-12 Media Foundation encodes 320 kbps and decodes within one MP3 frame") {
+    if (!mp3Available()) SKIP("Systém nemá stereo kodér MP3 320 kb/s. Poslech po vydání ověří M-13.");
+    Workspace w;
+    Song s;
+    s.title="MP3";s.grid={44100,4,4,120}; s.bars=1;
+    // Choose a multiple of the MPEG frame length to measure encoder priming separately.
+    constexpr Frame length=1152*75;
+    auto file=w.dir.getChildFile("song.mp3");
+    REQUIRE(exportMix(s,{},file,Delivery::mp3,0,length).ok);
+    auto frames=decodedMp3Frames(file);
+    REQUIRE(frames); CHECK(std::abs(*frames-length)<=1152);
+    double bitrate=file.getSize()*8.*44100/length; CHECK(bitrate>317000); CHECK(bitrate<330000);
+}

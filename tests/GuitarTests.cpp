@@ -83,6 +83,9 @@ TEST_CASE("A-05 two independent stereo guitar amps and drums match the offline W
     Session s;
     auto file = s.dir.getChildFile("mix.wav");
     MemoryBlock first;
+    s.song.tracks[1].pan=.37f;
+    s.song.tracks[2].gainDb=-2.f;
+    s.song.masterDb=-1.f;
     REQUIRE(exportMix(s.song, s.library, file, Delivery::wave24).ok);
     REQUIRE(file.loadFileAsData(first));
     REQUIRE(exportMix(s.song, s.library, file, Delivery::wave24).ok);

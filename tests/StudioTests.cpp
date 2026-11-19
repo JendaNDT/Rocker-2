@@ -746,4 +746,18 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
     REQUIRE(last.groups.front().attempts.size() == 1);
     REQUIRE(last.groups.back().attempts.size() == 2);
     CHECK(last.sections.at(last.order[2].section).name.endsWith("(2)"));
+    key('3');
+    key('S');
+    REQUIRE(read().tracks.at(ViewState::load(dir).selected).solo);
+    fits(view);
+    for (int pixels : {1280,1920}) snapshot(view,"18-mix",pixels);
+    key('E',ModifierKeys::ctrlModifier);
+    REQUIRE(find<Button>(view,cs::exportSolo));
+    fits(view);
+    for (int pixels : {1280,1920}) snapshot(view,"19-export",pixels);
+    click(view,cs::back);
+    key('M');
+    REQUIRE(read().tracks.at(ViewState::load(dir).selected).mute);
+    key('1');
+    REQUIRE_FALSE(ViewState::load(dir).mixing);
 }
