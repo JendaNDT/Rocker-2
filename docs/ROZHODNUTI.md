@@ -151,3 +151,9 @@ Složka stop se zveřejní jediným přejmenováním po úspěšném zápisu vš
 Stopa používá jednoduchý třípásmový ekvalizér, kompresor a krátké odrazy. Procesor pracuje průběžně od prvního vzorku. Suchá cesta nemá přidané pevné zpoždění, takže kompenzace je nula. Předvolby se přenášejí do zvukového vlákna jako jedno atomické číslo. Paměť odrazů se připravuje před přehráváním. Náročnější konvoluce by zvýšila zpoždění a spotřebu procesoru.
 
 Skladba ukládá volitelné pole `zvuk`. Starší skladby se otevřou s předvolbou Bez úprav. Efekty se přidávají až při přehrávání a exportu, takže je lze kdykoli změnit i u dříve nahraného WAV.
+
+## E16 · vodicí rytmus ve sluchátkách
+
+Vodítko střídá Klik, Rytmus a Bez kliku pod jedním tlačítkem. Delší nabídka by zabrala místo ovládání vstupů v minimální velikosti okna. Volbu ukládá stav zobrazení skladby. Odpočet si ponechává známý klik.
+
+Ve 4/4 hraje kopák na první a třetí dobu, virbl na druhou a čtvrtou a hi-hat v osminách. V ostatních metrech zvýrazňuje rytmus první a poslední dobu. Vzorky jsou připravené před spuštěním přehrávání a rytmus jde jen do výstupu pro hráče.
