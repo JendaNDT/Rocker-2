@@ -223,6 +223,8 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
             tuningIndex = i;
     libraryRoot = root == File{} ? settingsFile.getSiblingFile("Skladby") : root;
     ideas = std::make_unique<Ideas>(libraryRoot.getSiblingFile("Napady"));
+    if (File::isAbsolutePath(settings.libraryPath))
+        libraryRoot = File(settings.libraryPath);
     ideas->recover();
     if (!ideas->all().empty())
         chooseIdea(ideas->all().front());
@@ -242,6 +244,8 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
     startTimerHz(30);
 }
 Studio::~Studio() {
+    if (fileTask.valid())
+        fileTask.wait();
     devices.midiChanged = {};
     stopTimer();
     stopPreview();
@@ -272,8 +276,9 @@ void Studio::refresh(bool notify) {
     stopPreview();
     stopIdea();
     activityBeforePluck.clear();
-    if (performance)
-        stopProject();
+    const bool recording=performance && performance->recording;
+    if(performance) stopProject();
+    const auto outcome=recording?message:String{};
     link.rescan(settings.device);
     laptop = link.online &&
              (builtIn(link.current.input) ||
@@ -294,7 +299,7 @@ void Studio::refresh(bool notify) {
     resetRoute();
     refreshMidi();
     if (notify) {
-        message = cs::unplugged;
+        message = outcome.isEmpty()?cs::unplugged:cs::unplugged+cs::divider+outcome;
         if (page != Page::home)
             page = Page::device;
     }
@@ -555,6 +560,16 @@ void Studio::rebuild() {
         repaint();
         return;
     }
+    if (fileTask.valid()) {
+        text(cs::workingFiles, area, s::heading);
+        repaint();
+        return;
+    }
+    if (page == Page::remap) {
+        remapPage(area);
+        repaint();
+        return;
+    }
     if (page >= Page::newProject) {
         projectPage(area);
         repaint();
@@ -581,6 +596,9 @@ void Studio::rebuild() {
 }
 void Studio::makeHome(Rect area) {
     auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
+    button(cs::openPackage, footer.removeFromRight(s::clipWidth), [this] {
+        choosePack(true);
+    })->setEnabled(!fileTask.valid());
     button(cs::setup, footer.removeFromLeft(s::nameWidth), [this] { show(Page::device); });
     footer.removeFromLeft(s::gap);
     button(cs::tuner, footer.removeFromLeft(s::nameWidth), [this] { toggleTuner(); }, tunerButton, "T");
@@ -674,6 +692,14 @@ void Studio::makeHome(Rect area) {
 void Studio::makeWizard(Rect area) {
     auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
     button(cs::home, footer.removeFromLeft(s::nameWidth), [this] { finish(); });
+    if (page == Page::device && link.caps.separateClocks &&
+        settings.clockOverride != Settings::calibrationKey(link.current)) {
+        button(cs::clockOverride, footer.removeFromLeft(s::nameWidth), [this] {
+            settings.clockOverride = Settings::calibrationKey(link.current);
+            persist();
+            triggerAsyncUpdate();
+        });
+    }
     if (page == Page::device) {
         button(cs::pedal, footer.removeFromLeft(s::clipWidth), [this] {
             pedalLearning = true;
@@ -795,7 +821,9 @@ void Studio::devicePage(Rect area) {
             persist();
             triggerAsyncUpdate();
         });
-    text(!link.online ? cs::connect : (laptop ? cs::fallback : cs::hints[(int)link.current.driver]),
+    text(!link.online               ? cs::connect
+         : link.caps.separateClocks ? cs::clockConflict
+                                    : (laptop ? cs::fallback : cs::hints[(int)link.current.driver]),
          area.removeFromTop(s::button), s::body, laptop || !link.online ? s::warning : s::muted);
     if (link.online)
         text(cs::bufferHelp, area.removeFromTop(s::button), s::caption, s::muted);
@@ -891,6 +919,8 @@ bool Studio::keyStateChanged(bool down) {
     return false;
 }
 bool Studio::keyPressed(const KeyPress& key) {
+    if (fileTask.valid())
+        return true;
     const int code = key.getKeyCode();
     if (pedalLearning && page == Page::device) {
         pedalLearning = false;

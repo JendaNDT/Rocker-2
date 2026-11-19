@@ -127,6 +127,7 @@ class Native final : public DeviceSystem,
             for (int i = 0; i < names.size(); ++i)
                 if (active[i])
                     caps.inputs.add(names[i]);
+            caps.separateClocks = separateWindowsClocks(choice);
             caps.outputChannels = device->getActiveOutputChannels().countNumberOfSetBits();
             choice.rate = juce::roundToInt(device->getCurrentSampleRate());
             choice.buffer = device->getCurrentBufferSizeSamples();

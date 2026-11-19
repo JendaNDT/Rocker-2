@@ -14,6 +14,7 @@ struct DrumSetup {
 };
 struct Settings {
     std::map<juce::String, DrumSetup> drumSetups;
+    juce::String libraryPath, clockOverride;
     int pedalKey = 0;
     struct MidiSetup {
         bool coupled = false, enabled = true;

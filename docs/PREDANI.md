@@ -1,39 +1,23 @@
-# Předání E10 · elektronické bicí
+# Předání Rockeru 2 v1
 
 ## 1. Hotovo
 
-Připojený modul je v Zapojení pod **Bicí (MIDI)**. V nové skladbě zapni záznam, po zastavení otevři nastavení stopy a vyber druhou sadu. Připojením stereo výstupu modulu můžeš stejný výkon zachytit i jako zvuk. [Postup](../README.md#jak-nahrát-elektronické-bicí-přes-midi) · [Zkoušky, balíky a snímky](https://github.com/JendaNDT/Rocker-2/pull/11)
+Ve skladbě otevři **Soubor → Zabalit skladbu**. Na druhém počítači použij **Otevřít balík** a podle potřeby znovu přiřaď vstupy. Ve Windows vyber instalátor x64 nebo ARM64 podle procesoru. Mac s čipem Apple používá přenosný ZIP. [Stránka vydání a ověření stažení](https://github.com/JendaNDT/Rocker-2/releases/tag/v1.0.0) · [Automatické zkoušky, artefakty a snímky E11](https://github.com/JendaNDT/Rocker-2/pull/12)
+
+[Přiřazení vstupů](zkousky/E11/prirazeni.png) · [Soubor ve skladbě](zkousky/E11/balik.png) · [Diagnostika](zkousky/E11/diagnostika.png)
 
 ## 2. Zbývá
 
-Poslední etapa zahrnuje přenos a úklid skladby, ochranu při zaplnění disku, diagnostickou zprávu, instalátory a vydání v1.
+Na prvním skutečném počítači zaznamenat výsledek instalace a přehrát celou písničku od nápadu po hotový mix. Windows aplikace je nepodepsaná. Na Macu je sestavení pro čipy Apple. Kódování MP3 ve Windows závisí na přítomnosti systémového kodéru. WAV lze použít na obou systémech.
 
 ## 3. Ruční zkoušky
 
-H-13 se skutečným modulem, poslech sad a M-14 se skutečným stereo výstupem modulu **čekají na ruční zkoušku po vydání v1**.
+Veškerý poslech, H-01 až H-13 a měření na fyzických sestavách **čekají na ruční zkoušku po vydání v1**. H-09 zahrnuje celou píseň, H-10 znovuotevření další den, M-15 zprávu o sestavě. Výsledky od Jendy zatím nejsou. [Krátký seznam pro muzikanta](../README.md#co-vyzkoušet-po-vydání) · [Úplný plán zkoušek](03_ZKOUSKY_NA_WINDOWS.md)
 
 ## 4. Rozhodnutí
 
-Obě sady používají původní zvuky s licencí CC0. Přehrávač má pevné hlasy a předem vytvořené vzorky. Zdroj zůstává v MIDI i po změně sady a exportu. [Rozhodnutí E10](ROZHODNUTI.md#e10--původní-sady-a-přehrávání-úderů)
+Velké projekty se přenášejí postupně v ZIP64. Historii a dosud použitelné pokusy chrání také úklid do koše. Instalace nevyžaduje správce. Vydání a stav automatických zkoušek se potvrzují podle GitHubu. [Rozhodnutí E11](ROZHODNUTI.md#e11--balíky-koš-a-vydání)
 
-## 5. Prompt pro etapu E11
+## 5. Další relace po vydání
 
-### Podklady
-
-Ověř stav větví, PR, automatických zkoušek a vydání Rocker-2. Přečti 01–05, STAV, ROZHODNUTI a poslední předání na ověřené větvi. Rozsah určuje dokument 04 / E11, chování programu zejména 01 / 4.8 a architektura 02 / kap. 10–13.
-
-### Závazné podmínky
-
-**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Pracuj jen v Rocker-2. Zachovej offline provoz, C++20, JUCE 9.0.5, české texty pohromadě, kreslení přes tokeny, licence AGPLv3, OFL a CC0. Ve zvukovém vlákně dodrž 02 / 4.3. Zachovej původní zvuk, soubory MIDI, pokusy, společné díly a starší skladby.
-
-### Úkol
-
-Hlídej disk a řízeně zastav s uložením. Obnov zařízení po odpojení. Přidej varování OneDrive a oddělených časových základen ve Windows Audio. Umožni zabalit a rozbalit skladbu, přemapovat vstupy, uklidit nepoužité soubory do systémového koše a uložit zprávu z diagnostiky. Připrav instalátory Inno Setup, přenosné ZIPy a GitHub Release v1.
-
-### Ověření
-
-Spusť A-10, A-11, A-13, celou A-24 a všechny předchozí zkoušky. Prověř sestavení a balíky na Windows x64, Windows ARM64 a Macu a ověř dostupnost stažitelných prostředků vydání. Veškeré hraní, měření a ruční zkoušky na skutečné sestavě následují až po vydání.
-
-### Předání
-
-Použij větev etapa-11, malé commity a český PR. Aktualizuj český README, STAV, PREDANI a ROZHODNUTI. Přidej odkazy na ověřený běh, balíky, instalátory, snímky a vydání v1. Až ověříš vydanou verzi, pozastav automatickou úlohu.
+Nejdříve zkontroluj vydání v1.0.0, přiložené soubory a předání. Po Jendových ručních zkouškách zapiš sestavu a rozliš, co skutečně slyšel, co změřil a co zůstává otevřené. Chyby reprodukuj pomocí existujících automatických zkoušek. Rozšíření po v1 jsou v dokumentu 01 / kap. 6 a 04. Jejich rozsah vybere Jenda.

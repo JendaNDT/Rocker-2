@@ -721,6 +721,14 @@ void Studio::customPanel(Rect area) {
         1);
 }
 void Studio::diagnosticPanel(Rect area) {
+    auto files = row(area);
+    button(cs::report, files.removeFromRight(s::nameWidth), [this] { saveReport(); });
+    button(cs::libraryFolder, files.removeFromRight(s::nameWidth), [this] { chooseLibrary(); });
+    if (activeMidi.isNotEmpty() && !link.caps.inputs.isEmpty())
+        button(cs::midiCompare, files.removeFromRight(s::nameWidth), [this] { compareMidi(); });
+    button(cs::checkClick, files.removeFromRight(s::nameWidth), [this] {
+        findClick();
+    })->setEnabled(!clickCheck.valid());
     auto advice = area.removeFromBottom(s::button * 2);
     text(cs::cableHelp, advice.removeFromTop(s::button), s::caption, s::muted);
     text(wireless(link.current.output) ? cs::bluetooth : cs::cableGain, advice, s::caption, s::warning);
@@ -755,11 +763,6 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
-    if (activeMidi.isNotEmpty() && !link.caps.inputs.isEmpty())
-        button(cs::midiCompare, row(left).withWidth(s::labelWidth), [this] { compareMidi(); });
-    button(cs::checkClick, row(left).withWidth(s::labelWidth), [this] {
-        findClick();
-    })->setEnabled(!clickCheck.valid());
     if (testingLoad || diagnosing) {
         button(cs::stopSong, row(area).withWidth(s::nameWidth), [this] { stopProject(); });
         return;

@@ -2,6 +2,28 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String manualPending = u8"čeká na ruční zkoušku";
+inline const juce::String
+    packageSong = u8"Zabalit skladbu",
+    openPackage = u8"Otevřít balík", cleanSong = u8"Uklidit skladbu", moveTrash = u8"Přesunout do koše",
+    trashPreview = u8"Nepoužité soubory",
+    nothingToClean = u8"Všechny nahrávky používá skladba nebo její historie.",
+    transferDone = u8"Balík skladby je uložený.",
+    transferFailed = u8"Přenos se nezdařil. Zkontroluj soubor a volné místo.",
+    workingFiles = u8"Zpracovávám soubory…", diskLow = u8"Zbývá méně než 30 minut nahrávání.",
+    diskStop = u8"Nahrávání zastaveno kvůli místu na disku. Uloženo do",
+    diskFull = u8"Na disku je méně než 500 MB. Vyber jinou složku.",
+    clockConflict =
+        u8"Vstup a výstup mohou mít různé hodiny. Pro nahrávání vyber oba na stejné zvukovce.",
+    clockOverride = u8"Povolit nahrávání i tak",
+    syncPath = u8"Složku synchronizuje OneDrive. Pro nahrávání vyber místní složku mimo OneDrive.",
+    libraryFolder = u8"Složka skladeb", remap = u8"Přiřadit vstupy", oldInput = u8"Původní vstup",
+    newInput = u8"Nový vstup", remapLater = u8"Přiřadit později", noneAssigned = u8"Bez přiřazení",
+    report = u8"Uložit zprávu", checkRig = u8"Kontrola sestavy",
+    reportSaved = u8"Zpráva pro Jendu je uložená.", reportFailed = u8"Zprávu se nepodařilo uložit.",
+    reportCPU = u8"Procesor", reportMidi = u8"Moduly MIDI", reportPorts = u8"Vstupy",
+    reportOutput = u8"Výstup", reportObserved = u8"Zkoušky na skutečné sestavě";
+
 inline const juce::String midiDrums = u8"Bicí (MIDI)", midiModule = u8"Modul MIDI",
                           padLearn = u8"Naučit pady", padPrompt = u8"Udeř do padu",
                           midiMode = u8"Co nahrávat", midiOnly = u8"Údery MIDI",

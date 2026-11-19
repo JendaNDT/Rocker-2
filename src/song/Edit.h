@@ -26,6 +26,14 @@ class EditHistory {
     bool remember(const Song&, const juce::String& action);
     juce::String step(Song&, bool forward);
     bool canStep(bool forward) const;
+    void visit(const std::function<void(const Song&)>& read) const {
+        for (auto& state : states)
+            read(state.song);
+    }
+    void forgetUnusedAssets(const std::function<bool(const Asset&)>& unused) {
+        for (auto& state : states)
+            std::erase_if(state.song.assets, unused);
+    }
     bool matches(const Song& s) const { return !states.empty() && states[index].song == s; }
 
   private:

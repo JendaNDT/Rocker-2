@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_v1:
+        description: "Publish verified v1.0.0 from main"
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -75,24 +80,80 @@ jobs:
         run: |
           New-Item -Type Directory pack
           Copy-Item "build/Rocker2_artefacts/Release/Rocker 2.exe",LICENSE,assets/fonts/*-OFL.txt,build/_deps/juce-src/LICENSE.md,build/_deps/juce-src/modules/juce_audio_devices/native/asio/LICENSE.txt pack/
+          Copy-Item build/_deps/miniz-src/LICENSE pack/miniz-LICENSE.txt
           Copy-Item assets/drums/CC0-1.0.txt pack/Drums-CC0.txt
           Copy-Item build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
           Compress-Archive -Path pack/* -DestinationPath Rocker2-${{ matrix.name }}.zip
+      - name: Install, launch and uninstall the native Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/check-installer.ps1 -TargetArch ${{ matrix.arch }}
       - name: Package macOS
         if: runner.os == 'macOS'
         run: |
           mkdir pack
           cp -R "build/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
+          cp build/_deps/miniz-src/LICENSE pack/miniz-LICENSE.txt
           cp assets/drums/CC0-1.0.txt pack/Drums-CC0.txt
           cp build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
           ditto -c -k --sequesterRsrc pack Rocker2-Mac.zip
       - uses: actions/upload-artifact@v6
         with:
           name: Rocker2-${{ matrix.name }}
-          path: Rocker2-*.zip
+          path: |
+            Rocker2-*.zip
+            installers/Rocker2-Setup-*.exe
           if-no-files-found: error
       - uses: actions/upload-artifact@v6
         with:
           name: Snimky-${{ matrix.name }}
           path: build/screenshots/*.png
           if-no-files-found: error
+
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_v1 && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          path: verified
+      - name: Verify and publish native packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release
+          for os in Windows-x64 Windows-ARM64 Mac; do
+            cp "verified/Rocker2-$os/Rocker2-$os.zip" release/
+            test -s "verified/Snimky-$os/00-uvod-1280.png"
+            (cd "verified/Snimky-$os" && zip -q "../../release/Rocker2-Snimky-$os.zip" *.png)
+          done
+          for arch in x64 ARM64; do
+            cp "verified/Rocker2-Windows-$arch/installers/Rocker2-Setup-$arch.exe" release/
+          done
+          (cd release && sha256sum *.exe *.zip > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            if [ "$(gh release view v1.0.0 --json isDraft --jq .isDraft)" = false ]; then
+              test "$(gh api "repos/$GITHUB_REPOSITORY/commits/v1.0.0" --jq .sha)" = "$GITHUB_SHA"
+              gh release download v1.0.0 --dir existing
+              (cd existing && sha256sum --check SHA256SUMS.txt)
+              exit 0
+            fi
+            test "$(gh release view v1.0.0 --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          else
+            cp packaging/VYDANI.md release-notes.md
+            echo >> release-notes.md
+            echo "[Ověřená sestavení, testy a instalace ve Windows]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)" >> release-notes.md
+            gh release create v1.0.0 --draft --target "$GITHUB_SHA" --title "Rocker 2 · verze 1.0.0" --notes-file release-notes.md
+          fi
+          gh release upload v1.0.0 release/* --clobber
+          mkdir downloaded
+          gh release download v1.0.0 --dir downloaded
+          (cd downloaded && sha256sum --check ../release/SHA256SUMS.txt && cmp SHA256SUMS.txt ../release/SHA256SUMS.txt)
+          gh release edit v1.0.0 --draft=false --latest
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.0.0" --jq '.draft')" = false

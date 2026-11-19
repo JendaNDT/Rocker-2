@@ -41,6 +41,8 @@ Settings Settings::load(const juce::File& file) {
     const auto visited = data.getProperty("visited", false);
     result.visited = visited.isBool() && static_cast<bool>(visited);
     result.insurance = data.getProperty("pojistka", true);
+    result.libraryPath = string("libraryPath");
+    result.clockOverride = string("clockOverride");
     result.midiDevice = string("midiDevice");
     auto configurations = data.getProperty("midiSetups", {});
     if (auto* obj = configurations.getDynamicObject())
@@ -125,6 +127,8 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("output", device.output);
     object->setProperty("buffer", device.buffer);
     object->setProperty("rate", device.rate);
+    object->setProperty("libraryPath", libraryPath);
+    object->setProperty("clockOverride", clockOverride);
     object->setProperty("midiDevice", midiDevice);
     auto* configurations = new juce::DynamicObject;
     object->setProperty("midiSetups", juce::var(configurations));

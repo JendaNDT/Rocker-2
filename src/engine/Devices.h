@@ -17,6 +17,7 @@ struct Capabilities {
     juce::Array<double> rates;
     juce::Array<int> buffers;
     int outputChannels = 0;
+    bool separateClocks = false;
     int inputLatency = 0, outputLatency = 0;
 };
 struct Ports {
@@ -38,6 +39,7 @@ class DeviceSystem {
     std::function<void()> changed;
 };
 std::unique_ptr<DeviceSystem> nativeDevices();
+bool separateWindowsClocks(const DeviceChoice&);
 
 // All device changes and reads of channel layout take place on the message thread.
 class Connection {
