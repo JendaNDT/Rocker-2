@@ -20,6 +20,8 @@ struct Track {
     juce::StringArray inputs;
     bool armed = false, mute = false, solo = false;
     GuitarSound amp;
+    float gainDb = 0, pan = 0;
+    Frame inputOver = -1;
 };
 struct Clip {
     bool operator==(const Clip&) const = default;
@@ -72,6 +74,7 @@ struct Song {
     bool addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded = false);
     std::vector<Frame> dropouts;
     int bars = 8;
+    float masterDb = 0;
     std::map<juce::String, Section> sections;
     std::vector<Occurrence> order;
     Frame barFrame(int bar) const { return grid.beat(Frame(bar) * grid.beats); }
@@ -104,6 +107,7 @@ struct ViewState {
     Frame selectionStart = 0, selectionEnd = 0, firstBar = 0;
     juce::String selectedClip;
     int leadBars = 2, tailBars = 1;
+    bool mixing = false;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };

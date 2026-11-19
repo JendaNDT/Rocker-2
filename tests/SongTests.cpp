@@ -16,6 +16,7 @@ Song example() {
     s.title = String(u8"Noční čtvrť");
     s.tracks = {{"dr", "Drums", "bici", {"In 1"}, false},
                 {"gt", String(u8"Řezavá kytara"), "kytara", {"In 2"}, true}};
+    s.tracks.front().pan=-1; // Unity on the measured left channel for timing and edge tests.
     return s;
 }
 TEST_CASE("A-03 song, version fallback, invalid clip and view round trip") {
@@ -105,7 +106,8 @@ TEST_CASE("A-06 offline mix ignores headphones and count-in settings") {
         REQUIRE(reader);
         AudioBuffer<float> rendered(2, 500);
         REQUIRE(reader->read(&rendered, 0, 500, 0, true, true));
-        CHECK(rendered.getSample(1, 329) == 0.75f);
+        CHECK(rendered.getSample(0, 329) == 0.75f);
+        CHECK(rendered.getSample(1,329)==0.f);
         MemoryBlock bytes;
         REQUIRE(file.loadFileAsData(bytes));
         if (click)

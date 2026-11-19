@@ -297,6 +297,7 @@ void Studio::stopProject(bool automatic) {
         song.dropouts.push_back(p->drop.load());
     bool complete = false;
     if (p->recording) {
+        p->storeInputMarks(song);
         if (!recoverTake(song, projectDir, p->journal) || !library.load(song, projectDir) ||
             p->failed.load())
             status(cs::writeError);

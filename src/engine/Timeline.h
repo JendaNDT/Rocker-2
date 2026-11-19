@@ -41,9 +41,14 @@ class Playback {
     void setPunch(size_t track, Frame from, Frame to, int left, int right, bool clean);
     void mix(float* const*, int outputs, int size, Frame at, const float* const* input = nullptr,
              int inputs = 0, int inputOffset = 0) noexcept;
+    struct Meter { float left=0, right=0, maximum=0; Frame loudest=-1, over=-1; };
+    Meter meter() const noexcept;
+    float trackPeak(size_t index) const noexcept;
     Frame tailFrames() const { return tail; }
 
   private:
+    std::atomic<float> master{1}, leftPeak{0}, rightPeak{0}, maxPeak{0};
+    std::atomic<Frame> loudest{-1}, over{-1};
     std::vector<Frame> cuts;
     int cutFade = 1;
     struct Overlay {
@@ -62,6 +67,7 @@ class Playback {
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
         std::atomic<bool> audible{true};
+        std::atomic<float> gain[2]{{1},{1}}, peak{0};
         AmpCommand command;
         std::uint64_t applied = 0;
         Frame next = -1;
@@ -75,11 +81,12 @@ class Playback {
     bool hasClips = false;
     Frame tail = 0;
 };
-bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination);
+bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination, Frame begin = 0, Frame end = -1);
 struct Take {
     Asset asset;
     juce::String track;
     int left = -1, right = -1;
+    Frame inputOver=-1;
     std::unique_ptr<CaptureQueue> queue;
     std::unique_ptr<juce::AudioFormatWriter> writer;
 };
@@ -93,6 +100,7 @@ class Performance {
     void process(const float* const*, int, float* const*, int, int) noexcept;
     void finishDisk();
     bool drain();
+    void storeInputMarks(Song&) const;
     BeatGrid grid;
     Playback playback;
     Frame start, end, clock;
