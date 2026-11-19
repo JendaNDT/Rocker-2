@@ -185,3 +185,8 @@ Ikony Lucide 0.460.0 se kreslí z vložených SVG. Licence je u souborů a v bal
 
 - **Záběr po zastavení.** Běžné nahrávání zůstává vhodné pro přihrání další stopy. F5 přehraje právě uložený záběr s aktuálním mixem, F6 vytvoří jeho další variantu. Ve Stříhej jsou znovu dostupné i dřívější varianty. Obě akce fungují také pomocí tlačítek.
 - **Návrat zvukovky.** JUCE poskytuje jména vstupních zařízení a kanálů. Po zjištěné ztrátě celé zvukovky vyžaduje Rocker výslovné potvrzení vstupu. Automatické přiřazení jen podle názvu „In 1“ by mohlo nahrát mikrofon notebooku. Zmizí-li pouze jeden kanál, zůstane označený ve své stopě. Hudebník může oba kanály znovu přiřadit nebo vědomě zvolit mono.
+
+
+## Samostatný poslech metronomu
+
+Otevření Metronomu připraví ke cvičení Klik nebo naposledy zvolený druh vodítka v dané skladbě či Nápadech. Dřívější převzetí vypnutého vodítka způsobovalo, že po stisku Přehrát doby jen blikaly. Kdo chce cvičit podle světla, může přímo zvolit Bez kliku. Uložená hlasitost včetně nuly platí i pro cvičení a při nule aplikace vysvětlí, kde ji zesílit. Do skladby se volba přenese tlačítkem Použít ve skladbě.

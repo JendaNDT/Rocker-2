@@ -191,6 +191,8 @@ class Studio final : public juce::Component,
     void stopMetronome();
     void startMetronome();
     void toggleMetronome();
+    juce::String metronomeHint() const;
+    void toggleSongClick();
     void changeMetroTempo(double, bool rebuild = true);
     void tapMetronome();
     void playInspector(Rect);
@@ -396,7 +398,7 @@ class Studio final : public juce::Component,
     juce::String customName, customNotes;
     Rect needleArea, tunerArea, tunerNote, tunerHint, inputBar, outputBar, routeSymbol;
     std::vector<Rect> tunerTiles;
-    enum class Readout { inputLevel, level, cpu };
+    enum class Readout { inputLevel, level, cpu, metroHint };
     std::map<Readout, std::size_t> dynamicLines;
     void livePages(Rect);
     void playPanel(Rect);

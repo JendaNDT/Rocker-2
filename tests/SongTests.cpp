@@ -456,6 +456,32 @@ void loopPlaybackBlock(Performance& take, float* const* outputs, int size)
 {
     take.process(nullptr, 0, outputs, 1, size);
 }
+TEST_CASE("A live rhythm resumes at the next grid hit after an off-beat unmute", "[realtime][metronome]") {
+    Song song;
+    song.bars = 8;
+    song.grid.bpm = 120;
+    Performance take(song, {}, 0, false, false, 0, true);
+    std::array<float, 256> samples{};
+    float* out[]{samples.data()};
+    const int offBeat = 4713;
+    const int nextHit = int(song.grid.beat(1) / 2);
+    auto advanceSilently = [&](int count) {
+        while (count > 0) {
+            const int n = std::min(count, int(samples.size()));
+            samples.fill(0);
+            loopPlaybackBlock(take, out, n);
+            REQUIRE(std::all_of(samples.begin(), samples.end(), [](float v) { return v == 0.f; }));
+            count -= n;
+        }
+    };
+    advanceSilently(offBeat);
+    take.setClickEnabled(true);
+    advanceSilently(nextHit - offBeat);
+    loopPlaybackBlock(take, out, int(samples.size()));
+    CHECK(*std::max_element(samples.begin(), samples.end()) > .001f);
+    take.setClickEnabled(false);
+    advanceSilently(4096);
+}
 TEST_CASE("A-33 the monitor wraps at the exact sample inside arbitrary device blocks", "[realtime]") {
     Workspace w;
     Song song;

@@ -14,10 +14,8 @@ void Studio::openMetronome() {
     metroGrid = metroForSong ? song.grid : BeatGrid{48000, ideaBeats, ideaUnit, ideaTempo};
     if (link.online)
         metroGrid.rate = link.current.rate;
-    metroGuide = metroForSong ? (view.click ? (view.rhythm ? 1 : 0) : 2)
-                              : (ideaClick ? (ideaRhythm ? 1 : 0) : 2);
-    if (metroReturn == Page::home)
-        metroGuide = 0;
+    const bool practiceRhythm = metroForSong ? view.rhythm : (page == Page::ideas && ideaRhythm);
+    metroGuide = practiceRhythm ? 1 : 0;
     metroCountIn = !metroForSong || view.countIn;
     metroTapping = false;
     metroTaps.clear();
@@ -37,8 +35,8 @@ void Studio::startMetronome() {
     Song clockSong;
     clockSong.grid = metroGrid;
     metronome = std::make_unique<Performance>(
-        clockSong, AudioLibrary{}, 0, false, metroGuide != 2, 0, metroGuide == 1,
-        LoopSpan{0, metroGrid.beat(metroGrid.beats), 0});
+        clockSong, AudioLibrary{}, 0, false, metroGuide != 2, 0, metroGuide == 1);
+    metronome->end = std::numeric_limits<Frame>::max();
     metronome->configureClick(settings.clickVolume, settings.clickSound);
     link.audio.timeline.attach(*metronome);
 }
@@ -84,10 +82,23 @@ void Studio::tapMetronome() {
     triggerAsyncUpdate();
 }
 
+String Studio::metronomeHint() const {
+    if (!link.online || link.caps.outputChannels == 0)
+        return cs::metroNeedsOutput;
+    if (metroTapping)
+        return cs::tapHint + " " + String(metroTaps.size()) + " / 8";
+    if (metroGuide == 2)
+        return cs::metroVisualOnly;
+    if (settings.clickVolume == 0)
+        return cs::metroMuted;
+    return {};
+}
+
 void Studio::metronomePage(Rect workspace) {
     workspaceHeading = workspace.removeFromTop(s::workspaceHeader);
-    text(cs::navMetro, workspaceHeading.reduced(s::inset, 0), s::workspaceTitle,
-         s::chalk, false, true);
+    auto heading = workspaceHeading.reduced(s::inset, 0);
+    text(cs::navMetro, heading.removeFromLeft(s::fieldWidth), s::workspaceTitle, s::chalk, false, true);
+    deviceStatus(heading);
     inspectorBounds = workspace.removeFromRight(s::inspectorWidth);
     auto main = workspace.withSizeKeepingCentre(
         std::min(workspace.getWidth(), s::fieldWidth + s::transportSide),
@@ -117,10 +128,7 @@ void Studio::metronomePage(Rect workspace) {
         triggerAsyncUpdate();
     });
     auto caption = main.removeFromTop(s::button).withSizeKeepingCentre(s::fieldWidth, s::button);
-    auto note = !link.online ? cs::noDeviceSong : !audible ? cs::noOutput
-                 : metroTapping ? cs::tapHint + " " + String(metroTaps.size()) + " / 8" : String{};
-    text(limit(skin.font(s::caption), note, caption.getWidth()), caption, s::caption,
-         audible ? s::muted : s::warning);
+    dynamicText(Readout::metroHint, metronomeHint(), caption, s::caption, false);
 
     auto panel = inspectorBounds.reduced(s::inset);
     auto row = [&] {
@@ -159,6 +167,7 @@ void Studio::metronomePage(Rect workspace) {
     });
     fader(cs::clickLevel, row(), 0, 100, settings.clickVolume, cs::percentUnit, [this](int value) {
         settings.clickVolume = value;
+        setReadout(Readout::metroHint, metronomeHint());
         if (metronome)
             metronome->configureClick(value, settings.clickSound);
         persist();
@@ -213,7 +222,7 @@ void Studio::paintMetronome(Graphics& g) {
     const auto area = metroBeats;
     const int spacing = s::transport + s::grid;
     const int x = area.getCentreX() - metroGrid.beats * spacing / 2;
-    const auto beat = metronome ? metroGrid.beatAt(metronome->position(metronome->cursor.load())) : -1;
+    const auto beat = metronome ? metroGrid.beatAt(metronome->cursor.load()) % metroGrid.beats : -1;
     for (int i = 0; i < metroGrid.beats; ++i) {
         const int size = i == 0 ? s::transport : s::button;
         auto dot = Rect(x + i * spacing, area.getY(), spacing, area.getHeight())
