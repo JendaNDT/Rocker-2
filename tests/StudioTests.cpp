@@ -794,6 +794,23 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
     REQUIRE(files.size() == 1);
     REQUIRE(waveReader(files[0])->lengthInSamples ==
             ViewState::load(dir).selectionEnd - ViewState::load(dir).selectionStart);
+    click(view, cs::stems);
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "32-stopy-zvlast", pixels);
+    click(view, cs::makeStems);
+    juce::Array<juce::File> stems;
+    for (int i = 0; i < 150; ++i) {
+        tick();
+        view.resized();
+        stems = dir.getChildFile("Exporty").findChildFiles(File::findDirectories, false, "*stopy*");
+        if (!stems.isEmpty() && find<Button>(view, cs::mixFolder))
+            break;
+    }
+    REQUIRE(stems.size() == 1);
+    CHECK(stems[0].findChildFiles(File::findFiles, false, "*.wav").size() == 1);
+    CHECK(find<Button>(view, cs::mixFolder));
+    CHECK_FALSE(find<Button>(view, cs::playMix));
     click(view, cs::back);
     key('M');
     REQUIRE(read().tracks.at(ViewState::load(dir).selected).mute);

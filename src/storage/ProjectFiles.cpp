@@ -3,19 +3,6 @@
 #include <juce_cryptography/juce_cryptography.h>
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include <miniz.h>
-#if JUCE_WINDOWS
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#elif JUCE_MAC
-#include <stdio.h>
-#else
-#include <fcntl.h>
-#include <linux/fs.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-#endif
 
 namespace rocker {
 using namespace juce;
@@ -65,19 +52,6 @@ struct Scratch {
             dir.deleteRecursively();
     }
 };
-bool moveNewDirectory(const File& from, const File& to) {
-    const auto& source = from.getFullPathName();
-    const auto& target = to.getFullPathName();
-#if JUCE_WINDOWS
-    return MoveFileExW(source.toWideCharPointer(), target.toWideCharPointer(), MOVEFILE_WRITE_THROUGH) !=
-           0;
-#elif JUCE_MAC
-    return renamex_np(source.toRawUTF8(), target.toRawUTF8(), RENAME_EXCL) == 0;
-#else
-    return syscall(SYS_renameat2, AT_FDCWD, source.toRawUTF8(), AT_FDCWD, target.toRawUTF8(),
-                   RENAME_NOREPLACE) == 0;
-#endif
-}
 bool validated(const File& dir) {
     bool damaged = false;
     const auto song = Song::parse(JSON::parse(dir.getChildFile("skladba.json")), damaged);

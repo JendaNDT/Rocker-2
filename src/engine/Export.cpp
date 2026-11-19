@@ -95,6 +95,7 @@ bool deliveryAvailable(Delivery format) {
     switch (format) {
     case Delivery::wave24:
     case Delivery::wave16:
+    case Delivery::stems:
         return true;
     case Delivery::mp3:
         return mp3Available();
@@ -112,7 +113,7 @@ MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, D
     MixFile result{dest};
     result.begin = begin;
     if (dest.getParentDirectory().createDirectory().failed() ||
-        !deliveryAvailable(format))
+        !deliveryAvailable(format) || format == Delivery::stems)
         return result;
     TemporaryFile stage(".wav"), pcm(".wav"), output(dest);
     if (!renderSong(song, lib, stage.getFile(), begin, end))
@@ -133,8 +134,54 @@ MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, D
     result.ok = commitTemporary(output);
     return result;
 }
-MixFile exportStems(const Song&, const AudioLibrary&, const File& destination) {
-    return MixFile{destination};
+MixFile exportStems(const Song& song, const AudioLibrary& library, const File& destination,
+                    const String& drumsName) {
+    MixFile result{destination};
+    if (destination.exists() || destination.getParentDirectory().createDirectory().failed())
+        return result;
+    struct StagedDirectory {
+        File path;
+        ~StagedDirectory() { path.deleteRecursively(); }
+    } staged{destination.getSiblingFile(".stems-" + Uuid().toString())};
+    if (staged.path.createDirectory().failed())
+        return result;
+    struct Stem {
+        String name, drumGroup;
+        std::vector<size_t> tracks;
+    };
+    std::vector<Stem> stems;
+    for (size_t index = 0; index < song.tracks.size(); ++index) {
+        const auto& track = song.tracks[index];
+        if (track.mute)
+            continue;
+        auto group = track.kind == "bici" ? track.group : String{};
+        if (group.isNotEmpty()) {
+            auto stem = std::find_if(stems.begin(), stems.end(), [&](const Stem& x) { return x.drumGroup == group; });
+            if (stem != stems.end()) {
+                stem->tracks.push_back(index);
+                continue;
+            }
+        }
+        stems.push_back({group.isEmpty() ? track.name : drumsName, group, {index}});
+    }
+    if (stems.empty())
+        return result;
+    auto isolated = song;
+    isolated.masterDb = 0;
+    const auto length = song.end() + 2 * song.grid.rate;
+    for (size_t i = 0; i < stems.size(); ++i) {
+        isolated.tracks.clear();
+        for (auto index : stems[i].tracks) {
+            isolated.tracks.push_back(song.tracks[index]);
+            isolated.tracks.back().solo = false;
+        }
+        auto name = String(i + 1).paddedLeft('0', std::max(2, String(stems.size()).length())) + " " + File::createLegalFileName(stems[i].name).trim();
+        if (!renderSong(isolated, library, staged.path.getChildFile(name.trimEnd() + ".wav"), 0,
+                        length))
+            return result;
+    }
+    result.ok = moveNewDirectory(staged.path, destination);
+    return result;
 }
 std::optional<bool> containsClick(const File& file, const BeatGrid& grid, Frame start) {
     auto input = waveReader(file);
