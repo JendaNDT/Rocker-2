@@ -63,12 +63,28 @@ TakeGroup* Song::groupAt(const String& track, Frame from, Frame to) {
             return &group;
     return nullptr;
 }
-bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded) {
+bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded, const String& family) {
     if (from < 0 || to <= from || pass.length <= 0 || pass.position >= to)
         return false;
-    if (discarded ? pass.position + pass.length <= from
-                  : pass.position > from || pass.length < to - pass.position)
+    if (family.isEmpty() && (discarded ? pass.position + pass.length <= from
+                  : pass.position > from || pass.length < to - pass.position))
         return false;
+    auto append = [&](std::vector<TakeGroup>& list, Clip clip, Frame a, Frame b) {
+        auto it = std::find_if(list.begin(), list.end(), [&](const TakeGroup& group) {
+            return group.track == clip.track && group.retakeFamily == family &&
+                   (family.isNotEmpty() || (group.from == a && group.to == b));
+        });
+        if (it == list.end()) {
+            list.push_back({Uuid().toString(), clip.track, a, b});
+            it = std::prev(list.end());
+            it->retakeFamily = family;
+        }
+        it->from = std::min(it->from, a);
+        it->to = std::max(it->to, b);
+        it->attempts.push_back({Uuid().toString(), created, discarded, {std::move(clip)}});
+        if (!discarded)
+            it->active = (int)it->attempts.size();
+    };
     if (!order.empty()) {
         extendOrder(to);
         int bar = 0;
@@ -83,29 +99,15 @@ bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool disca
             a = translate(a, startBar, o.crop);
             b = translate(b, startBar, o.crop);
             auto& local = sections.at(o.section).groups;
-            auto it = std::find_if(local.begin(), local.end(), [&](auto& g) {
-                return g.track == pass.track && g.from == a && g.to == b;
-            });
-            if (it == local.end()) {
-                local.push_back({Uuid().toString(), pass.track, a, b});
-                it = std::prev(local.end());
-            }
             auto copy = pass;
             copy.id = Uuid().toString();
             copy.position += shift;
-            it->attempts.push_back({Uuid().toString(), created, discarded, {copy}});
-            if (!discarded)
-                it->active = (int)it->attempts.size();
+            append(local, std::move(copy), a, b);
         }
         projectOrder();
         return true;
     }
-    auto* group = groupAt(pass.track, from, to);
-    if (!group)
-        group = &groups.emplace_back(TakeGroup{Uuid().toString(), pass.track, from, to});
-    group->attempts.push_back({Uuid().toString(), created, discarded, {std::move(pass)}});
-    if (!discarded)
-        group->active = (int)group->attempts.size();
+    append(groups, std::move(pass), from, to);
     return true;
 }
 StringArray Song::members(const String& id) const {
@@ -174,6 +176,7 @@ var Song::json() const {
                                    {"od", group.from},
                                    {"do", group.to},
                                    {"aktivni", group.active},
+                                   {"serie", group.retakeFamily},
                                    {"varianty", attempts}}));
         }
         return object({{"id", sec.id},
@@ -323,6 +326,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         for (const auto& raw : items(section, "pokusy")) {
             TakeGroup g{field(raw, "id").toString(), field(raw, "stopa").toString(), field(raw, "od", -1),
                         field(raw, "do", -1)};
+            g.retakeFamily = field(raw, "serie").toString();
             if (g.id.isEmpty() || !groupIds.insert(g.id).second || !tracks.contains(g.track) ||
                 g.from < 0 || g.to <= g.from || g.to > Frame(s.grid.rate) * 86400 * 30) {
                 damaged = true;
@@ -445,8 +449,13 @@ bool Song::archive(const File& dir) const {
     return true;
 }
 bool ViewState::save(const File& d) const {
+    Array<var> routes;
+    for (const auto& [id, device] : inputDevices)
+        routes.add(object({{"stopa", id}, {"zarizeni", device}}));
     return atomicJson(d.getChildFile("zobrazeni.json"), object({{"ukazatel", cursor},
                                                                 {"stopa", selected},
+                                                                {"idStopy", trackId},
+                                                                {"prirazeni", routes},
                                                                 {"takty", zoom},
                                                                 {"zdalky", distant},
                                                                 {"klik", click},
@@ -466,7 +475,7 @@ bool ViewState::save(const File& d) const {
 }
 ViewState ViewState::load(const File& d) {
     auto v = JSON::parse(d.getChildFile("zobrazeni.json"));
-    return {std::max<Frame>(0, field(v, "ukazatel")),
+    ViewState state{std::max<Frame>(0, field(v, "ukazatel")),
             std::max(0, (int)field(v, "stopa")),
             jlimit(1, 64, (int)field(v, "takty", 8)),
             field(v, "zdalky", false),
@@ -484,6 +493,13 @@ ViewState ViewState::load(const File& d) {
             std::max(0, (int)field(v, "ulozenePokusy", 0)),
             (bool)field(v, "rytmus", false),
             (bool)field(v, "smyckaPrehravani", false)};
+    state.trackId = field(v, "idStopy").toString();
+    for (const auto& route : items(v, "prirazeni")) {
+        auto track = field(route, "stopa").toString(), device = field(route, "zarizeni").toString();
+        if (track.isNotEmpty() && device.isNotEmpty())
+            state.inputDevices[track] = device;
+    }
+    return state;
 }
 std::unique_ptr<AudioFormatWriter> waveWriter(const File& file, int rate, int channels) {
     std::unique_ptr<OutputStream> stream = file.createOutputStream();

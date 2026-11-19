@@ -43,7 +43,8 @@ class Playback {
     void setSound(size_t track, const GuitarSound&, bool recall);
     void setVoice(size_t track, const VoiceSound&, bool recall);
     void selectAttempt(const juce::String& group, int index);
-    void setPunch(size_t track, Frame from, Frame to, int left, int right, bool clean);
+    void setPunchMonitor(int mode) noexcept { punchMonitor.store(mode); }
+    void setPunch(size_t track, Frame from, Frame to, int left, int right);
     void mix(float* const*, int outputs, int size, Frame at, const float* const* input = nullptr,
              int inputs = 0, int inputOffset = 0) noexcept;
     struct Meter {
@@ -59,6 +60,7 @@ class Playback {
     std::atomic<Frame> loudest{-1}, over{-1};
     std::vector<Frame> cuts;
     int cutFade = 1;
+    std::atomic<int> punchMonitor{0};
     struct Overlay {
         juce::String id;
         Frame from = 0, to = 0, tail = 0;
@@ -66,11 +68,12 @@ class Playback {
         std::atomic<int> active{0};
         std::vector<float> weights;
         int target = -1, remaining = 0;
+        bool wholeTake = false;
     };
     struct Strip {
         std::vector<std::unique_ptr<Overlay>> groups;
         Frame punchFrom = 0, punchTo = 0;
-        bool cleanPunch = false;
+
         int livePorts[2]{-1, -1}, fade = 1;
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
@@ -87,7 +90,7 @@ class Playback {
         void read(const std::vector<PlaybackClip>&, float (&block)[2][256], int count,
                   Frame at) const noexcept;
         void process(float* const*, int outputs, int count, Frame at, const float* const*, int,
-                     int) noexcept;
+                     int, int monitor) noexcept;
     };
     std::vector<std::unique_ptr<Strip>> strips;
     bool hasClips = false;
@@ -129,6 +132,7 @@ class Performance {
     void finishDisk();
     bool drain();
     void storeInputMarks(Song&) const;
+    bool captures(const juce::String& track) const;
     void configureClick(int level, int sound) noexcept;
     BeatGrid grid;
     Playback playback;
@@ -140,6 +144,8 @@ class Performance {
     int compensation = 0;
     Frame punchFrom = 0, punchTo = 0;
     bool monitorPunch = false, cleanPunch = false;
+    juce::String retakeFamily;
+    Frame previousTakeEnd = 0;
     static constexpr Frame diskReserve = 500000000;
     std::function<Frame(const juce::File&)> diskSpace = [](const juce::File& dir) {
         return dir.getBytesFreeOnVolume();

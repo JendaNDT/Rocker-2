@@ -270,7 +270,7 @@ void Song::commitGroup(const TakeGroup& edited, Frame previousFrom, Frame previo
     std::vector<TakeGroup> changes;
     for (auto& peer : groups) {
         if (peer.from != previousFrom || peer.to != previousTo ||
-            !linkedTrack(peer.track, edited.track) || peer.attempts.size() != edited.attempts.size())
+            (!linkedTrack(peer.track, edited.track) && !peer.sameSession(edited)) || peer.attempts.size() != edited.attempts.size())
             continue;
         auto copy = peer;
         copy.active = edited.active;

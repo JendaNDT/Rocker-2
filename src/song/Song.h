@@ -46,6 +46,10 @@ struct TakeGroup {
     Frame from = 0, to = 0;
     std::vector<Attempt> attempts;
     int active = 0; // Zero selects the original track material.
+    juce::String retakeFamily;
+    bool sameSession(const TakeGroup& other) const {
+        return retakeFamily.isNotEmpty() && retakeFamily == other.retakeFamily;
+    }
     int cycle() const;
     bool discard();
 };
@@ -76,7 +80,8 @@ struct Song {
     std::vector<Asset> assets;
     std::vector<TakeGroup> groups;
     TakeGroup* groupAt(const juce::String& track, Frame from, Frame to);
-    bool addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded = false);
+    bool addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded = false,
+                    const juce::String& family = {});
     std::vector<Frame> dropouts;
     int bars = 8;
     float masterDb = 0;
@@ -118,6 +123,8 @@ struct ViewState {
     bool mixing = false;
     int targetBars = 0, savedTakes = 0;
     bool rhythm = false, playLoop = false;
+    juce::String trackId;
+    std::map<juce::String, juce::String> inputDevices;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };
