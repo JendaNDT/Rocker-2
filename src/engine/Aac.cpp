@@ -42,9 +42,9 @@ bool check(OSStatus status, const char* action, String& detail) {
     detail = String(action) + ": " + String(status);
     return false;
 }
-bool preserveLength(CFURLRef url, Frame frames, String& detail) {
+bool verifyLength(CFURLRef url, Frame frames, String& detail) {
     PacketFile destination;
-    if (!check(AudioFileOpenURL(url, kAudioFileReadWritePermission, kAudioFileM4AType, &destination.file),
+    if (!check(AudioFileOpenURL(url, kAudioFileReadPermission, kAudioFileM4AType, &destination.file),
                "Open finished M4A", detail))
         return false;
     AudioFilePacketTableInfo table{};
@@ -54,15 +54,8 @@ bool preserveLength(CFURLRef url, Frame frames, String& detail) {
         return false;
     if (table.mNumberValidFrames == frames)
         return true;
-    const auto remainder = table.mNumberValidFrames + table.mRemainderFrames - frames;
-    if (remainder < 0 || remainder > std::numeric_limits<SInt32>::max()) {
-        detail = "AAC packet table does not cover PCM length";
-        return false;
-    }
-    table.mRemainderFrames = static_cast<SInt32>(remainder);
-    table.mNumberValidFrames = frames;
-    return check(AudioFileSetProperty(destination.file, kAudioFilePropertyPacketTableInfo, sizeof(table),
-                                      &table), "Write AAC packet table", detail);
+    detail = "AAC packet table length: " + String(table.mNumberValidFrames) + " / " + String(frames);
+    return false;
 }
 } // namespace
 #endif
@@ -138,7 +131,7 @@ bool encodeAac(const File& pcm, const File& destination, String& detail) {
         detail = "Finish M4A";
         return false;
     }
-    return preserveLength(target.value, source->lengthInSamples, detail);
+    return verifyLength(target.value, source->lengthInSamples, detail);
 #else
     juce::ignoreUnused(pcm, destination, detail);
     return false;
