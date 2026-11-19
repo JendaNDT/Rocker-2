@@ -27,9 +27,24 @@ jobs:
         run: cmake -S . -B build -A ${{ matrix.arch }}
       - name: Configure macOS
         if: runner.os == 'macOS'
-        run: cmake -S . -B build -G Xcode
+        shell: bash
+        run: |
+          prefix="$(brew --prefix llvm)"
+          if [ ! -x "$prefix/bin/clang++" ]; then brew install llvm; fi
+          cmake -S . -B build -G "Ninja Multi-Config" -DROCKER_SANITIZERS=ON \
+            -DCMAKE_C_COMPILER="$prefix/bin/clang" -DCMAKE_CXX_COMPILER="$prefix/bin/clang++"
       - name: Build
-        run: cmake --build build --config Release --parallel 3
+        shell: python
+        run: |
+          import re, subprocess
+          command = ["cmake", "--build", "build", "--config", "Release", "--parallel", "3"]
+          result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
+          print(result.stdout)
+          if result.returncode:
+              errors = [line for line in result.stdout.splitlines() if re.search(r"error|undefined|unresolved|FAILED:|exception", line, re.I)]
+              text = ("\n".join(errors[:40]) or result.stdout[-5000:])[:6000]
+              print("::error title=Build::" + text.replace("%","%25").replace("\n","%0A").replace("\r","%0D"))
+          raise SystemExit(result.returncode)
       - name: Test
         shell: python
         run: |
@@ -41,6 +56,11 @@ jobs:
               detail = result.stdout[-6000:].replace("%", "%25").replace("\n", "%0A").replace("\r", "%0D")
               print(f"::error title=StudioSuite::{detail}")
           raise SystemExit(result.returncode)
+      - name: Debug audio callback audit
+        if: runner.os == 'macOS'
+        run: |
+          cmake --build build --config Debug --target Audit_realtime Audit_thread --parallel 3
+          ctest --test-dir build -C Debug -R "^A15_" --output-on-failure
       - name: Package Windows
         if: runner.os == 'Windows'
         shell: pwsh

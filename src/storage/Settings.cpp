@@ -1,3 +1,4 @@
+#include "storage/AtomicFile.h"
 #include "Settings.h"
 namespace rocker {
 juce::File Settings::location() {
@@ -44,6 +45,7 @@ Settings Settings::load(const juce::File& file) {
         for (auto& item : obj->getProperties())
             if (item.value.isString())
                 result.aliases[item.name.toString()] = item.value.toString();
+    result.lastSong = string("lastSong");
     result.tuningName = string("tuningName");
     auto tuningList = data.getProperty("tunings", {});
     if (auto* list = tuningList.getArray())
@@ -66,8 +68,6 @@ Settings Settings::load(const juce::File& file) {
     return result;
 }
 bool Settings::save(const juce::File& file) const {
-    if (file.getParentDirectory().createDirectory().failed())
-        return false;
     auto* object = new juce::DynamicObject;
     juce::var data(object);
     object->setProperty("schemaVersion", 1);
@@ -82,6 +82,7 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("aliases", juce::var(names));
     for (auto& [key, name] : aliases)
         names->setProperty(key, name);
+    object->setProperty("lastSong", lastSong);
     object->setProperty("tuningName", tuningName);
     juce::Array<juce::var> list;
     for (auto& tuning : tunings) {
@@ -102,8 +103,6 @@ bool Settings::save(const juce::File& file) const {
         record->setProperty("samples", calibration.samples);
         record->setProperty("reported", calibration.reported);
     }
-    juce::TemporaryFile temp(file);
-    return temp.getFile().replaceWithText(juce::JSON::toString(data)) &&
-           temp.overwriteTargetFileWithTemporary();
+    return atomicJson(file, data);
 }
 } // namespace rocker

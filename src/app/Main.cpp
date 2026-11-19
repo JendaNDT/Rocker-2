@@ -8,7 +8,11 @@ class Window final : public juce::DocumentWindow {
         setUsingNativeTitleBar(true);
         setResizable(true, false);
         setResizeLimits(style::minWidth, style::minHeight, style::maxWindow, style::maxWindow);
-        setContentOwned(new Studio(devices, Settings::location()), true);
+        setContentOwned(new Studio(devices, Settings::location(),
+                                   juce::File::getSpecialLocation(juce::File::userHomeDirectory)
+                                       .getChildFile("Rocker 2")
+                                       .getChildFile("Skladby")),
+                        true);
         centreWithSize(getWidth(), getHeight());
         setVisible(true);
         getContentComponent()->grabKeyboardFocus();
@@ -18,7 +22,7 @@ class Window final : public juce::DocumentWindow {
 class Application final : public juce::JUCEApplication {
   public:
     const juce::String getApplicationName() override { return cs::app; }
-    const juce::String getApplicationVersion() override { return "0.2.0"; }
+    const juce::String getApplicationVersion() override { return "0.3.0"; }
     bool moreThanOneInstanceAllowed() override { return false; }
     void initialise(const juce::String&) override {
         devices = nativeDevices();

@@ -102,6 +102,12 @@ StringArray Studio::inputNames() const {
     return result;
 }
 void Studio::changeMonitor(int mode) {
+    if (page == Page::amp && ampFromProject) {
+        projectMonitor = mode;
+        configureSongMonitor();
+        triggerAsyncUpdate();
+        return;
+    }
     const bool ampAllowed = (guitarSource == 0 || (guitarSource == 3 && !hearSecond)) && !laptop;
     if (mode == (int)Monitor::amp && !ampAllowed)
         mode = (int)Monitor::off;
@@ -247,6 +253,9 @@ void Studio::livePages(Rect area) {
             pages[i] == page ? 1 : 0);
         footer.removeFromLeft(s::gap);
     }
+    if (projectDir != File{} && song.title.isNotEmpty())
+        button(cs::useProject, area.removeFromBottom(s::button).withWidth(s::nameWidth),
+               [this] { show(Page::project); });
     area.reduce(0, s::gutter);
     const String title = page == Page::live           ? cs::hear
                          : page == Page::amp          ? cs::ampPage
@@ -377,8 +386,13 @@ void Studio::ampPanel(Rect area) {
               triggerAsyncUpdate();
           });
     top.removeFromLeft(s::gutter);
-    const bool allowed = !laptop && (guitarSource == 0 || (guitarSource == 3 && !hearSecond)) &&
-                         !link.caps.inputs.isEmpty() && link.caps.outputChannels > 0;
+    const bool sourceAllowsAmp =
+        ampFromProject
+            ? view.selected < (int)song.tracks.size() && song.tracks[view.selected].kind == "kytara" &&
+                  link.caps.inputs.contains(song.tracks[view.selected].inputs[0])
+            : guitarSource == 0 || (guitarSource == 3 && !hearSecond);
+    const bool allowed =
+        !laptop && sourceAllowsAmp && !link.caps.inputs.isEmpty() && link.caps.outputChannels > 0;
     if (allowed)
         button(link.audio.live.monitor == Monitor::amp ? cs::soundOff : cs::soundOn,
                top.removeFromLeft(s::nameWidth),
@@ -419,6 +433,10 @@ void Studio::tunerPanel(Rect area) {
         tuningIndex = i;
         targetString = -1;
         settings.tuningName = tunings[i].name;
+        if (tunerReturn == Page::project) {
+            song.tuning = settings.tuningName;
+            saveSong();
+        }
         persist();
         resetTuning();
         link.audio.live.setTuner(true);
@@ -509,6 +527,10 @@ void Studio::customPanel(Rect area) {
                 if (tunings[i].name == name)
                     tuningIndex = i;
             settings.tuningName = name;
+            if (tunerReturn == Page::project) {
+                song.tuning = settings.tuningName;
+                saveSong();
+            }
             targetString = -1;
             show(Page::tuner);
             message = cs::customSaved;
@@ -551,13 +573,19 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
+    if (diagnosing) {
+        button(cs::stopSong, row(area).withWidth(s::nameWidth), [this] { stopProject(); });
+        return;
+    }
     if (link.online && link.caps.outputChannels > 0 && !link.caps.inputs.isEmpty() &&
         link.audio.live.measurement() == Measurement::idle) {
         combo(cs::input, row(area), inputNames(), measurementInput, [this](int i) {
             measurementInput = i;
             link.audio.live.selectInput(i);
         });
-        button(cs::measure, row(area).withWidth(s::nameWidth), [this] {
+        auto actions = row(area);
+        button(cs::syncTitle, actions.removeFromRight(s::nameWidth), [this] { syncTest(); });
+        button(cs::measure, actions.withWidth(s::nameWidth), [this] {
             if (link.audio.live.startMeasurement())
                 status(cs::measuring);
         });

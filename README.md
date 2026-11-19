@@ -1,16 +1,33 @@
 # Rocker 2
 
-Domácí studio pro kytaru a bicí. V etapě E1 můžeš hrát do sluchátek přes kytarový aparát, naladit struny a změřit zpoždění svojí zvukovky. Aplikace běží bez internetu a účtu. Nahrávání bicích a kytary přijde v E2.
+Domácí studio pro kytaru a bicí. V E2 můžeš nahrát bicí, při jejich poslechu dohrát kytaru a další den pokračovat na stejném místě. Aparát, ladička a měření zvukovky jsou k dispozici. Aplikace běží bez internetu a účtu.
 
 Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hotové aplikace. Během vývoje se každá etapa ověřuje automaticky.
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-1**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E1](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-1)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-2**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E2](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-2)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
 5. Při prvním startu se otevře **Zapojení**. Tlačítko **Úvodní obrazovka** tě vezme na úvod podle náčrtu 01 / 5.7. Odtud se do průvodce kdykoli vrátíš přes **Zapojení a zvukovka**.
+
+## Osm taktů bicích a kytara přes ně
+
+1. Na úvodu zvol **Nová skladba** nebo stiskni **N**. Pojmenuj ji, nastav **112 BPM**, metrum **4/4** a klikni na **Vytvořit skladbu**. Vzniknou stopy Bicí a Kytara. Rytmus můžeš také několikrát vyťukat tlačítkem **Naťukat tempo**.
+2. Vyber **Bicí → Nastavit stopu**. Zvol skutečný vstup mikrofonu nebo dva sousední vstupy pro stereo modul. Stiskni **Potvrdit**, potom **Připravit**. Rozsvícené **Připraveno** označuje stopu, do které půjde záznam. Podobně lze připravit více stop současně.
+3. Zapni **Klik** a **Odpočet**. **F11** zvětší stav a číslo taktu pro hráče za bicími. Stiskni **R**, po čtyřech dobách nahraj osm taktů a dalším **R** zastav. **F11** tě vrátí na časovou osu. Mezera přehrává a zastavuje.
+4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. V E3 půjde aparát použít také na přehrávanou stopu.
+5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
+
+## Ruční ověření E2 po vydání
+
+| Zkouška | Postup a co zapsat |
+|---|---|
+| M-02 · souhra | Se staženým výstupem a vypnutým DIRECT MONITOR propoj levý linkový výstup se vstupem jako při M-01. V Diagnostice vyber tento vstup a spusť **Zkouška souhry**. Deset minut ponech kabel zapojený. Zapiš oba posuny. Na začátku i konci má být velikost posunu nejvýše 1 ms a jejich rozdíl nejvýše 0,1 ms. Zopakuj po restartu a při jiném bufferu s jeho vlastní kalibrací. Před hraním odpoj kabel. |
+| H-02 · dohrání kytary | Osm taktů podle postupu výše, potom delší verze kolem pěti minut. Poslechni spojení kytary s kopákem na začátku i na konci. Zapiš, zda se objevil dvojitý úder. |
+| M-04 · obnova po pádu | Založ novou zkušební skladbu a začni nahrávat kytaru. V čase 1:30 ukonči Rocker ve Správci úloh. Po spuštění zvol **Obnovit**. Zapiš délku, polohu a zda klip hraje. Očekáváme aspoň 1:28 zvuku. |
+| H-10 · druhý den | Poznamenej si takt, zvolenou stopu, přiblížení, pohled a stav Sólo/Ztlumit. Zavři aplikaci, restartuj počítač a zvol **Pokračovat**. Porovnej polohu, pohled a poslech. |
 
 ## První riff a Drop D
 
@@ -29,7 +46,7 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## H-01 · vyber buffer podle hraní
 
-Jendo, nech kamaráda zahrát stejný šestnáctinový riff přes **Crunch** s externím metronomem. Mezi pokusy změň pořadí dostupných bufferů 64, 128 a 256 tak, aby hráč nevěděl, který poslouchá. Po změně ověř vstup a znovu zapni **Se zvukem**. Ke každému pokusu si před prozrazením nastavení vyžádej známku 1–5. **5** znamená „žádné zpoždění necítím“. Zapiš i praskání nebo dvojitý zvuk a hodnotu z panelu **Co slyším**.
+Jendo, nech kamaráda zahrát stejný šestnáctinový riff přes **Crunch** s metronomem. Mezi pokusy změň pořadí dostupných bufferů 64, 128 a 256 tak, aby hráč nevěděl, který poslouchá. Po změně ověř vstup a znovu zapni **Se zvukem**. Ke každému pokusu si před prozrazením nastavení vyžádej známku 1–5. **5** znamená „žádné zpoždění necítím“. Zapiš i praskání nebo dvojitý zvuk a hodnotu z panelu **Co slyším**.
 
 Při zpoždění do 10 ms má být hodnocení alespoň 4. Z vyhovujících výsledků vybereme největší buffer s hodnocením 4 nebo 5. Stačí mi poslat údaje zprávou ve tvaru níže, zapíšu je za tebe.
 
@@ -39,7 +56,7 @@ Při zpoždění do 10 ms má být hodnocení alespoň 4. Z vyhovujících výsl
 
 ## Kontrolní seznam pro první zapojení
 
-- [ ] Porovnej úvodní obrazovku s 01 / 5.7. Zkus **R**, **N**, **Enter** a **T**. Klávesa T otevře ladičku a dalším stiskem tě vrátí. R, N a Enter zatím ukážou etapu připravované funkce.
+- [ ] Porovnej úvodní obrazovku s 01 / 5.7. Zkus **R**, **N**, **Enter** a **T**. Klávesa T otevře ladičku a dalším stiskem tě vrátí. N založí skladbu, Enter otevře poslední skladbu a R na úvodu ukáže připravované zachycení nápadu.
 - [ ] Ve Windows připoj zvukovku a v Zapojení vyber **ASIO** a ovladač výrobce. Bez ASIO vyber dostupný režim Windows Audio. Na Macu vyber **CoreAudio** a vstup i výstup své zvukovky.
 - [ ] Zvol **48 kHz**, pokud je v nabídce. Jiné podporované frekvence můžeš vyzkoušet také. Vyber buffer a pokračuj k poslechu.
 - [ ] Připoj drátová sluchátka ke zvukovce, začni s nízkou hlasitostí a stiskni **Pustit zkušební tón**. Se stereo výstupem zní první sekunda vlevo, druhá vpravo a třetí v obou. Vyber odpověď, která odpovídá tomu, co slyšíš.

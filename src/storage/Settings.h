@@ -13,7 +13,7 @@ struct Settings {
     juce::String laptopInput;
     std::map<juce::String, juce::String> aliases;
     std::vector<Tuning> tunings;
-    juce::String tuningName;
+    juce::String tuningName, lastSong;
     std::map<juce::String, Calibration> latency;
     static juce::String calibrationKey(const DeviceChoice&);
     static juce::File location();
