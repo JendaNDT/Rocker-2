@@ -2,30 +2,20 @@
 
 ## 1. Hotovo
 
-Ve skladbě otevři **Soubor → Zabalit skladbu**. Na druhém počítači použij **Otevřít balík** a podle potřeby znovu přiřaď vstupy. Ve Windows vyber instalátor x64 nebo ARM64 podle procesoru. Mac s čipem Apple používá přenosný ZIP. [Stránka vydání a ověření stažení](https://github.com/JendaNDT/Rocker-2/releases/tag/v1.0.0) · [Automatické zkoušky, artefakty a snímky E11](https://github.com/JendaNDT/Rocker-2/pull/12)
-
-[Přiřazení vstupů](zkousky/E11/prirazeni.png) · [Soubor ve skladbě](zkousky/E11/balik.png) · [Diagnostika](zkousky/E11/diagnostika.png)
-
-Automatické zkoušky E11 prošly na všech třech systémech. Na obou typech Windows instalátor spustil aplikaci a odinstalování zachovalo zkušební skladbu. [Protokol zkoušek E11](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081) · [Sestavení a kontrola stažení vydání v1](https://github.com/JendaNDT/Rocker-2/actions/runs/44463135386)
-
-| Počítač | Ověřené sestavení E11 | Obrazovky |
-|---|---|---|
-| Windows x64 | [Aplikace](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14500876466) | [Snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501126195) |
-| Windows ARM64 | [Aplikace](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501240454) | [Snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501265486) |
-| Mac s čipem Apple | [Aplikace](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501315606) | [Snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14500761594) |
+E12 pokrývá ukládání a náhled nápadů s vlastní složkou skladeb, text a stupnici zesílení, konkrétní hlášky, uchování různých verzí a přepnutí frekvence zvukovky. [Ověření E12, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/15) · [Vydání v1.0.0](https://github.com/JendaNDT/Rocker-2/releases/tag/v1.0.0)
 
 ## 2. Zbývá
 
-Na prvním skutečném počítači zaznamenat výsledek instalace a přehrát celou písničku od nápadu po hotový mix. Windows aplikace je nepodepsaná. Na Macu je sestavení pro čipy Apple. Kódování MP3 ve Windows závisí na přítomnosti systémového kodéru. WAV lze použít na obou systémech.
+E13 až E18 v pořadí dokumentu 06. Nejbližší etapa přidá mazání nápadů, import a export M4A na Macu, balík pro Macy s Intelem a srozumitelný přepínač místa pro přidaný podklad. [Plán](06_PLAN_OPRAV_A_VYLEPSENI.md)
 
 ## 3. Ruční zkoušky
 
-Veškerý poslech, H-01 až H-13 a měření na fyzických sestavách **čekají na ruční zkoušku po vydání v1**. H-09 zahrnuje celou píseň, H-10 znovuotevření další den, M-15 zprávu o sestavě. Výsledky od Jendy zatím nejsou. [Krátký seznam pro muzikanta](../README.md#co-vyzkoušet-po-vydání) · [Úplný plán zkoušek](03_ZKOUSKY_NA_WINDOWS.md)
+Hraní, poslech a měření čekají na ruční zkoušku po E18. Změň Složku skladeb v Diagnostice, nahraj riff, přehraj ho v Nápadech, vytvoř z něj skladbu a zkontroluj hodnoty v Míchej. Nakonec nahraj celou písničku a další den znovu otevři skladbu. [Postup](../README.md#co-vyzkoušet-po-vydání)
 
 ## 4. Rozhodnutí
 
-Velké projekty se přenášejí postupně v ZIP64. Historii a dosud použitelné pokusy chrání také úklid do koše. Instalace nevyžaduje správce. Vydání a stav automatických zkoušek se potvrzují podle GitHubu. [Rozhodnutí E11](ROZHODNUTI.md#e11--balíky-koš-a-vydání)
+Jenda potvrdil pořadí E12 až E18 a posun ručních zkoušek na konec. Nápady mají vlastní stálou složku. Přenos skladby mezi různými frekvencemi využívá možnosti zvukovky. [Rozhodnutí E12](ROZHODNUTI.md#e12--složka-nápadů-historie-a-připojení)
 
-## 5. Další relace po vydání
+## 5. Prompt pro E13
 
-Nejdříve zkontroluj vydání v1.0.0, přiložené soubory a předání. Po Jendových ručních zkouškách zapiš sestavu a rozliš, co skutečně slyšel, co změřil a co zůstává otevřené. Chyby reprodukuj pomocí existujících automatických zkoušek. Rozšíření po v1 jsou v dokumentu 01 / kap. 6 a 04. Jejich rozsah vybere Jenda.
+Přečti dokumenty 01 až 06 a toto předání. Proveď E13 podle 06 ve větvi `etapa-13` po malých commitech. Vzhled a rozložení tvoř od nuly podle 01 / kap. 5, bez inspirace původním Rockerem. Rocker běží offline. Dodrž JUCE, tokeny, české texty na jednom místě a pravidla zvukového vlákna. Napiš nejprve zkoušky A-27 a A-28 a rozšiř A-19. Ověř Windows x64, Windows ARM64, Mac a obě architektury v balíku pro Mac. Přilož snímky, aktualizuj README, STAV, ROZHODNUTI a PREDANI a otevři česky popsaný PR. Pokračuj v pořadí a ruční zkoušky přesuň po E18.

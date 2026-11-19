@@ -1,5 +1,11 @@
 # Stav Rockeru 2
 
+## E12 · spolehlivé nápady, historie a frekvence
+
+Knihovna Nápady používá stejnou složku při ukládání i přehrávání náhledu, ať nové skladby ukládáš kamkoli. Zesílení stopy v Míchej se zobrazuje v dB. Hlášky rozlišují nastavení, skladbu, nahrávku, nápad, podklad a úklid. Historie ukládá jen skutečné změny. Při odlišné frekvenci zvukovky uvidíš obě hodnoty a můžeš přepnout na frekvenci skladby, pokud ji zařízení nabízí. [Výsledky a snímky](https://github.com/JendaNDT/Rocker-2/pull/15)
+
+Hraní a měření na skutečné sestavě čekají na ruční zkoušku po E18. [Rozhodnutí](ROZHODNUTI.md#e12--složka-nápadů-historie-a-připojení)
+
 ## E11 · přenos, odolnost a vydání v1
 
 Balík skladby používá ZIP64 a kontrolní součty SHA-256 jednotlivých souborů. Na novém počítači se rozbalí do samostatné složky. Při otevření lze přemapovat vstupy. Volné místo kontroluje zapisovač, během nahrávání se dá odděleně ověřit varování i zastavení. Na Windows se k ověření instalátoru přidává skutečná instalace, spuštění okna a odinstalování pod účtem běžce. [Výsledky, balíky a snímky E11](https://github.com/JendaNDT/Rocker-2/pull/12)

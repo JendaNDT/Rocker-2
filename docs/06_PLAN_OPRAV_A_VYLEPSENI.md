@@ -25,7 +25,7 @@
 | **E17** | Hlasitější export (omezovač, LUFS) | M |
 | **E18** | Nahrávání dokola | L |
 
-Pořadí E14–E18 je doporučení. Velké funkce začni až poté, co Jenda s kamarádem nahraje celou písničku (ruční zkouška H-09). Její výsledky mohou pořadí změnit.
+Na Jendův pokyn z 19. 11. 2026 pokračujeme v pořadí E12 až E18. Poslech, hraní celé písničky (H-09) a další ruční zkoušky přijdou po dokončení E18. Každou etapu uzavírají její automatické zkoušky. [Rozhodnutí](ROZHODNUTI.md#e12--složka-nápadů-historie-a-připojení)
 
 ---
 
