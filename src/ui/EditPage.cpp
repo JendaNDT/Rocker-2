@@ -181,6 +181,7 @@ void Studio::showVersions() {
     if (performance)
         return;
     versions = projectDir.getChildFile("Verze").findChildFiles(File::findFiles, false, "*.json");
+    confirmClean=false;
     versions.sort();
     std::reverse(versions.begin(), versions.end());
     versionIndex = 0;
@@ -220,7 +221,8 @@ void Studio::restoreVersion() {
 }
 void Studio::versionsDeck(Rect area) {
     auto top = area.removeFromTop(s::button);
-    text(cs::versions, top, s::heading);
+    fileOptions(top);
+    text(cs::versions, top.removeFromLeft(s::levelWidth), s::heading);
     area.removeFromTop(s::gap);
     auto row = area.removeFromTop(s::button);
     button(cs::back, row.removeFromRight(s::levelWidth), [this] {

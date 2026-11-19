@@ -444,6 +444,10 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
 Performance::~Performance() { finishDisk(); }
 bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, int delay, bool useWorker,
                       int midiDelay) {
+    captureDir=dir;
+    for(auto& track:s.tracks)if(track.armed)bytesPerSecond+=track.kind=="midi"?8192:Frame(grid.rate)*4*std::max(1,track.inputs.size());
+    checkSpace();
+    if(diskStop)return false;
     if (dir.getChildFile("Zvuk").createDirectory().failed())
         return false;
     Array<var> entries;
@@ -517,7 +521,17 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
     });
     return true;
 }
+void Performance::checkSpace(){
+    const auto free=diskSpace(captureDir);
+    if(free<0)return;
+    diskWarning=free<bytesPerSecond*1800;
+    if(free<diskReserve){diskStop=true;finished=true;}
+}
 bool Performance::drain() {
+    const auto pos=cursor.load();
+    if(pos>=nextSpaceCheck){
+        checkSpace();nextSpaceCheck=pos+2*grid.rate;
+    }
     for (auto& t : takes)
         if (t.midi ? !t.midi->drain(grid.rate, false) : !t.queue->drain(*t.writer, grid.rate))
             return false;
