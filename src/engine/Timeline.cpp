@@ -84,6 +84,13 @@ void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
     strip.command.publish(sound.values, sound.enabled, recall);
 }
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
+    cutFade=std::max(1,roundToInt(.005*s.grid.rate));
+    int bar=0;
+    for (const auto& o : s.order) {
+        bar+=o.length;
+        if (o.crop+o.length<s.sections.at(o.section).bars)
+            cuts.push_back(s.barFrame(bar));
+    }
     for (auto& track : s.tracks) {
         auto& strip = *strips.emplace_back(std::make_unique<Strip>());
         strip.channels = std::clamp(track.inputs.size(), 1, 2);
@@ -282,8 +289,30 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
 void Playback::mix(float* const* out, int outputs, int size, Frame at, const float* const* input,
                    int inputs, int inputOffset) noexcept {
     const ScopedNoDenormals guard;
-    for (auto& strip : strips)
-        strip->process(out, outputs, size, at, input, inputs, inputOffset);
+    if (cuts.empty()) {
+        for (auto& strip : strips)
+            strip->process(out, outputs, size, at, input, inputs, inputOffset);
+        return;
+    }
+    for (int offset=0;offset<size;) {
+        Frame position=at+offset;
+        auto next=std::upper_bound(cuts.begin(),cuts.end(),position);
+        Frame after=next==cuts.end() ? std::numeric_limits<Frame>::max() : *next;
+        Frame before=next==cuts.begin() ? -Frame(cutFade) : *std::prev(next);
+        if (position==before)
+            for (auto& strip:strips) strip->next=-1;
+        int n=(int)std::min<Frame>({256,size-offset,after-position});
+        float left[256]{},right[256]{};
+        float* block[]{left,right};
+        for (auto& strip:strips)
+            strip->process(block,2,n,position,input,inputs,inputOffset+offset);
+        for(int i=0;i<n;++i) {
+            float gain=(float)std::min<Frame>({cutFade,position+i-before,after-position-i-1})/cutFade;
+            for(int ch=0;ch<std::min(2,outputs);++ch)
+                if(out[ch]) out[ch][offset+i]+=gain*block[ch][i];
+        }
+        offset+=n;
+    }
 }
 bool renderSong(const Song& song, const AudioLibrary& library, const File& destination) {
     TemporaryFile output(destination);
@@ -524,17 +553,16 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
         next.assets.push_back({id, path, length, (int)reader->numChannels});
         Clip pass{id, track, id, at, delay, length - delay};
         Frame from = record.getProperty("opravaOd", 0), to = record.getProperty("opravaDo", 0);
-        if (to <= from)
+        if (to <= from) {
             next.clips.push_back(std::move(pass));
-        else {
+            next.commitClips();
+        } else {
             // An interrupted pass remains recoverable without replacing an incomplete bar.
             bool partial = pass.position + pass.length < to;
             Frame first = partial ? pass.position : from;
             Frame last = partial ? pass.position + pass.length : to;
-            if (!next.addAttempt(pass, first, last, record.getProperty("vznik", 0)))
+            if (!next.addAttempt(pass, first, last, record.getProperty("vznik", 0), partial))
                 return false;
-            if (partial)
-                next.groupAt(track, first, last)->discard();
         }
     }
     next.bars = std::max(

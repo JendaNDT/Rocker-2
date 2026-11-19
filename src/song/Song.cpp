@@ -61,14 +61,38 @@ TakeGroup* Song::groupAt(const String& track, Frame from, Frame to) {
             return &group;
     return nullptr;
 }
-bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created) {
+bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded) {
     if (from < 0 || to <= from || pass.position > from || pass.length < to - pass.position)
         return false;
+    if (!order.empty()) {
+        extendOrder(to);
+        int bar=0;
+        for (const auto& o:order) {
+            Frame start=barFrame(bar);
+            bar+=o.length;
+            Frame a=std::max(start,from), b=std::min(barFrame(bar),to);
+            if (b<=a) continue;
+            Frame shift=barFrame(o.crop)-start;
+            auto& local=sections.at(o.section).groups;
+            auto it=std::find_if(local.begin(),local.end(),[&](auto& g){return g.track==pass.track && g.from==a+shift && g.to==b+shift;});
+            if(it==local.end()) {
+                local.push_back({Uuid().toString(),pass.track,a+shift,b+shift});
+                it=std::prev(local.end());
+            }
+            auto copy=pass;
+            copy.id=Uuid().toString();
+            copy.position+=shift;
+            it->attempts.push_back({Uuid().toString(),created,discarded,{copy}});
+            if (!discarded) it->active=(int)it->attempts.size();
+        }
+        projectOrder();
+        return true;
+    }
     auto* group = groupAt(pass.track, from, to);
     if (!group)
         group = &groups.emplace_back(TakeGroup{Uuid().toString(), pass.track, from, to});
-    group->attempts.push_back({Uuid().toString(), created, false, {std::move(pass)}});
-    group->active = (int)group->attempts.size();
+    group->attempts.push_back({Uuid().toString(), created, discarded, {std::move(pass)}});
+    if (!discarded) group->active = (int)group->attempts.size();
     return true;
 }
 Frame Song::end() const {
@@ -80,7 +104,7 @@ Frame Song::end() const {
     return end;
 }
 var Song::json() const {
-    Array<var> ts, cs, files, marks;
+    Array<var> ts, files, marks;
     for (auto& t : tracks)
         ts.add(object({{"id", t.id},
                        {"nazev", t.name},
@@ -89,10 +113,12 @@ var Song::json() const {
                        {"nahravat", t.armed},
                        {"amp", t.kind == "kytara" ? t.amp.json() : var()},
                        {"mix", object({{"mute", t.mute}, {"solo", t.solo}})}}));
-    for (auto& c : clips)
+    auto encode = [](const Section& sec) {
+        Array<var> cs;
+    for (auto& c : sec.clips)
         cs.add(clipJson(c));
     Array<var> groupsJson;
-    for (const auto& group : groups) {
+    for (const auto& group : sec.groups) {
         Array<var> attempts;
         for (const auto& attempt : group.attempts) {
             Array<var> recorded;
@@ -110,6 +136,18 @@ var Song::json() const {
                                {"aktivni", group.active},
                                {"varianty", attempts}}));
     }
+        return object({{"id",sec.id},{"nazev",sec.name},{"barva",sec.colour},{"delkaTaktu",sec.bars},{"klipy",cs},{"pokusy",groupsJson}});
+    };
+    Array<var> definitions, sequence;
+    if (order.empty()) {
+        definitions.add(encode({"s1",String(u8"Sloka"),"sloka",bars,clips,groups}));
+        sequence.add(object({{"id","i1"},{"sectionId","s1"},{"cropStartBars",0},{"lengthBars",bars}}));
+    } else {
+        for (const auto& [id,section] : sections)
+            definitions.add(encode(section));
+        for (const auto& o : order)
+            sequence.add(object({{"id",o.id},{"sectionId",o.section},{"cropStartBars",o.crop},{"lengthBars",o.length}}));
+    }
     for (auto& a : assets)
         files.add(object({{"id", a.id},
                           {"soubor", a.path},
@@ -119,12 +157,6 @@ var Song::json() const {
                           {"vznik", "nahravka"}}));
     for (auto m : dropouts)
         marks.add(m);
-    auto section = object({{"id", "s1"},
-                           {"nazev", "Sloka"},
-                           {"barva", "sloka"},
-                           {"delkaTaktu", bars},
-                           {"klipy", cs},
-                           {"pokusy", groupsJson}});
     return object(
         {{"schemaVersion", 1},
          {"nazev", title},
@@ -133,10 +165,7 @@ var Song::json() const {
          {"metrum", object({{"dobyVTaktu", grid.beats}, {"jednotka", grid.unit}})},
          {"ladeni", object({{"id", tuning}, {"komorniA", 440}})},
          {"stopy", ts},
-         {"dily", Array<var>{section}},
-         {"poradi",
-          Array<var>{
-              object({{"id", "i1"}, {"sectionId", "s1"}, {"cropStartBars", 0}, {"lengthBars", bars}})}},
+         {"dily", definitions}, {"poradi", sequence}, {"usporadano", !order.empty()},
          {"zvuky", files},
          {"vypadky", marks}});
 }
@@ -157,7 +186,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         (s.grid.unit != 2 && s.grid.unit != 4 && s.grid.unit != 8 && s.grid.unit != 16))
         return {};
     s.tuning = field(field(v, "ladeni"), "id", "Standard").toString();
-    std::set<String> tracks, assets, clips;
+    std::set<String> tracks, assets;
     for (auto& t : items(v, "stopy")) {
         Track x{field(t, "id").toString(), field(t, "nazev").toString(),
                 field(t, "druh", "jine").toString()};
@@ -182,17 +211,26 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         }
         s.assets.push_back(x);
     }
-    auto sections = items(v, "dily");
-    if ((int)version == 1 && sections.size() != 1)
-        return {};
-    auto section = sections.getFirst();
-    s.bars = jlimit(1, 1000000, (int)field(section, "delkaTaktu", 8));
-    auto parseClip = [&](const var& c) -> std::optional<Clip> {
+    auto definitions = items(v,"dily"), sequence = items(v,"poradi");
+    if ((int)version == 1 && definitions.isEmpty()) return {};
+    bool arranged = (bool)field(v,"usporadano") || definitions.size()>1 || sequence.size()>1;
+    if (definitions.size()==1 && sequence.size()==1) {
+        const auto& d=definitions.getFirst();
+        const auto& o=sequence.getFirst();
+        arranged |= field(d,"id").toString()!="s1" || field(d,"barva").toString()!="sloka" ||
+            field(d,"nazev").toString()!="Sloka" || (int)field(o,"cropStartBars")!=0 ||
+            (int)field(o,"lengthBars")!=(int)field(d,"delkaTaktu");
+    }
+    for (const auto& section : definitions) {
+    std::set<String> clips;
+    Section sec{field(section,"id").toString(),field(section,"nazev").toString(),field(section,"barva").toString(),field(section,"delkaTaktu",8)};
+    if (sec.id.isEmpty() || sec.id.containsChar('/') || sec.bars<1 || sec.bars>1000000 || s.sections.contains(sec.id)) return {};
+    auto parseClip = [&](const var& c, bool pass=false) -> std::optional<Clip> {
         Clip x{field(c, "id").toString(), field(c, "trackId").toString(), field(c, "assetId").toString(),
                field(c, "position"),      field(c, "sourceStart"),        field(c, "length")};
         auto asset =
             std::find_if(s.assets.begin(), s.assets.end(), [&](auto& a) { return a.id == x.asset; });
-        if (x.id.isEmpty() || !tracks.contains(x.track) || asset == s.assets.end() || x.position < 0 ||
+        if (x.id.isEmpty() || !tracks.contains(x.track) || asset == s.assets.end() || (x.position < 0 && !pass) || x.position < -Frame(s.grid.rate)*86400*30 ||
             x.position > Frame(s.grid.rate) * 86400 * 30 || x.length <= 0 || x.offset < 0 ||
             x.offset > asset->length || x.length > asset->length - x.offset ||
             !clips.insert(x.id).second) {
@@ -203,7 +241,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
     };
     for (auto& c : items(section, "klipy"))
         if (auto clip = parseClip(c))
-            s.clips.push_back(*clip);
+            sec.clips.push_back(*clip);
     std::set<String> groupIds, attemptIds;
     for (const auto& raw : items(section, "pokusy")) {
         TakeGroup g{field(raw, "id").toString(), field(raw, "stopa").toString(), field(raw, "od", -1),
@@ -216,7 +254,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         for (const auto& entry : items(raw, "varianty")) {
             Attempt attempt{field(entry, "id").toString(), field(entry, "vznik"), field(entry, "kos")};
             for (auto& c : items(entry, "klipy"))
-                if (auto clip = parseClip(c); clip && clip->track == g.track)
+                if (auto clip = parseClip(c,true); clip && clip->track == g.track)
                     attempt.clips.push_back(*clip);
             if (attempt.clips.empty() || attempt.id.isEmpty() || !attemptIds.insert(attempt.id).second) {
                 damaged = true;
@@ -230,7 +268,28 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
             damaged = true;
             g.active = 0;
         }
-        s.groups.push_back(std::move(g));
+        sec.groups.push_back(std::move(g));
+    }
+        if (arranged) s.sections.emplace(sec.id,sec);
+        else {
+            s.clips=std::move(sec.clips);
+            s.groups=std::move(sec.groups);
+            s.bars=sec.bars;
+        }
+    }
+    if (arranged) {
+        std::set<String> ids;
+        int total=0;
+        for(const auto& raw:sequence) {
+            Occurrence o{field(raw,"id").toString(),field(raw,"sectionId").toString(),field(raw,"cropStartBars",0),field(raw,"lengthBars",0)};
+            auto def=s.sections.find(o.section);
+            if (o.id.isEmpty() || o.id.containsChar('/') || !ids.insert(o.id).second || def==s.sections.end() ||
+                o.crop<0 || o.length<1 || o.length>def->second.bars-o.crop || o.length>1000000-total) return {};
+            total+=o.length;
+            s.order.push_back(std::move(o));
+        }
+        if (s.order.empty()) return {};
+        s.projectOrder();
     }
     for (auto m : items(v, "vypadky"))
         if ((Frame)m >= 0)

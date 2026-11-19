@@ -44,6 +44,8 @@ class Playback {
     Frame tailFrames() const { return tail; }
 
   private:
+    std::vector<Frame> cuts;
+    int cutFade = 1;
     struct Overlay {
         juce::String id;
         Frame from = 0, to = 0;
