@@ -446,8 +446,8 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
                          bool metronome, int count, bool rhythm, std::optional<LoopSpan> loop)
     : grid(s.grid), playback(s, library), start(from),
       end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()),
-      clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock) {
-    juce::ignoreUnused(loop);
+      clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock),
+      looped(loop && loop->from >= from && loop->to > loop->from ? loop : std::nullopt) {
     if (metronome && rhythm)
         guide.emplace(grid, from);
     // Anchor count-in to the punch position; normal beats follow the song grid.
@@ -460,7 +460,11 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
         readAhead = std::thread([this] {
             Frame warmed = start + 2 * grid.rate;
             while (!stopping.load()) {
-                auto from = cursor.load();
+                auto from = position(cursor.load());
+                if (looped && from < looped->to && warmed > from + 3 * grid.rate) {
+                    playback.prefetch(from, from + 2 * grid.rate);
+                    warmed = from + 2 * grid.rate;
+                }
                 if (from + grid.rate > warmed) {
                     playback.prefetch(std::max(from, warmed), from + 2 * grid.rate);
                     warmed = from + 2 * grid.rate;
@@ -528,6 +532,9 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
     if (takes.empty())
         return false;
     compensation = std::max(0, delay);
+    loopCaptureDelay = compensation;
+    if (looped && std::any_of(takes.begin(), takes.end(), [](const auto& take) { return bool(take.midi); }))
+        loopCaptureDelay = std::max(compensation, std::clamp(midiDelay, 0, 2 * grid.rate));
     journal = dir.getChildFile("Zachrana").getChildFile(Uuid().toString() + ".json");
     int anchor = s.occurrenceAt((int)(s.grid.beatAt(isPunch() ? punchFrom : start) / s.grid.beats));
     if (!atomicJson(journal, object({{"poloha", start},
@@ -535,6 +542,9 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
                                      {"dil", anchor >= 0 ? s.order[anchor].section : String{}},
                                      {"opravaOd", punchFrom},
                                      {"opravaDo", punchTo},
+                                     {"smyckaOd", looped ? looped->from : 0},
+                                     {"smyckaDo", looped ? looped->to : 0},
+                                     {"smyckaDelka", looped ? looped->length() : 0},
                                      {"vznik", Time::currentTimeMillis()},
                                      {"kompenzace", compensation},
                                      {"sampleRate", grid.rate},
@@ -573,7 +583,7 @@ bool Performance::drain() {
         nextSpaceCheck = pos + 2 * grid.rate;
     }
     for (auto& t : takes)
-        if (t.midi ? !t.midi->drain(grid.rate, false) : !t.queue->drain(*t.writer, grid.rate))
+        if (t.midi ? !t.midi->drain(grid.rate, false) : !t.queue->drain(*t.writer, looped ? grid.rate / 8 : grid.rate))
             return false;
     return true;
 }
@@ -598,6 +608,17 @@ void Performance::finishDisk() {
         }
         t.writer.reset();
     }
+    const auto stop = loopStop.load();
+    if (stop != std::numeric_limits<Frame>::max() && stop != loopStopRequested && journal.existsAsFile()) {
+        auto saved = JSON::parse(journal);
+        if (auto* state = saved.getDynamicObject()) {
+            state->setProperty("smyckaStop", stop);
+            if (!atomicJson(journal, saved))
+                failed = true;
+        } else {
+            failed = true;
+        }
+    }
 }
 bool MidiCapture::drain(int rate, bool final) {
     Hit h;
@@ -617,14 +638,34 @@ bool MidiCapture::drain(int rate, bool final) {
     }
     return stream->getStatus().wasOk();
 }
+Frame Performance::position(Frame absolute, Frame stop) const noexcept {
+    if (!looped)
+        return absolute;
+    auto wrap = [this](Frame value) {
+        return value < looped->to ? value : looped->from + (value - looped->from) % looped->length();
+    };
+    if (absolute >= stop && stop != loopStopRequested && stop != std::numeric_limits<Frame>::max())
+        return wrap(stop - 1) + 1 + absolute - stop;
+    return wrap(absolute);
+}
+bool Performance::requestLoopStop() noexcept {
+    if (!looped || std::max<Frame>(looped->tail, loopCaptureDelay) <= 0)
+        return false;
+    Frame previous = std::numeric_limits<Frame>::max();
+    return loopStop.compare_exchange_strong(previous, loopStopRequested);
+}
 void Performance::hits(std::span<const Hit> events, Frame position, bool overflow) noexcept {
     if (finished.load())
         return;
+    const auto stop = loopStop.load();
+    const auto until = stop != loopStopRequested && stop != std::numeric_limits<Frame>::max()
+                           ? std::min(end, stop + loopCaptureDelay)
+                           : end;
     for (auto& t : takes)
         if (t.midi) {
             for (auto h : events) {
                 h.frame += clock - position - start;
-                if (h.frame >= 0 && h.frame < end - start && !t.midi->queue.push(h))
+                if (h.frame >= 0 && h.frame < until - start && !t.midi->queue.push(h))
                     overflow = true;
             }
             if (overflow) {
@@ -633,38 +674,59 @@ void Performance::hits(std::span<const Hit> events, Frame position, bool overflo
             }
         }
 }
-void Performance::process(const float* const* in, int ni, float* const* out, int no,
-                          int frames) noexcept {
+void Performance::process(const float* const* in, int ni, float* const* out, int no, int frames,
+                          std::span<const Hit> events, Frame devicePosition, bool overflow) noexcept {
     if (finished.load())
         return;
-    const int n = (int)(clock + frames > end ? end - clock : frames);
+    auto stop = loopStop.load();
+    if (stop == loopStopRequested) {
+        // The audio callback chooses a boundary shared by the MIDI events and input samples.
+        stop = clock;
+        loopStop.store(stop);
+    }
+    hits(events, devicePosition, overflow);
+    if (finished.load())
+        return;
+    const bool stopped = stop != std::numeric_limits<Frame>::max();
+    const auto endAt = stopped ? std::min(end, stop + std::max<Frame>(looped->tail, loopCaptureDelay)) : end;
+    const int n = clock >= endAt ? 0 : clock < endAt - frames ? frames : int(endAt - clock);
+    const int capture = stopped ? int(std::clamp<Frame>(stop + loopCaptureDelay - clock, 0, n)) : n;
     int skip = (int)std::clamp<Frame>(start - clock, 0, n);
     if (n > skip) {
-        float* outputs[]{no > 0 && out[0] ? out[0] + skip : nullptr,
-                         no > 1 && out[1] ? out[1] + skip : nullptr};
-        playback.mix(outputs, std::min(2, no), n - skip, clock + skip, in, ni, skip);
+        for (int i = skip; i < n;) {
+            const auto at = position(clock + i, stop);
+            const auto count = looped && clock + i < stop
+                                   ? int(std::min<Frame>({n - i, looped->to - at, stop - clock - i}))
+                                   : n - i;
+            float* outputs[]{no > 0 && out[0] ? out[0] + i : nullptr,
+                             no > 1 && out[1] ? out[1] + i : nullptr};
+            playback.mix(outputs, std::min(2, no), count, at, in, ni, i);
+            i += count;
+        }
+    }
+    if (capture > skip) {
         for (auto& t : takes)
-            if (!t.midi && !t.queue->hasRoom(n - skip)) {
+            if (!t.midi && !t.queue->hasRoom(capture - skip)) {
                 drop = clock + skip;
                 finished = true;
                 return;
             }
         for (auto& t : takes) {
             if (t.midi) {
-                t.midi->duration = clock + n - start;
+                t.midi->duration = clock + capture - start;
                 continue;
             }
             auto channel = [&](int c) { return c >= 0 && c < ni && in[c] ? in[c] + skip : nullptr; };
             if (t.inputOver < 0) {
                 auto left = channel(t.left), right = channel(t.right);
-                for (int i = 0; i < n - skip; ++i)
+                for (int i = 0; i < capture - skip; ++i)
                     if ((left && std::abs(left[i]) >= 0.9885531f) ||
                         (right && std::abs(right[i]) >= 0.9885531f)) {
-                        t.inputOver = std::max<Frame>(start, clock + skip + i - compensation);
+                        t.inputOver = position(std::max<Frame>(start, clock + skip + i - compensation));
                         break;
                     }
             }
-            if (!t.queue->push(channel(t.left), channel(t.right), n - skip)) {
+            if (!t.queue->push(channel(t.left), channel(t.right), capture - skip)) {
                 drop = clock + skip;
                 finished = true;
                 break;
@@ -672,7 +734,16 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
         }
     }
     for (int i = 0; i < n; ++i) {
-        Frame now = clock + i;
+        const Frame now = position(clock + i, stop);
+        if (looped && clock + i >= looped->to && now == looped->from) {
+            beatIndex = grid.beatAt(now);
+            nextBeat = grid.beat(beatIndex);
+            if (nextBeat < now)
+                nextBeat = grid.beat(++beatIndex);
+            clickAge = -1;
+            if (guide)
+                guide->seek(now);
+        }
         if (now == nextBeat) {
             if (syncPulse && now < Frame(grid.rate) * 600 && no > 0 && out[0])
                 out[0][i] += 0.125f;
@@ -709,7 +780,7 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
     }
     clock += n;
     cursor.store(clock);
-    if (clock >= end)
+    if (clock >= endAt)
         finished = true;
 }
 void Timeline::detach() noexcept {
@@ -720,10 +791,8 @@ void Timeline::detach() noexcept {
 void Timeline::process(const float* const* in, int ni, float* const* out, int no, int frames,
                        std::span<const Hit> events, Frame position, bool overflow) noexcept {
     reading.store(true);
-    if (auto* p = active.load()) {
-        p->hits(events, position, overflow);
-        p->process(in, ni, out, no, frames);
-    }
+    if (auto* p = active.load())
+        p->process(in, ni, out, no, frames, events, position, overflow);
     reading.store(false);
 }
 std::optional<std::pair<int, int>> syncOffsets(AudioFormatReader& reader, const BeatGrid& grid,
@@ -761,6 +830,13 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
     const Frame at = record.getProperty("poloha", -1), delay = record.getProperty("kompenzace", -1);
     if (at < 0 || delay < 0)
         return false;
+    const Frame loopFrom = record.getProperty("smyckaOd", 0);
+    const Frame loopTo = record.getProperty("smyckaDo", 0);
+    const Frame passLength = record.getProperty("smyckaDelka", 0);
+    if (passLength != 0 && (loopFrom < at || loopTo <= loopFrom || passLength != loopTo - loopFrom))
+        return false;
+    const Frame stop = record.getProperty("smyckaStop", std::numeric_limits<Frame>::max());
+    const Frame editorialLength = stop <= loopFrom ? 0 : stop - loopFrom;
     auto occurrence = record.getProperty("vyskyt", {}).toString();
     if (occurrence.isNotEmpty()) {
         Frame repairEnd = record.getProperty("opravaDo", 0),
@@ -821,6 +897,35 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
                 return false;
             length = reader->lengthInSamples;
             channels = int(reader->numChannels);
+        }
+        if (passLength > 0) {
+            const Frame first = offset + loopFrom - position;
+            if (length <= std::max<Frame>(0, first))
+                continue;
+            bool addedAsset = false;
+            for (Frame take = first; take < length;) {
+                const Frame elapsed = take - first;
+                if (elapsed >= editorialLength)
+                    break;
+                const Frame source = std::max<Frame>(0, take);
+                const Frame missed = source - take;
+                const Frame available = std::min({passLength - missed, length - source,
+                                                  editorialLength - elapsed - missed});
+                if (available > 0) {
+                    if (!addedAsset) {
+                        next.assets.push_back({id, path, length, channels});
+                        addedAsset = true;
+                    }
+                    if (!next.addAttempt({Uuid().toString(), track, id, loopFrom + missed, source, available},
+                                         loopFrom, loopTo, record.getProperty("vznik", 0),
+                                         available != passLength))
+                        return false;
+                }
+                if (length - take <= passLength)
+                    break;
+                take += passLength;
+            }
+            continue;
         }
         if (length <= offset)
             continue;

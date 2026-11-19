@@ -64,7 +64,10 @@ TakeGroup* Song::groupAt(const String& track, Frame from, Frame to) {
     return nullptr;
 }
 bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded) {
-    if (from < 0 || to <= from || pass.position > from || pass.length < to - pass.position)
+    if (from < 0 || to <= from || pass.length <= 0 || pass.position >= to)
+        return false;
+    if (discarded ? pass.position + pass.length <= from
+                  : pass.position > from || pass.length < to - pass.position)
         return false;
     if (!order.empty()) {
         extendOrder(to);
@@ -74,7 +77,7 @@ bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool disca
             Frame start = barFrame(startBar);
             bar += o.length;
             Frame a = std::max(start, from), b = std::min(barFrame(bar), to);
-            if (b <= a)
+            if (b <= a || (discarded && (pass.position >= b || pass.position + pass.length <= a)))
                 continue;
             Frame shift = barFrame(o.crop) - start;
             a = translate(a, startBar, o.crop);

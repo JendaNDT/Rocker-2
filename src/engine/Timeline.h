@@ -61,7 +61,7 @@ class Playback {
     int cutFade = 1;
     struct Overlay {
         juce::String id;
-        Frame from = 0, to = 0;
+        Frame from = 0, to = 0, tail = 0;
         std::vector<std::vector<PlaybackClip>> variants;
         std::atomic<int> active{0};
         std::vector<float> weights;
@@ -113,7 +113,7 @@ struct Take {
     std::unique_ptr<juce::AudioFormatWriter> writer;
 };
 struct LoopSpan {
-    Frame from = 0, to = 0;
+    Frame from = 0, to = 0, tail = 0;
     Frame length() const noexcept { return to - from; }
 };
 class Performance {
@@ -123,7 +123,8 @@ class Performance {
     ~Performance();
     bool arm(const Song&, const juce::File&, const juce::StringArray& ports, int delay,
              bool useWorker = true, int midiDelay = 0);
-    void process(const float* const*, int, float* const*, int, int) noexcept;
+    void process(const float* const*, int, float* const*, int, int, std::span<const Hit> events = {},
+                 Frame devicePosition = 0, bool overflow = false) noexcept;
     void hits(std::span<const Hit>, Frame devicePosition, bool overflow) noexcept;
     void finishDisk();
     bool drain();
@@ -144,6 +145,10 @@ class Performance {
     };
     std::atomic<bool> diskWarning{false}, diskStop{false};
     bool isPunch() const { return punchTo > punchFrom; }
+    std::optional<LoopSpan> loopSpan() const { return looped; }
+    bool requestLoopStop() noexcept;
+    bool loopStopping() const noexcept { return loopStop.load() != std::numeric_limits<Frame>::max(); }
+    Frame position(Frame absolute) const noexcept { return position(absolute, loopStop.load()); }
 
   private:
     std::vector<Take> takes;
@@ -154,6 +159,11 @@ class Performance {
     std::atomic<bool> stopping{false};
     Frame nextBeat, beatIndex;
     std::optional<GuideRhythm> guide;
+    Frame position(Frame absolute, Frame stop) const noexcept;
+    const std::optional<LoopSpan> looped;
+    static constexpr Frame loopStopRequested = std::numeric_limits<Frame>::min();
+    std::atomic<Frame> loopStop{std::numeric_limits<Frame>::max()};
+    int loopCaptureDelay = 0;
     int clickAge = -1;
     bool accent = false;
 };
