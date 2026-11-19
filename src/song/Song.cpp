@@ -206,7 +206,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         (s.grid.unit != 2 && s.grid.unit != 4 && s.grid.unit != 8 && s.grid.unit != 16))
         return {};
     s.tuning = field(field(v, "ladeni"), "id", "Standard").toString();
-    std::set<String> tracks, assets;
+    std::set<String> tracks, assets, legacyMix;
     for (auto& t : items(v, "stopy")) {
         Track x{field(t, "id").toString(), field(t, "nazev").toString(),
                 field(t, "druh", "jine").toString()};
@@ -220,6 +220,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         x.mute = field(field(t, "mix"), "mute");
         x.solo = field(field(t, "mix"), "solo");
         auto mix=field(t,"mix");
+        if (field(mix,"gainDb").isVoid()) legacyMix.insert(x.id);
         x.gainDb=jlimit(-96.f,6.f,(float)field(mix,"gainDb",0));
         x.pan=jlimit(-1.f,1.f,(float)field(mix,"pan",0));
         x.inputOver=field(mix,"vstupPres",-1);
@@ -327,6 +328,27 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         if (s.order.empty())
             return {};
         s.projectOrder();
+    }
+    // Earlier versions duplicated mono audio at unity into each speaker.
+    std::set<String> stereoAssets, recorded, stereoTracks;
+    for (const auto& asset : s.assets)
+        if (asset.channels==2) stereoAssets.insert(asset.id);
+    auto inspect=[&](const std::vector<Clip>& clips) {
+        for (auto& clip : clips) {
+            recorded.insert(clip.track);
+            if (stereoAssets.contains(clip.asset)) stereoTracks.insert(clip.track);
+        }
+    };
+    if (!legacyMix.empty()) {
+        inspect(s.clips);
+        for (auto& group:s.groups) for(auto& attempt:group.attempts) inspect(attempt.clips);
+        for (auto& [id,section]:s.sections) {
+            inspect(section.clips);
+            for (auto& group:section.groups) for(auto& attempt:group.attempts) inspect(attempt.clips);
+        }
+        for(auto& track:s.tracks)
+            if(legacyMix.contains(track.id) && recorded.contains(track.id) && track.inputs.size()<2 && !stereoTracks.contains(track.id))
+                track.gainDb=3.0103f;
     }
     for (auto m : items(v, "vypadky"))
         if ((Frame)m >= 0)

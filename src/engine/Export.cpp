@@ -74,6 +74,7 @@ bool convert(AudioFormatReader& input, const File& path, int rate, int bits, Fra
 }
 MixFile exportMix(const Song& song,const AudioLibrary& lib,const File& dest, Delivery format,Frame begin,Frame end) {
     MixFile result{dest};
+    result.begin=begin;
     if (dest.getParentDirectory().createDirectory().failed() || (format==Delivery::mp3 && !mp3Available())) return result;
     TemporaryFile stage(".wav"), pcm(".wav"), output(dest);
     if (!renderSong(song,lib,stage.getFile(),begin,end)) return result;

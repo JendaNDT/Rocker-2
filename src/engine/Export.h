@@ -7,6 +7,7 @@ struct MixFile {
     juce::File file;
     Playback::Meter meter;
     bool ok = false;
+    Frame begin = 0;
 };
 // A range ends at its exclusive boundary. Whole-song delivery includes the effect tail.
 MixFile exportMix(const Song&, const AudioLibrary&, const juce::File&, Delivery,
