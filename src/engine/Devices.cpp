@@ -23,8 +23,9 @@ class Native final : public DeviceSystem,
     Audio* audio = nullptr;
     std::unique_ptr<juce::MidiInput> midi;
     juce::MidiDeviceListConnection midiUpdates;
-    void handleIncomingMidiMessage(juce::MidiInput*,const juce::MidiMessage& msg) override {
-        if(audio && msg.isNoteOn())audio->drums.native(msg.getTimeStamp(),msg.getNoteNumber(),msg.getVelocity());
+    void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& msg) override {
+        if (audio && msg.isNoteOn())
+            audio->drums.native(msg.getTimeStamp(), msg.getNoteNumber(), msg.getVelocity());
     }
     std::atomic<bool> closing{false};
     void add(Driver driver, Type* type) {
@@ -36,16 +37,26 @@ class Native final : public DeviceSystem,
 
   public:
     int xruns() const override { return device ? device->getXRunCount() : -1; }
-    juce::Array<juce::MidiDeviceInfo> midiDevices() override {return juce::MidiInput::getAvailableDevices();}
-    bool openMidi(const juce::String& id,Audio& target) override{
-        if(midi){midi->stop();midi.reset();}
-        if(id.isEmpty() || audio!=&target)return false;
-        midi=juce::MidiInput::openDevice(id,this);
-        if(midi)midi->start();
-        return midi!=nullptr;
+    juce::Array<juce::MidiDeviceInfo> midiDevices() override {
+        return juce::MidiInput::getAvailableDevices();
+    }
+    bool openMidi(const juce::String& id, Audio& target) override {
+        if (midi) {
+            midi->stop();
+            midi.reset();
+        }
+        if (id.isEmpty() || audio != &target)
+            return false;
+        midi = juce::MidiInput::openDevice(id, this);
+        if (midi)
+            midi->start();
+        return midi != nullptr;
     }
     Native() {
-        midiUpdates=juce::MidiDeviceListConnection::make([this]{if(midiChanged)midiChanged();});
+        midiUpdates = juce::MidiDeviceListConnection::make([this] {
+            if (midiChanged)
+                midiChanged();
+        });
 #if JUCE_WINDOWS
         add(Driver::asio, Type::createAudioIODeviceType_ASIO());
         add(Driver::exclusive, Type::createAudioIODeviceType_WASAPI(juce::WASAPIDeviceMode::exclusive));
@@ -78,7 +89,10 @@ class Native final : public DeviceSystem,
     }
     void close() override {
         closing = true;
-        if(midi){midi->stop();midi.reset();}
+        if (midi) {
+            midi->stop();
+            midi.reset();
+        }
         if (device) {
             device->stop();
             device->close();

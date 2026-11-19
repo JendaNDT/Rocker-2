@@ -23,7 +23,7 @@ void Studio::defaultMonitor() {
     projectMonitor = 0;
     if (isPositiveAndBelow(view.selected, (int)song.tracks.size())) {
         auto& t = song.tracks[view.selected];
-        if ((t.kind == "bici" && t.inputs.size() == 2 && !laptop) || t.kind=="midi")
+        if ((t.kind == "bici" && t.inputs.size() == 2 && !laptop) || t.kind == "midi")
             projectMonitor = 1;
     }
 }

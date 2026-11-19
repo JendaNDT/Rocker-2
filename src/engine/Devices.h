@@ -30,8 +30,8 @@ class DeviceSystem {
     virtual ~DeviceSystem() = default;
     virtual std::vector<Ports> scan() = 0;
     virtual bool open(DeviceChoice&, Capabilities&, Audio&) = 0;
-    virtual juce::Array<juce::MidiDeviceInfo> midiDevices() {return {};}
-    virtual bool openMidi(const juce::String&,Audio&) {return false;}
+    virtual juce::Array<juce::MidiDeviceInfo> midiDevices() { return {}; }
+    virtual bool openMidi(const juce::String&, Audio&) { return false; }
     std::function<void()> midiChanged;
     virtual int xruns() const { return -1; }
     virtual void close() = 0;

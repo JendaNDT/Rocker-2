@@ -227,7 +227,10 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
     if (!ideas->all().empty())
         chooseIdea(ideas->all().front());
     resetTuning();
-    devices.midiChanged=[this]{refreshMidi();triggerAsyncUpdate();};
+    devices.midiChanged = [this] {
+        refreshMidi();
+        triggerAsyncUpdate();
+    };
     devices.changed = [this] { refresh(true); };
     refresh(false);
     setSize(s::minWidth, s::minHeight);
@@ -239,7 +242,7 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
     startTimerHz(30);
 }
 Studio::~Studio() {
-    devices.midiChanged={};
+    devices.midiChanged = {};
     stopTimer();
     stopPreview();
     stopIdea();
@@ -355,8 +358,11 @@ void Studio::show(Page value) {
         link.audio.live.setTuner(true);
     }
     page = value;
-    if(value!=Page::midi)learningPad=-1;
-    link.audio.drums.monitor=value==Page::midi && activeMidi.isNotEmpty();
+    if (value != Page::midi && learningPad >= 0) {
+        learningPad = -1;
+        refreshMidi();
+    }
+    link.audio.drums.monitor = value == Page::midi && activeMidi.isNotEmpty();
     if (value == Page::project)
         configureSongMonitor();
     answer = -1;
@@ -534,7 +540,11 @@ void Studio::rebuild() {
         return;
     auto area = getLocalBounds().reduced(s::margin, 0);
     area = area.withSizeKeepingCentre(std::min(area.getWidth(), s::maxWidth), area.getHeight());
-    if(page==Page::midi){midiPage(area);repaint();return;}
+    if (page == Page::midi) {
+        midiPage(area);
+        repaint();
+        return;
+    }
     if (page == Page::drums) {
         drumPage(area);
         repaint();
@@ -827,9 +837,10 @@ void Studio::tonePage(Rect area) {
              answer == 0 ? s::ready : s::warning);
 }
 void Studio::inputPage(Rect area) {
-    auto heading=area.removeFromTop(s::button);
-    if(!midiPorts.isEmpty())button(cs::midiDrums,heading.removeFromRight(s::clipWidth),[this]{show(Page::midi);});
-    text(cs::inputHelp,heading);
+    auto heading = area.removeFromTop(s::button);
+    if (!midiPorts.isEmpty())
+        button(cs::midiDrums, heading.removeFromRight(s::clipWidth), [this] { show(Page::midi); });
+    text(cs::inputHelp, heading);
     auto options = area.removeFromTop(s::button);
     if (!link.caps.inputs.isEmpty()) {
         button(cs::drumTest, options.removeFromRight(s::clipWidth), [this] {
@@ -893,7 +904,7 @@ bool Studio::keyPressed(const KeyPress& key) {
     }
     const bool editable = dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()) != nullptr;
     if (!editable && !key.getModifiers().isAnyModifierKeyDown()) {
-        if ((page == Page::drums || page==Page::midi) && key == KeyPress::escapeKey) {
+        if ((page == Page::drums || page == Page::midi) && key == KeyPress::escapeKey) {
             show(Page::inputs);
             return true;
         }

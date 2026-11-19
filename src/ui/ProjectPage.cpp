@@ -158,11 +158,14 @@ void Studio::field(const String& label, Rect r, String& value) {
 void Studio::configureSongMonitor() {
     auto& live = link.audio.live;
     live.monitor = Monitor::off;
-    link.audio.drums.monitor=false;
+    link.audio.drums.monitor = false;
     if (view.selected < 0 || view.selected >= (int)song.tracks.size())
         return;
     auto& t = song.tracks[view.selected];
-    if(t.kind=="midi"){link.audio.drums.kit=t.kit;link.audio.drums.monitor=!t.mute && activeMidi.isNotEmpty() && projectMonitor==1;}
+    if (t.kind == "midi") {
+        link.audio.drums.kit = t.kit;
+        link.audio.drums.monitor = !t.mute && activeMidi.isNotEmpty() && projectMonitor == 1;
+    }
     if (t.kind != "kytara")
         soundDeckOpen = namingPreset = false;
     int port = link.caps.inputs.indexOf(t.inputs[0]);
@@ -202,7 +205,7 @@ void Studio::editTrack(bool fresh) {
         auto& t = song.tracks.at(view.selected);
         draftTrack = t.name;
         draftKind = (int)(std::find(kinds.begin(), kinds.end(), t.kind) - kinds.begin());
-        draftKind = t.kind=="midi" ? t.kit : std::min(2, draftKind);
+        draftKind = t.kind == "midi" ? t.kit : std::min(2, draftKind);
         draftPort = std::max(0, link.caps.inputs.indexOf(t.inputs[0]));
         draftChannels = std::max(1, t.inputs.size());
     }
@@ -258,12 +261,16 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
             return;
         }
         for (auto& t : capture.tracks)
-            if (t.armed && (t.kind=="midi" ? activeMidi.isEmpty() : t.inputs.isEmpty() || !link.caps.inputs.contains(t.inputs[0]) ||
-                            (t.inputs.size() > 1 && !link.caps.inputs.contains(t.inputs[1])))) {
+            if (t.armed && (t.kind == "midi"
+                                ? activeMidi.isEmpty()
+                                : t.inputs.isEmpty() || !link.caps.inputs.contains(t.inputs[0]) ||
+                                      (t.inputs.size() > 1 && !link.caps.inputs.contains(t.inputs[1])))) {
                 status(cs::missingInputs);
                 return;
             }
-        if (!p->arm(capture, projectDir, link.caps.inputs, latency,true,link.caps.outputLatency+settings.midiCorrections[Settings::calibrationKey(link.current)+activeMidi])) {
+        if (!p->arm(capture, projectDir, link.caps.inputs, latency, true,
+                    link.caps.outputLatency +
+                        settings.midiCorrections[Settings::calibrationKey(link.current) + activeMidi])) {
             status(cs::writeError);
             return;
         }
@@ -271,8 +278,10 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
             p->end = p->punchTo + song.grid.beat(view.tailBars * song.grid.beats) + p->compensation;
             link.audio.live.monitor = Monitor::off;
         }
-        offerDistant = !view.distant && std::any_of(capture.tracks.begin(), capture.tracks.end(),
-                                                    [](auto& t) { return t.armed && (t.kind == "bici" || t.kind=="midi"); });
+        offerDistant =
+            !view.distant && std::any_of(capture.tracks.begin(), capture.tracks.end(), [](auto& t) {
+                return t.armed && (t.kind == "bici" || t.kind == "midi");
+            });
         preventSleep(true);
     }
     liveWaves.clear();
@@ -432,9 +441,9 @@ void Studio::projectPage(Rect area) {
                   });
             if (editingTempo && !song.clips.empty())
                 text(cs::editTempoWarning, row(area), s::body, s::warning);
-        } else if(view.selected<(int)song.tracks.size() && song.tracks[view.selected].kind=="midi"){
-            auto& track=song.tracks[view.selected];
-            combo(cs::kitPreset,row(area),cs::drumSounds,track.kit,[this](int i){draftKind=i;});
+        } else if (view.selected < (int)song.tracks.size() && song.tracks[view.selected].kind == "midi") {
+            auto& track = song.tracks[view.selected];
+            combo(cs::kitPreset, row(area), cs::drumSounds, track.kit, [this](int i) { draftKind = i; });
         } else {
             if (view.selected == (int)song.tracks.size() && !drumTracks().empty())
                 button(cs::insertKit, row(area).withWidth(s::labelWidth), [this] {
@@ -522,10 +531,18 @@ void Studio::projectPage(Rect area) {
                 } else {
                     if (draftTrack.trim().isEmpty())
                         return;
-                    if(isPositiveAndBelow(view.selected,(int)song.tracks.size()) && song.tracks[view.selected].kind=="midi"){
-                        auto& t=song.tracks[view.selected];t.name=draftTrack.trim();t.kit=std::clamp(draftKind,0,1);
-                        if(!library.load(song,projectDir)){status(cs::partialProject);return;}
-                        saveSong();show(Page::project);return;
+                    if (isPositiveAndBelow(view.selected, (int)song.tracks.size()) &&
+                        song.tracks[view.selected].kind == "midi") {
+                        auto& t = song.tracks[view.selected];
+                        t.name = draftTrack.trim();
+                        t.kit = std::clamp(draftKind, 0, 1);
+                        if (!library.load(song, projectDir)) {
+                            status(cs::partialProject);
+                            return;
+                        }
+                        saveSong();
+                        show(Page::project);
+                        return;
                     }
                     if (view.selected == (int)song.tracks.size())
                         song.tracks.push_back({Uuid().toString()});
@@ -682,18 +699,29 @@ void Studio::projectPage(Rect area) {
             show(Page::home);
         });
     }
-    if(!performance && isPositiveAndBelow(view.selected,(int)song.tracks.size())){
-        const auto& selected=song.tracks[view.selected];
-        for(size_t i=0;i<song.tracks.size();++i) if(selected.group.isNotEmpty() && song.tracks[i].group==selected.group && song.tracks[i].kind=="midi"){
-            const bool toMidi=song.tracks[i].mute;
-            button(toMidi?cs::midiListen:cs::moduleListen,cell(tools,s::clipWidth),[this,id=selected.group,toMidi]{
-                for(int n=0;n<(int)song.tracks.size();++n) if(song.tracks[n].group==id){
-                    auto& t=song.tracks[n];t.mute=(t.kind=="midi")!=toMidi;
-                    if(!t.mute)view.selected=n;
-                }
-                defaultMonitor();configureSongMonitor();saveSong();view.save(projectDir);triggerAsyncUpdate();
-            });break;
-        }
+    if (!performance && isPositiveAndBelow(view.selected, (int)song.tracks.size())) {
+        const auto& selected = song.tracks[view.selected];
+        for (size_t i = 0; i < song.tracks.size(); ++i)
+            if (selected.group.isNotEmpty() && song.tracks[i].group == selected.group &&
+                song.tracks[i].kind == "midi") {
+                const bool toMidi = song.tracks[i].mute;
+                button(toMidi ? cs::midiListen : cs::moduleListen, cell(tools, s::clipWidth),
+                       [this, id = selected.group, toMidi] {
+                           for (int n = 0; n < (int)song.tracks.size(); ++n)
+                               if (song.tracks[n].group == id) {
+                                   auto& t = song.tracks[n];
+                                   t.mute = (t.kind == "midi") != toMidi;
+                                   if (!t.mute)
+                                       view.selected = n;
+                               }
+                           defaultMonitor();
+                           configureSongMonitor();
+                           saveSong();
+                           view.save(projectDir);
+                           triggerAsyncUpdate();
+                       });
+                break;
+            }
     }
     auto foot = area.removeFromBottom(soundDeckOpen ? s::soundDeck : s::songDeck);
     panels.push_back(foot);

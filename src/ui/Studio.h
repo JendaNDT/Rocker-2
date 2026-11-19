@@ -145,7 +145,8 @@ class Studio final : public juce::Component,
     bool keyStateChanged(bool) override;
     juce::Array<juce::MidiDeviceInfo> midiPorts;
     juce::String activeMidi;
-    int learningPad=-1;
+    int learningPad = -1;
+    std::map<int, int> learningMap;
     void refreshMidi();
     void midiPage(Rect);
     void pollMidi();

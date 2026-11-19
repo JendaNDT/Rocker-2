@@ -93,8 +93,8 @@ struct MidiCapture {
     juce::File path;
     std::unique_ptr<juce::FileOutputStream> stream;
     std::atomic<Frame> duration{0};
-    Frame flushed=0;
-    bool drain(int rate,bool final);
+    Frame flushed = 0;
+    bool drain(int rate, bool final);
 };
 struct Take {
     std::unique_ptr<MidiCapture> midi;
@@ -111,9 +111,9 @@ class Performance {
                 int countBeats);
     ~Performance();
     bool arm(const Song&, const juce::File&, const juce::StringArray& ports, int delay,
-             bool useWorker = true,int midiDelay=0);
+             bool useWorker = true, int midiDelay = 0);
     void process(const float* const*, int, float* const*, int, int) noexcept;
-    void hits(std::span<const Hit>,Frame devicePosition,bool overflow) noexcept;
+    void hits(std::span<const Hit>, Frame devicePosition, bool overflow) noexcept;
     void finishDisk();
     bool drain();
     void storeInputMarks(Song&) const;
@@ -143,7 +143,8 @@ class Timeline {
   public:
     void attach(Performance& p) noexcept { active.store(&p); }
     void detach() noexcept;
-    void process(const float* const*,int,float* const*,int,int,std::span<const Hit> hits={},Frame position=0,bool overflow=false) noexcept;
+    void process(const float* const*, int, float* const*, int, int, std::span<const Hit> hits = {},
+                 Frame position = 0, bool overflow = false) noexcept;
 
   private:
     std::atomic<Performance*> active{nullptr};
