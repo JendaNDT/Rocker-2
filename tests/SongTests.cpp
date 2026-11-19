@@ -322,41 +322,81 @@ TEST_CASE("A-21 sample continuity through both edges of opposite-phase takes", "
 
 TEST_CASE("A-02 cropped occurrence fades and moves the following WAV without changing its bytes") {
     Workspace w;
-    auto s=example();
-    s.bars=20;
-    s.grid.bpm=240;
-    Frame length=s.barFrame(20);
-    auto file=w.dir.getChildFile("Zvuk/source.wav");
+    auto s = example();
+    s.bars = 20;
+    s.grid.bpm = 240;
+    Frame length = s.barFrame(20);
+    auto file = w.dir.getChildFile("Zvuk/source.wav");
     REQUIRE(file.getParentDirectory().createDirectory().wasOk());
-    auto writer=waveWriter(file,s.grid.rate,1);
+    auto writer = waveWriter(file, s.grid.rate, 1);
     REQUIRE(writer);
-    AudioBuffer<float> bar(1,(int)s.barFrame(1));
-    for(int n=0;n<20;++n) {
-        std::fill_n(bar.getWritePointer(0),bar.getNumSamples(),float(n+1)/32);
-        REQUIRE(writer->writeFromAudioSampleBuffer(bar,0,bar.getNumSamples()));
+    AudioBuffer<float> bar(1, (int)s.barFrame(1));
+    for (int n = 0; n < 20; ++n) {
+        std::fill_n(bar.getWritePointer(0), bar.getNumSamples(), float(n + 1) / 32);
+        REQUIRE(writer->writeFromAudioSampleBuffer(bar, 0, bar.getNumSamples()));
     }
     writer.reset();
-    MemoryBlock before,after;
+    MemoryBlock before, after;
     REQUIRE(file.loadFileAsData(before));
-    s.assets={{"a","Zvuk/source.wav",length,1}};
-    s.clips={{"clip","dr","a",0,0,length}};
+    s.assets = {{"a", "Zvuk/source.wav", length, 1}};
+    s.clips = {{"clip", "dr", "a", 0, 0, length}};
     REQUIRE(s.splitSection(8));
     REQUIRE(s.splitSection(16));
-    REQUIRE(s.repeatSection(1,2));
-    REQUIRE(s.resizeOccurrence(2,6));
+    REQUIRE(s.repeatSection(1, 2));
+    REQUIRE(s.resizeOccurrence(2, 6));
     AudioLibrary lib;
-    REQUIRE(lib.load(s,w.dir));
-    Playback mix(s,lib);
-    std::array<float,1024> samples{};
+    REQUIRE(lib.load(s, w.dir));
+    Playback mix(s, lib);
+    std::array<float, 1024> samples{};
     float* channels[]{samples.data()};
-    mix.mix(channels,1,1024,s.barFrame(22)-512);
-    CHECK(samples.front()==14.f/32);
-    CHECK(samples.back()==17.f/32);
-    CHECK(samples[511]==0.f);
-    CHECK(samples[512]==0.f);
-    for(size_t i=1;i<samples.size();++i)
-        if(std::abs(samples[i]-samples[i-1])>.003f)
+    mix.mix(channels, 1, 1024, s.barFrame(22) - 512);
+    CHECK(samples.front() == 14.f / 32);
+    CHECK(samples.back() == 17.f / 32);
+    CHECK(samples[511] == 0.f);
+    CHECK(samples[512] == 0.f);
+    for (size_t i = 1; i < samples.size(); ++i)
+        if (std::abs(samples[i] - samples[i - 1]) > .003f)
             FAIL("Cropped edge discontinuity at " << i);
     REQUIRE(file.loadFileAsData(after));
-    CHECK(after==before);
+    CHECK(after == before);
+}
+
+TEST_CASE("Recover a capture crossing a section boundary into source-aligned clips") {
+    Workspace w;
+    auto song = example();
+    song.bars = 16;
+    REQUIRE(song.splitSection(8));
+    auto id = Uuid().toString();
+    auto path = w.dir.getChildFile("Zvuk/" + id + ".wav");
+    REQUIRE(path.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(path, song.grid.rate, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> input(1, 2400);
+    input.clear();
+    REQUIRE(writer->writeFromAudioSampleBuffer(input, 0, input.getNumSamples()));
+    writer.reset();
+    auto journal = w.dir.getChildFile("Zachrana/capture.json");
+    REQUIRE(journal.getParentDirectory().createDirectory().wasOk());
+    auto start = song.barFrame(8) - 600;
+    auto json = object({{"poloha", start},
+                        {"kompenzace", 33},
+                        {"sampleRate", song.grid.rate},
+                        {"vyskyt", song.order[0].id},
+                        {"dil", song.order[0].section},
+                        {"stopy", Array<var>{object({{"stopa", "dr"}, {"id", id}})}}});
+    REQUIRE(journal.replaceWithText(JSON::toString(json)));
+    REQUIRE(recoverTake(song, w.dir, journal));
+    REQUIRE(song.clips.size() == 2);
+    CHECK(song.clips[0].length == 600);
+    CHECK(song.clips[0].offset == 33);
+    CHECK(song.clips[1].position == song.barFrame(8));
+    CHECK(song.clips[1].length == 1767);
+    CHECK(song.clips[1].offset == 633);
+    CHECK(song.clips[0].asset == song.clips[1].asset);
+    bool damaged = false;
+    REQUIRE(Song::load(w.dir, damaged) == song);
+    REQUIRE_FALSE(damaged);
+    REQUIRE(journal.replaceWithText(JSON::toString(json)));
+    REQUIRE(recoverTake(song, w.dir, journal));
+    CHECK(song.clips.size() == 2);
 }

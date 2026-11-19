@@ -1,5 +1,6 @@
 #include "storage/AtomicFile.h"
 #include "Song.h"
+#include "SectionLabels.h"
 #include <cmath>
 #include <set>
 namespace rocker {
@@ -66,24 +67,31 @@ bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool disca
         return false;
     if (!order.empty()) {
         extendOrder(to);
-        int bar=0;
-        for (const auto& o:order) {
-            Frame start=barFrame(bar);
-            bar+=o.length;
-            Frame a=std::max(start,from), b=std::min(barFrame(bar),to);
-            if (b<=a) continue;
-            Frame shift=barFrame(o.crop)-start;
-            auto& local=sections.at(o.section).groups;
-            auto it=std::find_if(local.begin(),local.end(),[&](auto& g){return g.track==pass.track && g.from==a+shift && g.to==b+shift;});
-            if(it==local.end()) {
-                local.push_back({Uuid().toString(),pass.track,a+shift,b+shift});
-                it=std::prev(local.end());
+        int bar = 0;
+        for (const auto& o : order) {
+            int startBar = bar;
+            Frame start = barFrame(startBar);
+            bar += o.length;
+            Frame a = std::max(start, from), b = std::min(barFrame(bar), to);
+            if (b <= a)
+                continue;
+            Frame shift = barFrame(o.crop) - start;
+            a = translate(a, startBar, o.crop);
+            b = translate(b, startBar, o.crop);
+            auto& local = sections.at(o.section).groups;
+            auto it = std::find_if(local.begin(), local.end(), [&](auto& g) {
+                return g.track == pass.track && g.from == a && g.to == b;
+            });
+            if (it == local.end()) {
+                local.push_back({Uuid().toString(), pass.track, a, b});
+                it = std::prev(local.end());
             }
-            auto copy=pass;
-            copy.id=Uuid().toString();
-            copy.position+=shift;
-            it->attempts.push_back({Uuid().toString(),created,discarded,{copy}});
-            if (!discarded) it->active=(int)it->attempts.size();
+            auto copy = pass;
+            copy.id = Uuid().toString();
+            copy.position += shift;
+            it->attempts.push_back({Uuid().toString(), created, discarded, {copy}});
+            if (!discarded)
+                it->active = (int)it->attempts.size();
         }
         projectOrder();
         return true;
@@ -92,7 +100,8 @@ bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool disca
     if (!group)
         group = &groups.emplace_back(TakeGroup{Uuid().toString(), pass.track, from, to});
     group->attempts.push_back({Uuid().toString(), created, discarded, {std::move(pass)}});
-    if (!discarded) group->active = (int)group->attempts.size();
+    if (!discarded)
+        group->active = (int)group->attempts.size();
     return true;
 }
 Frame Song::end() const {
@@ -115,38 +124,47 @@ var Song::json() const {
                        {"mix", object({{"mute", t.mute}, {"solo", t.solo}})}}));
     auto encode = [](const Section& sec) {
         Array<var> cs;
-    for (auto& c : sec.clips)
-        cs.add(clipJson(c));
-    Array<var> groupsJson;
-    for (const auto& group : sec.groups) {
-        Array<var> attempts;
-        for (const auto& attempt : group.attempts) {
-            Array<var> recorded;
-            for (const auto& clip : attempt.clips)
-                recorded.add(clipJson(clip));
-            attempts.add(object({{"id", attempt.id},
-                                 {"vznik", attempt.created},
-                                 {"kos", attempt.discarded},
-                                 {"klipy", recorded}}));
+        for (auto& c : sec.clips)
+            cs.add(clipJson(c));
+        Array<var> groupsJson;
+        for (const auto& group : sec.groups) {
+            Array<var> attempts;
+            for (const auto& attempt : group.attempts) {
+                Array<var> recorded;
+                for (const auto& clip : attempt.clips)
+                    recorded.add(clipJson(clip));
+                attempts.add(object({{"id", attempt.id},
+                                     {"vznik", attempt.created},
+                                     {"kos", attempt.discarded},
+                                     {"klipy", recorded}}));
+            }
+            groupsJson.add(object({{"id", group.id},
+                                   {"stopa", group.track},
+                                   {"od", group.from},
+                                   {"do", group.to},
+                                   {"aktivni", group.active},
+                                   {"varianty", attempts}}));
         }
-        groupsJson.add(object({{"id", group.id},
-                               {"stopa", group.track},
-                               {"od", group.from},
-                               {"do", group.to},
-                               {"aktivni", group.active},
-                               {"varianty", attempts}}));
-    }
-        return object({{"id",sec.id},{"nazev",sec.name},{"barva",sec.colour},{"delkaTaktu",sec.bars},{"klipy",cs},{"pokusy",groupsJson}});
+        return object({{"id", sec.id},
+                       {"nazev", sec.name},
+                       {"barva", sec.colour},
+                       {"delkaTaktu", sec.bars},
+                       {"klipy", cs},
+                       {"pokusy", groupsJson}});
     };
     Array<var> definitions, sequence;
     if (order.empty()) {
-        definitions.add(encode({"s1",String(u8"Sloka"),"sloka",bars,clips,groups}));
-        sequence.add(object({{"id","i1"},{"sectionId","s1"},{"cropStartBars",0},{"lengthBars",bars}}));
+        definitions.add(encode({"s1", cs::verseName, "sloka", bars, clips, groups}));
+        sequence.add(
+            object({{"id", "i1"}, {"sectionId", "s1"}, {"cropStartBars", 0}, {"lengthBars", bars}}));
     } else {
-        for (const auto& [id,section] : sections)
+        for (const auto& [id, section] : sections)
             definitions.add(encode(section));
         for (const auto& o : order)
-            sequence.add(object({{"id",o.id},{"sectionId",o.section},{"cropStartBars",o.crop},{"lengthBars",o.length}}));
+            sequence.add(object({{"id", o.id},
+                                 {"sectionId", o.section},
+                                 {"cropStartBars", o.crop},
+                                 {"lengthBars", o.length}}));
     }
     for (auto& a : assets)
         files.add(object({{"id", a.id},
@@ -157,17 +175,18 @@ var Song::json() const {
                           {"vznik", "nahravka"}}));
     for (auto m : dropouts)
         marks.add(m);
-    return object(
-        {{"schemaVersion", 1},
-         {"nazev", title},
-         {"sampleRate", grid.rate},
-         {"tempoBpm", grid.bpm},
-         {"metrum", object({{"dobyVTaktu", grid.beats}, {"jednotka", grid.unit}})},
-         {"ladeni", object({{"id", tuning}, {"komorniA", 440}})},
-         {"stopy", ts},
-         {"dily", definitions}, {"poradi", sequence}, {"usporadano", !order.empty()},
-         {"zvuky", files},
-         {"vypadky", marks}});
+    return object({{"schemaVersion", 1},
+                   {"nazev", title},
+                   {"sampleRate", grid.rate},
+                   {"tempoBpm", grid.bpm},
+                   {"metrum", object({{"dobyVTaktu", grid.beats}, {"jednotka", grid.unit}})},
+                   {"ladeni", object({{"id", tuning}, {"komorniA", 440}})},
+                   {"stopy", ts},
+                   {"dily", definitions},
+                   {"poradi", sequence},
+                   {"usporadano", !order.empty()},
+                   {"zvuky", files},
+                   {"vypadky", marks}});
 }
 std::optional<Song> Song::parse(const var& v, bool& damaged) {
     damaged = false;
@@ -211,84 +230,97 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         }
         s.assets.push_back(x);
     }
-    auto definitions = items(v,"dily"), sequence = items(v,"poradi");
-    if ((int)version == 1 && definitions.isEmpty()) return {};
-    bool arranged = (bool)field(v,"usporadano") || definitions.size()>1 || sequence.size()>1;
-    if (definitions.size()==1 && sequence.size()==1) {
-        const auto& d=definitions.getFirst();
-        const auto& o=sequence.getFirst();
-        arranged |= field(d,"id").toString()!="s1" || field(d,"barva").toString()!="sloka" ||
-            field(d,"nazev").toString()!="Sloka" || (int)field(o,"cropStartBars")!=0 ||
-            (int)field(o,"lengthBars")!=(int)field(d,"delkaTaktu");
+    auto definitions = items(v, "dily"), sequence = items(v, "poradi");
+    if ((int)version == 1 && definitions.isEmpty())
+        return {};
+    bool arranged = (bool)field(v, "usporadano") || definitions.size() > 1 || sequence.size() > 1;
+    if (definitions.size() == 1 && sequence.size() == 1) {
+        const auto& d = definitions.getFirst();
+        const auto& o = sequence.getFirst();
+        arranged |= field(d, "id").toString() != "s1" || field(d, "barva").toString() != "sloka" ||
+                    field(d, "nazev").toString() != "Sloka" || (int)field(o, "cropStartBars") != 0 ||
+                    (int)field(o, "lengthBars") != (int)field(d, "delkaTaktu");
     }
     for (const auto& section : definitions) {
-    std::set<String> clips;
-    Section sec{field(section,"id").toString(),field(section,"nazev").toString(),field(section,"barva").toString(),field(section,"delkaTaktu",8)};
-    if (sec.id.isEmpty() || sec.id.containsChar('/') || sec.bars<1 || sec.bars>1000000 || s.sections.contains(sec.id)) return {};
-    auto parseClip = [&](const var& c, bool pass=false) -> std::optional<Clip> {
-        Clip x{field(c, "id").toString(), field(c, "trackId").toString(), field(c, "assetId").toString(),
-               field(c, "position"),      field(c, "sourceStart"),        field(c, "length")};
-        auto asset =
-            std::find_if(s.assets.begin(), s.assets.end(), [&](auto& a) { return a.id == x.asset; });
-        if (x.id.isEmpty() || !tracks.contains(x.track) || asset == s.assets.end() || (x.position < 0 && !pass) || x.position < -Frame(s.grid.rate)*86400*30 ||
-            x.position > Frame(s.grid.rate) * 86400 * 30 || x.length <= 0 || x.offset < 0 ||
-            x.offset > asset->length || x.length > asset->length - x.offset ||
-            !clips.insert(x.id).second) {
-            damaged = true;
+        std::set<String> clips;
+        Section sec{field(section, "id").toString(), field(section, "nazev").toString(),
+                    field(section, "barva").toString(), field(section, "delkaTaktu", 8)};
+        if (sec.id.isEmpty() || sec.id.containsChar('/') || sec.bars < 1 || sec.bars > 1000000 ||
+            s.sections.contains(sec.id))
             return {};
-        }
-        return x;
-    };
-    for (auto& c : items(section, "klipy"))
-        if (auto clip = parseClip(c))
-            sec.clips.push_back(*clip);
-    std::set<String> groupIds, attemptIds;
-    for (const auto& raw : items(section, "pokusy")) {
-        TakeGroup g{field(raw, "id").toString(), field(raw, "stopa").toString(), field(raw, "od", -1),
-                    field(raw, "do", -1)};
-        if (g.id.isEmpty() || !groupIds.insert(g.id).second || !tracks.contains(g.track) || g.from < 0 ||
-            g.to <= g.from || g.to > Frame(s.grid.rate) * 86400 * 30) {
-            damaged = true;
-            continue;
-        }
-        for (const auto& entry : items(raw, "varianty")) {
-            Attempt attempt{field(entry, "id").toString(), field(entry, "vznik"), field(entry, "kos")};
-            for (auto& c : items(entry, "klipy"))
-                if (auto clip = parseClip(c,true); clip && clip->track == g.track)
-                    attempt.clips.push_back(*clip);
-            if (attempt.clips.empty() || attempt.id.isEmpty() || !attemptIds.insert(attempt.id).second) {
+        auto parseClip = [&](const var& c, bool pass = false) -> std::optional<Clip> {
+            Clip x{field(c, "id").toString(),      field(c, "trackId").toString(),
+                   field(c, "assetId").toString(), field(c, "position"),
+                   field(c, "sourceStart"),        field(c, "length")};
+            auto asset =
+                std::find_if(s.assets.begin(), s.assets.end(), [&](auto& a) { return a.id == x.asset; });
+            if (x.id.isEmpty() || !tracks.contains(x.track) || asset == s.assets.end() ||
+                (x.position < 0 && !pass) || x.position < -Frame(s.grid.rate) * 86400 * 30 ||
+                x.position > Frame(s.grid.rate) * 86400 * 30 || x.length <= 0 || x.offset < 0 ||
+                x.offset > asset->length || x.length > asset->length - x.offset ||
+                !clips.insert(x.id).second) {
+                damaged = true;
+                return {};
+            }
+            return x;
+        };
+        for (auto& c : items(section, "klipy"))
+            if (auto clip = parseClip(c))
+                sec.clips.push_back(*clip);
+        std::set<String> groupIds, attemptIds;
+        for (const auto& raw : items(section, "pokusy")) {
+            TakeGroup g{field(raw, "id").toString(), field(raw, "stopa").toString(), field(raw, "od", -1),
+                        field(raw, "do", -1)};
+            if (g.id.isEmpty() || !groupIds.insert(g.id).second || !tracks.contains(g.track) ||
+                g.from < 0 || g.to <= g.from || g.to > Frame(s.grid.rate) * 86400 * 30) {
                 damaged = true;
                 continue;
             }
-            g.attempts.push_back(std::move(attempt));
+            for (const auto& entry : items(raw, "varianty")) {
+                Attempt attempt{field(entry, "id").toString(), field(entry, "vznik"),
+                                field(entry, "kos")};
+                for (auto& c : items(entry, "klipy"))
+                    if (auto clip = parseClip(c, true); clip && clip->track == g.track)
+                        attempt.clips.push_back(*clip);
+                if (attempt.clips.empty() || attempt.id.isEmpty() ||
+                    !attemptIds.insert(attempt.id).second) {
+                    damaged = true;
+                    continue;
+                }
+                g.attempts.push_back(std::move(attempt));
+            }
+            g.active = field(raw, "aktivni", 0);
+            if (g.active < 0 || g.active > (int)g.attempts.size() ||
+                (g.active && g.attempts[g.active - 1].discarded)) {
+                damaged = true;
+                g.active = 0;
+            }
+            sec.groups.push_back(std::move(g));
         }
-        g.active = field(raw, "aktivni", 0);
-        if (g.active < 0 || g.active > (int)g.attempts.size() ||
-            (g.active && g.attempts[g.active - 1].discarded)) {
-            damaged = true;
-            g.active = 0;
-        }
-        sec.groups.push_back(std::move(g));
-    }
-        if (arranged) s.sections.emplace(sec.id,sec);
+        if (arranged)
+            s.sections.emplace(sec.id, sec);
         else {
-            s.clips=std::move(sec.clips);
-            s.groups=std::move(sec.groups);
-            s.bars=sec.bars;
+            s.clips = std::move(sec.clips);
+            s.groups = std::move(sec.groups);
+            s.bars = sec.bars;
         }
     }
     if (arranged) {
         std::set<String> ids;
-        int total=0;
-        for(const auto& raw:sequence) {
-            Occurrence o{field(raw,"id").toString(),field(raw,"sectionId").toString(),field(raw,"cropStartBars",0),field(raw,"lengthBars",0)};
-            auto def=s.sections.find(o.section);
-            if (o.id.isEmpty() || o.id.containsChar('/') || !ids.insert(o.id).second || def==s.sections.end() ||
-                o.crop<0 || o.length<1 || o.length>def->second.bars-o.crop || o.length>1000000-total) return {};
-            total+=o.length;
+        int total = 0;
+        for (const auto& raw : sequence) {
+            Occurrence o{field(raw, "id").toString(), field(raw, "sectionId").toString(),
+                         field(raw, "cropStartBars", 0), field(raw, "lengthBars", 0)};
+            auto def = s.sections.find(o.section);
+            if (o.id.isEmpty() || o.id.containsChar('/') || !ids.insert(o.id).second ||
+                def == s.sections.end() || o.crop < 0 || o.length < 1 ||
+                o.length > def->second.bars - o.crop || o.length > 1000000 - total)
+                return {};
+            total += o.length;
             s.order.push_back(std::move(o));
         }
-        if (s.order.empty()) return {};
+        if (s.order.empty())
+            return {};
         s.projectOrder();
     }
     for (auto m : items(v, "vypadky"))

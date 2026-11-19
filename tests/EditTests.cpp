@@ -118,55 +118,85 @@ TEST_CASE("Trim clamps to recorded material and paste handles intersecting edits
 TEST_CASE("A-02 linked chorus, crop, following audio, undo and independent punch") {
     using namespace rocker;
     using namespace juce;
-    auto song=fixture();
-    song.bars=20;
-    song.assets[0].length=song.barFrame(20)+173;
-    for(auto& c:song.clips) c.length=song.barFrame(20);
-    auto assets=song.assets;
+    auto song = fixture();
+    song.bars = 20;
+    song.assets[0].length = song.barFrame(20) + 173;
+    for (auto& c : song.clips)
+        c.length = song.barFrame(20);
+    auto assets = song.assets;
     REQUIRE(song.splitSection(8));
     REQUIRE(song.splitSection(16));
-    REQUIRE(song.repeatSection(1,2));
-    REQUIRE(song.sections.size()==3);
-    REQUIRE(song.order[1].section==song.order[2].section);
-    REQUIRE(song.startBar(3)==24);
-    auto phase=[&](int bar) {
-        Frame at=song.barFrame(bar);
-        for(auto& clip:song.clips)
-            if (clip.track=="g" && at>=clip.position && at<clip.position+clip.length)
-                return clip.offset+at-clip.position;
+    REQUIRE(song.repeatSection(1, 2));
+    REQUIRE(song.sections.size() == 3);
+    REQUIRE(song.order[1].section == song.order[2].section);
+    REQUIRE(song.startBar(3) == 24);
+    auto phase = [&](int bar) {
+        Frame at = song.barFrame(bar);
+        for (auto& clip : song.clips)
+            if (clip.track == "g" && at >= clip.position && at < clip.position + clip.length)
+                return clip.offset + at - clip.position;
         return Frame(-1);
     };
-    auto chorus=phase(8);
-    CHECK(phase(16)==chorus);
-    auto following=phase(24);
+    auto chorus = phase(8);
+    CHECK(phase(16) == chorus);
+    auto following = phase(24);
     EditHistory history;
     history.reset(song);
-    auto full=song;
-    REQUIRE(song.resizeOccurrence(2,6));
-    history.remember(song,"crop");
-    CHECK(song.startBar(3)==22);
-    CHECK(phase(22)==following);
-    CHECK(song.order[1].length==8);
-    CHECK(song.assets==assets);
-    REQUIRE(history.step(song,false)=="crop");
-    CHECK(song==full);
-    REQUIRE(history.step(song,true)=="crop");
-    REQUIRE(song.resizeOccurrence(2,8));
-    CHECK(song==full);
-    Frame punch=song.barFrame(18), end=song.barFrame(19);
-    REQUIRE(song.addAttempt({"pass","g","a",song.barFrame(15),0,song.barFrame(5)},punch,end,16));
-    REQUIRE(song.groups.size()==2);
-    CHECK(song.groups.front().from==song.barFrame(10));
+    auto full = song;
+    REQUIRE(song.resizeOccurrence(2, 6));
+    history.remember(song, "crop");
+    CHECK(song.startBar(3) == 22);
+    CHECK(phase(22) == following);
+    CHECK(song.order[1].length == 8);
+    CHECK(song.assets == assets);
+    REQUIRE(history.step(song, false) == "crop");
+    CHECK(song == full);
+    REQUIRE(history.step(song, true) == "crop");
+    REQUIRE(song.resizeOccurrence(2, 8));
+    CHECK(song == full);
+    Frame punch = song.barFrame(18), end = song.barFrame(19);
+    REQUIRE(song.addAttempt({"pass", "g", "a", song.barFrame(15), 0, song.barFrame(5)}, punch, end, 16));
+    REQUIRE(song.groups.size() == 2);
+    CHECK(song.groups.front().from == song.barFrame(10));
     REQUIRE(song.detachSection(2));
     REQUIRE_FALSE(song.linked(1));
-    REQUIRE(song.addAttempt({"second","g","a",punch,0,end-punch},punch,end,17));
-    REQUIRE(song.groups[0].attempts.size()==1);
-    REQUIRE(song.groups[1].attempts.size()==2);
-    REQUIRE(song.resizeOccurrence(2,6));
-    bool damaged=false;
-    auto loaded=Song::parse(song.json(),damaged);
+    REQUIRE(song.addAttempt({"second", "g", "a", punch, 0, end - punch}, punch, end, 17));
+    REQUIRE(song.groups[0].attempts.size() == 1);
+    REQUIRE(song.groups[1].attempts.size() == 2);
+    REQUIRE(song.resizeOccurrence(2, 6));
+    bool damaged = false;
+    auto loaded = Song::parse(song.json(), damaged);
     REQUIRE(loaded);
     REQUIRE_FALSE(damaged);
-    CHECK(*loaded==song);
-    CHECK(song.assets==assets);
+    CHECK(*loaded == song);
+    CHECK(song.assets == assets);
+}
+
+TEST_CASE("Edits in a cropped chorus preserve hidden source audio and propagate to its link") {
+    using namespace rocker;
+    auto song = fixture();
+    song.grid.bpm = 240;
+    song.bars = 16;
+    song.assets.front().length = song.barFrame(16) + 173;
+    for (auto& c : song.clips)
+        c.length = song.barFrame(16);
+    REQUIRE(song.splitSection(8));
+    REQUIRE(song.repeatSection(1, 2));
+    REQUIRE(song.resizeOccurrence(2, 6));
+    auto check = [&](int bar, bool plays) {
+        auto material = copySpan(song, "g", {song.barFrame(bar), song.barFrame(bar + 1)});
+        CHECK(material.clips.empty() == !plays);
+    };
+    REQUIRE(eraseSpan(song, "g", {song.barFrame(19), song.barFrame(20)}));
+    song.commitClips();
+    check(11, false);
+    check(19, false);
+    check(13, true);
+    check(14, true);
+    REQUIRE(song.resizeOccurrence(2, 8));
+    check(22, true);
+    CHECK(song.assets.size() == 1);
+    bool bad = false;
+    CHECK(Song::parse(song.json(), bad) == song);
+    CHECK_FALSE(bad);
 }

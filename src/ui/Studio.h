@@ -104,12 +104,12 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int projectMonitor = 0;
     double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler, sectionStrip;
-    int selectedOccurrence=-1, cutBar=0, targetBar=0;
-    bool askingRepair=false, copyingSection=false;
+    int selectedOccurrence = -1, cutBar = 0, targetBar = 0;
+    bool askingRepair = false, copyingSection = false;
     juce::String sectionDraft;
     enum class TapeAction { split, repeat, detach, restore, resize, name, colour, move };
     void selectOccurrence(int);
-    void tapeAction(TapeAction,int value=0);
+    void tapeAction(TapeAction, int value = 0);
     void sectionDeck(Rect);
     void drawSections(juce::Graphics&);
     void sectionDown(const juce::MouseEvent&);

@@ -85,7 +85,8 @@ void Studio::openProject(File dir) {
         return;
     }
     finishProject();
-    selectedOccurrence=-1; askingRepair=false;
+    selectedOccurrence = -1;
+    askingRepair = false;
     const bool sameProject = projectDir == dir;
     projectDir = dir;
     comparing = false;
@@ -135,7 +136,7 @@ void Studio::field(const String& label, Rect r, String& value) {
     controls.add(edit);
     addAndMakeVisible(edit);
     edit->setName(label);
-    edit->setBounds(r.withWidth(std::min(r.getWidth(),s::fieldWidth)));
+    edit->setBounds(r.withWidth(std::min(r.getWidth(), s::fieldWidth)));
     edit->setFont(skin.font(s::body));
     edit->setInputRestrictions(64);
     edit->setText(value, false);
@@ -662,8 +663,8 @@ void Studio::projectPage(Rect area) {
              " h",
          disk, s::caption, s::muted, true, false, true);
     text(message, notice, s::caption, s::warning);
-    sectionStrip=row(area);
-    text(cs::sections,sectionStrip.withWidth(s::trackHead),s::body,s::muted);
+    sectionStrip = row(area);
+    text(cs::sections, sectionStrip.withWidth(s::trackHead), s::body, s::muted);
     ruler = row(area);
     text(cs::bars, ruler.withWidth(s::trackHead), s::body, s::guitar);
     auto trackCommands = area.removeFromBottom(s::button);
@@ -897,12 +898,14 @@ void Studio::mouseDown(const MouseEvent& event) {
     if (page != Page::project || performance || view.distant)
         return;
     if (sectionStrip.withTrimmedLeft(s::trackHead).contains(event.getPosition())) {
-        if (!view.editing) editMode(true);
+        if (!view.editing)
+            editMode(true);
         sectionDown(event);
         return;
     }
     if (view.editing) {
-        selectedOccurrence=-1; askingRepair=false;
+        selectedOccurrence = -1;
+        askingRepair = false;
         editMouseDown(event);
         return;
     }

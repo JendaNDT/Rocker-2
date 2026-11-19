@@ -72,9 +72,10 @@ struct Song {
     bool addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded = false);
     std::vector<Frame> dropouts;
     int bars = 8;
-    std::map<juce::String,Section> sections;
+    std::map<juce::String, Section> sections;
     std::vector<Occurrence> order;
-    Frame barFrame(int bar) const { return grid.beat(Frame(bar)*grid.beats); }
+    Frame barFrame(int bar) const { return grid.beat(Frame(bar) * grid.beats); }
+    Frame translate(Frame value, int fromBar, int toBar) const;
     int startBar(int index) const;
     int occurrenceAt(int bar) const;
     bool linked(int index) const;

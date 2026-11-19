@@ -634,3 +634,116 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
     REQUIRE(find<Button>(reopened, cs::restoredTake));
     fits(reopened);
 }
+
+TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shared repair") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    auto dir = temp.dir.getChildFile("Arrangement");
+    Song song;
+    song.title = String(u8"Sloka a refrén");
+    song.bars = 16;
+    song.grid.bpm = 240;
+    song.tracks = {{"g", cs::guitar, "kytara", {"In 1"}}};
+    auto file = dir.getChildFile("Zvuk/riff.wav");
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(file, 48000, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> beat(1, 12000);
+    for (int i = 0; i < beat.getNumSamples(); ++i)
+        beat.setSample(0, i, .6f * std::sin(i * .06f) * std::exp(-i / 2700.f));
+    for (int n = 0; n < 64; ++n)
+        REQUIRE(writer->writeFromAudioSampleBuffer(beat, 0, beat.getNumSamples()));
+    writer.reset();
+    song.assets = {{"a", "Zvuk/riff.wav", song.barFrame(16), 1}};
+    song.clips = {{"g1", "g", "a", 0, 0, song.barFrame(16)}};
+    REQUIRE(song.save(dir));
+    Settings settings;
+    settings.visited = true;
+    settings.lastSong = dir.getFullPathName();
+    REQUIRE(settings.save(temp.file));
+    ViewState state;
+    state.editing = true;
+    state.zoom = 28;
+    REQUIRE(state.save(dir));
+    Studio view(fake, temp.file);
+    click(view, cs::resume);
+    auto* head = find<Button>(view, cs::guitar);
+    REQUIRE(head);
+    int start = head->getX() - style::grid + style::trackHead;
+    int width = view.getWidth() - style::margin - start;
+    int axisY = head->getY() - style::grid - style::gap - style::button / 2;
+    int tapeY = axisY - style::gap - style::button;
+    auto x = [&](double bar) { return float(start + bar * width / 28); };
+    auto gesture = [&](double a, double b, int y, int modifiers = 0) {
+        Point<float> down{x(a), float(y)}, up{x(b), float(y)};
+        auto event = [&](Point<float> here, bool drag) {
+            return MouseEvent(Desktop::getInstance().getMainMouseSource(), here, ModifierKeys(modifiers),
+                              0, 0, 0, 0, 0, &view, &view, Time::getCurrentTime(), down,
+                              Time::getCurrentTime(), 1, drag);
+        };
+        view.mouseDown(event(down, false));
+        if (a != b)
+            view.mouseDrag(event(up, true));
+        view.mouseUp(event(up, a != b));
+        view.resized();
+    };
+    auto key = [&](int code, int mod = 0) {
+        REQUIRE(view.keyPressed(KeyPress(code, ModifierKeys(mod), 0)));
+        view.resized();
+    };
+    bool bad = false;
+    auto read = [&] {
+        auto result = Song::load(dir, bad);
+        REQUIRE(result.has_value());
+        REQUIRE_FALSE(bad);
+        return *result;
+    };
+    gesture(8, 8, tapeY);
+    click(view, cs::sectionSplit);
+    key('D');
+    REQUIRE(read().linked(2));
+    auto full = read();
+    gesture(24, 22, tapeY);
+    REQUIRE(read().order[2].length == 6);
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "16-dily", pixels);
+    key('Z', ModifierKeys::ctrlModifier);
+    CHECK(read() == full);
+    key('Y', ModifierKeys::ctrlModifier);
+    gesture(22, 24, tapeY);
+    CHECK(read() == full);
+    gesture(24, 22, tapeY);
+    click(view, cs::sectionRestore);
+    CHECK(read() == full);
+    auto repair = [&](String answer) {
+        gesture(18.4, 18.4, axisY);
+        key('P');
+        fits(view);
+        REQUIRE_FALSE(
+            dir.getChildFile("Zachrana").findChildFiles(File::findFiles, false, "*.json").size());
+        for (int pixels : {1280, 1920})
+            snapshot(view, "17-oprava-dilu", pixels);
+        click(view, answer);
+        auto rescue = dir.getChildFile("Zachrana");
+        REQUIRE(rescue.findChildFiles(File::findFiles, false, "*.json").size() == 1);
+        test::FakeDevice::Block input{std::vector<float>(256, .125f)};
+        for (int i = 0; i < 950; ++i)
+            fake.process(input, 256);
+        for (int i = 0; i < 60 && !rescue.findChildFiles(File::findFiles, false, "*.json").isEmpty(); ++i)
+            tick();
+        REQUIRE(rescue.findChildFiles(File::findFiles, false, "*.json").isEmpty());
+        view.resized();
+        click(view, cs::stopSong);
+    };
+    repair(cs::sharedRepair);
+    REQUIRE(read().groups.size() == 2);
+    REQUIRE(read().groups.front().attempts.size() == 1);
+    repair(cs::ownRepair);
+    auto last = read();
+    REQUIRE_FALSE(last.linked(2));
+    REQUIRE(last.groups.front().attempts.size() == 1);
+    REQUIRE(last.groups.back().attempts.size() == 2);
+    CHECK(last.sections.at(last.order[2].section).name.endsWith("(2)"));
+}
