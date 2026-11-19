@@ -133,6 +133,9 @@ MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, D
     result.ok = commitTemporary(output);
     return result;
 }
+MixFile exportStems(const Song&, const AudioLibrary&, const File& destination) {
+    return MixFile{destination};
+}
 std::optional<bool> containsClick(const File& file, const BeatGrid& grid, Frame start) {
     auto input = waveReader(file);
     if (!input || input->numChannels == 0)

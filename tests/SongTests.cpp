@@ -77,6 +77,70 @@ TEST_CASE("A-26 versions preserve changes and skip unchanged states") {
     CHECK(first->grid.bpm == 110);
     CHECK(last->grid.bpm == 159);
 }
+TEST_CASE("A-29 exported stems sum to a unity mix, ignore solo and group the drums") {
+    Workspace w;
+    Song song;
+    song.title = "Stems";
+    song.bars = 1;
+    song.masterDb = -18;
+    song.tracks = {{"k", "Kick", "bici"}, {"s", "Snare", "bici"},
+                   {"g", "Guitar", "kytara"}, {"m", "Muted", "jine"}};
+    song.tracks[0].group = song.tracks[1].group = "acoustic";
+    song.tracks[0].pan = -1;
+    song.tracks[1].pan = .6f;
+    song.tracks[2].gainDb = -9;
+    song.tracks[2].solo = true;
+    song.tracks[3].mute = true;
+    auto raw = w.dir.getChildFile("Zvuk/signal.wav");
+    REQUIRE(raw.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(raw, song.grid.rate, 1);
+    REQUIRE(writer);
+    const int length = 4096;
+    AudioBuffer<float> samples(1, length);
+    for (int i = 0; i < length; ++i)
+        samples.setSample(0, i, float(.27 * std::sin(i * .13)));
+    REQUIRE(writer->writeFromAudioSampleBuffer(samples, 0, length));
+    writer.reset();
+    song.assets = {{"audio", "Zvuk/signal.wav", length, 1}};
+    for (size_t i = 0; i < song.tracks.size(); ++i)
+        song.clips.push_back({String(i), song.tracks[i].id, "audio", Frame(i * 1300), 0, length});
+    AudioLibrary media;
+    REQUIRE(media.load(song, w.dir));
+    const auto target = w.dir.getChildFile("Exporty/Stopy");
+    CHECK(exportStems(song, media, target).ok);
+    auto stems = target.findChildFiles(File::findFiles, false, "*.wav");
+    REQUIRE(stems.size() == 2);
+    CHECK_FALSE(exportStems(song, media, target).ok);
+    auto unity = song;
+    unity.tracks[2].solo = false;
+    unity.masterDb = 0;
+    auto reference = w.dir.getChildFile("reference.wav");
+    REQUIRE(renderSong(unity, media, reference));
+    auto full = waveReader(reference);
+    auto drums = waveReader(stems[0]);
+    auto guitar = waveReader(stems[1]);
+    REQUIRE(full);
+    REQUIRE(drums);
+    REQUIRE(guitar);
+    REQUIRE(full->lengthInSamples == drums->lengthInSamples);
+    REQUIRE(full->lengthInSamples == guitar->lengthInSamples);
+    CHECK(full->lengthInSamples == song.end() + 2 * song.grid.rate);
+    CHECK(drums->sampleRate == song.grid.rate);
+    CHECK(drums->numChannels == 2);
+    constexpr int block = 1024;
+    AudioBuffer<float> a(2, block), b(2, block), c(2, block);
+    float error = 0;
+    for (Frame pos = 0; pos < full->lengthInSamples; pos += block) {
+        int n = int(std::min<Frame>(block, full->lengthInSamples - pos));
+        REQUIRE(full->read(&a, 0, n, pos, true, true));
+        REQUIRE(drums->read(&b, 0, n, pos, true, true));
+        REQUIRE(guitar->read(&c, 0, n, pos, true, true));
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+                error = std::max(error, std::abs(a.getSample(ch, i) - b.getSample(ch, i) - c.getSample(ch, i)));
+    }
+    CHECK(error < 1e-6f);
+}
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
     auto s = example();
     s.bars = 400;
