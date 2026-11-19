@@ -1613,6 +1613,46 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         for (int pixels : {1280, 1920})
             snapshot(studio, scene, pixels);
     };
+    SECTION("Appearance switches during capture without restarting the transport") {
+        const String appearance = u8"Vzhled";
+        auto* choice = find<ComboBox>(studio, appearance);
+        REQUIRE(choice);
+        REQUIRE(choice->getSelectedItemIndex() == 0);
+        REQUIRE(choice->getNumItems() == 3);
+        chooseItem(studio, appearance, 1);
+        capture("46-hraj-svetly");
+        const auto light = studio.createComponentSnapshot(studio.getLocalBounds());
+        click(studio, cs::recordSong);
+        process(.25f, 4096);
+        chooseItem(studio, appearance, 2);
+        process(-.5f, 4096);
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        capture("47-nahravam-tmavy");
+        click(studio, cs::stopSong);
+        bool damaged = false;
+        const auto stored = Song::load(dir, damaged);
+        REQUIRE(stored);
+        REQUIRE(stored->assets.size() == 1);
+        auto audio = waveReader(dir.getChildFile(stored->assets.front().path));
+        REQUIRE(audio);
+        REQUIRE(audio->lengthInSamples == 8192);
+        AudioBuffer<float> check(1, 8192);
+        REQUIRE(audio->read(&check, 0, 8192, 0, true, false));
+        CHECK(check.getSample(0, 2048) == .25f);
+        CHECK(check.getSample(0, 6144) == -.5f);
+        capture("48-hraj-tmavy");
+        const auto dark = studio.createComponentSnapshot(studio.getLocalBounds());
+        CHECK(light.getPixelAt(1, 1).getBrightness() > dark.getPixelAt(1, 1).getBrightness());
+        test::FakeDevice reopenedDevice;
+        Studio reopened(reopenedDevice, temp.file);
+        auto* restored = find<ComboBox>(reopened, appearance);
+        REQUIRE(restored);
+        REQUIRE(restored->getSelectedItemIndex() == 2);
+        chooseItem(reopened, appearance, 0);
+        test::FakeDevice thirdDevice;
+        Studio automatic(thirdDevice, temp.file);
+        REQUIRE(find<ComboBox>(automatic, appearance)->getSelectedItemIndex() == 0);
+    }
     SECTION("A selected attempt can be saved again after a write failure") {
         click(studio, cs::recordSong);
         process(.25f, 4096);
