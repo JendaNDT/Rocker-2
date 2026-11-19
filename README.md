@@ -31,6 +31,8 @@ Pokud se frekvence přenesené skladby liší od nastavení zvukovky, Rocker uk�
 
 **Složka skladeb** určuje místo pro nové skladby. Nápady dál najdeš ve stejné knihovně a ze zachyceného riffu můžeš vytvořit skladbu v nově vybrané složce.
 
+V Míchej otevři **Poslat mix… → Stopy zvlášť → Uložit stopy**. V `Exporty` vznikne složka s WAV soubory. V jiném studiu je vlož všechny na začátek projektu. Mají stejnou délku, včetně dozvuku. Bicí ze společné soupravy jsou v jednom stereo souboru. Ztlumené stopy se vynechají. Soubory mají hlasitost a polohu podle jednotlivých stop. Celkovou hlasitost výstupu nastavíš v cílovém studiu.
+
 ## Co vyzkoušet po vydání
 
 - **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.

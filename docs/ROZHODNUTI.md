@@ -139,3 +139,9 @@ Mazání nápadu potvrzuje přesun jeho WAV do systémového koše. Po přesunu 
 M4A pro Mac vzniká systémovým kodérem AAC 256 kb/s. V tomto kroku systémový AAC export ve Windows ponecháváme mezi rozšířeními. Windows nabízí MP3, pokud je kodér k dispozici. Import má syntetický vzorek CC0, který vznikl místně ve FFmpeg ze dvou sinusů 440 a 660 Hz. Délka importu má kvůli rozdílnému vyhodnocení začátku a konce dekodéry toleranci 50 ms. Vlastní export ověřuje přesnou délku na Macu.
 
 Balík pro Mac má arm64 a x86_64. Sanitizéry a běžné testy běží v sadě pro Apple Silicon. Stroj s Intelem čeká na ruční zkoušku po E18.
+
+## E14 · samostatné stopy
+
+Pro každou stopu, případně jednu společnou sadu bicích, se použije stejný výpočet jako pro celý mix. Výsledkem je stereo WAV v plovoucí čárce a při frekvenci skladby. Vyhneme se přitom zaokrouhlení při převodu na celá čísla. Předání používá společný začátek a délku s dozvukem. Odlišná délka podle posledního klipu stopy by ztížila přenos.
+
+Složka stop se zveřejní jediným přejmenováním po úspěšném zápisu všech WAV. Pokus s již existujícím cílem skončí bez přepisování. Tím zůstávají použitelné i dříve vyexportované stopy.
