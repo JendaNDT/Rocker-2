@@ -340,6 +340,8 @@ class Studio final : public juce::Component,
     bool exporting = false, selectedRange = false;
     juce::String soloNames() const;
     void saveSong(juce::String action = {});
+    bool writeSong(const Song&, const juce::String& action);
+    bool saveAttempt(const TakeGroup&, const juce::String& action);
     EditHistory history;
     Fragment clipboard;
     juce::Array<juce::File> versions;

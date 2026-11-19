@@ -637,9 +637,19 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
         click(view, cs::stopSong);
         REQUIRE(view.keyPressed(KeyPress(KeyPress::tabKey)));
         view.resized();
+        BlockedProjectFile discardBlocked(folder.getChildFile("skladba.json"));
+        click(view, cs::discardAttempt);
+        CHECK(view.statusText() == cs::songSaveError);
+        discardBlocked.restore();
+        REQUIRE_FALSE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         click(view, cs::discardAttempt);
         REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         click(view, cs::stopSong);
+        BlockedProjectFile restoreBlocked(folder.getChildFile("skladba.json"));
+        click(view, cs::restoredTake);
+        CHECK(view.statusText() == cs::songSaveError);
+        restoreBlocked.restore();
+        REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         click(view, cs::restoredTake);
         REQUIRE_FALSE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         REQUIRE(view.keyPressed(KeyPress('Z', ModifierKeys::ctrlModifier, 0)));
@@ -1634,7 +1644,7 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         click(studio, cs::countIn);
         BlockedProjectFile blocked(dir.getChildFile(blockSong ? "skladba.json" : "zobrazeni.json"));
         click(studio, cs::applySongTempo);
-        CHECK(studio.statusText().isNotEmpty());
+        CHECK(studio.statusText() == (blockSong ? cs::songSaveError : cs::metroViewSaveError));
         REQUIRE(studio.currentPage() == Page::metronome);
         fits(studio);
         blocked.restore();

@@ -83,6 +83,8 @@ void Studio::tapMetronome() {
 }
 
 String Studio::metronomeHint() const {
+    if (message.isNotEmpty())
+        return message;
     if (!link.online || link.caps.outputChannels == 0)
         return cs::metroNeedsOutput;
     if (metroTapping)
@@ -127,7 +129,7 @@ void Studio::metronomePage(Rect workspace) {
         metroTaps.clear();
         triggerAsyncUpdate();
     });
-    auto caption = main.removeFromTop(s::button).withSizeKeepingCentre(s::fieldWidth, s::button);
+    auto caption = main.removeFromTop(s::button);
     dynamicText(Readout::metroHint, metronomeHint(), caption, s::caption, false);
 
     auto panel = inspectorBounds.reduced(s::inset);
@@ -193,10 +195,14 @@ void Studio::metronomePage(Rect workspace) {
             const auto oldBeat = std::max<Frame>(0, song.grid.beatAt(view.cursor));
             const auto bar = oldBeat / song.grid.beats;
             const auto beatInBar = oldBeat % song.grid.beats;
-            song.grid.bpm = metroGrid.bpm;
-            song.grid.beats = metroGrid.beats;
-            song.grid.unit = metroGrid.unit;
-            song.projectOrder();
+            auto next = song;
+            next.grid.bpm = metroGrid.bpm;
+            next.grid.beats = metroGrid.beats;
+            next.grid.unit = metroGrid.unit;
+            next.projectOrder();
+            if (!writeSong(next, cs::tempo))
+                return;
+            song = std::move(next);
             view.cursor = song.grid.beat(bar * song.grid.beats +
                                         std::min<Frame>(song.grid.beats - 1, beatInBar));
             view.click = metroGuide != 2;
@@ -204,8 +210,10 @@ void Studio::metronomePage(Rect workspace) {
                 view.rhythm = metroGuide == 1;
             view.countIn = metroCountIn;
             reveal(view.cursor);
-            saveView();
-            saveSong();
+            if (!saveView()) {
+                status(cs::metroViewSaveError);
+                return;
+            }
         } else {
             ideaTempo = metroGrid.bpm;
             ideaBeats = metroGrid.beats;

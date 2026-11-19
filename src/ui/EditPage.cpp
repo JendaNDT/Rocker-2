@@ -279,6 +279,18 @@ void Studio::audition(TakeGroup& group) {
     startProject(false, false, &group);
     comparing = performance != nullptr;
 }
+bool Studio::saveAttempt(const TakeGroup& choice, const String& action) {
+    auto next = song;
+    next.commitGroup(choice);
+    if (!writeSong(next, action))
+        return false;
+    song = std::move(next);
+    preview = choice.active;
+    previewGroup = choice.id;
+    if (performance)
+        selectKitAttempt(performance->playback, choice, preview);
+    return true;
+}
 void Studio::chooseAttempt(bool keep) {
     auto* g = song.groupAt(selectedTrack(), selection().from, selection().to);
     if (!g || (performance && performance->recording))
@@ -288,11 +300,10 @@ void Studio::chooseAttempt(bool keep) {
         previewGroup = g->id;
     }
     if (keep) {
-        g->active = preview;
-        song.commitGroup(*g);
-        history.remember(song, cs::keepAttempt);
-        saveSong();
-        status(cs::savedAttempt);
+        auto choice = *g;
+        choice.active = preview;
+        if (saveAttempt(choice, cs::keepAttempt))
+            status(cs::savedAttempt);
         return;
     }
     do {
@@ -311,16 +322,11 @@ void Studio::discardAttempt() {
     int index = previewGroup == g->id && preview >= 0 ? preview : g->active;
     if (!index || index > (int)g->attempts.size())
         return;
-    g->active = index;
-    g->discard();
-    preview = g->active;
-    previewGroup = g->id;
-    if (performance)
-        selectKitAttempt(performance->playback, *g, preview);
-    song.commitGroup(*g);
-    history.remember(song, cs::discardAttempt);
-    saveSong();
-    status(cs::discardedAttempt);
+    auto choice = *g;
+    choice.active = index;
+    choice.discard();
+    if (saveAttempt(choice, cs::discardAttempt))
+        status(cs::discardedAttempt);
 }
 void Studio::attemptDeck(TakeGroup& g, Rect area) {
     const int index =
@@ -369,17 +375,13 @@ void Studio::attemptDeck(TakeGroup& g, Rect area) {
             if (!active || performance)
                 return;
             for (size_t i = active->attempts.size(); i > 0; --i) {
-                auto& take = active->attempts[i - 1];
-                if (!take.discarded)
+                if (!active->attempts[i - 1].discarded)
                     continue;
-                take.discarded = false;
-                active->active = (int)i;
-                previewGroup = active->id;
-                preview = (int)i;
-                song.commitGroup(*active);
-                history.remember(song, cs::restoredTake);
-                saveSong();
-                triggerAsyncUpdate();
+                auto choice = *active;
+                choice.attempts[i - 1].discarded = false;
+                choice.active = (int)i;
+                if (saveAttempt(choice, cs::restoredTake))
+                    status(cs::restoredTake);
                 break;
             }
         });
