@@ -97,18 +97,24 @@ bool pasteAt(Song& s, const juce::String& track, Frame at, const Fragment& part)
     if (!fits(s, at, part.length) || part.clips.empty() ||
         std::none_of(s.tracks.begin(), s.tracks.end(), [&](auto& t) { return t.id == track; }))
         return false;
-    for (auto& c : part.clips) {
-        auto asset =
-            std::find_if(s.assets.begin(), s.assets.end(), [&](auto& a) { return a.id == c.asset; });
-        if (asset == s.assets.end() || c.offset < 0 || c.length <= 0 ||
-            c.offset > asset->length - c.length || c.position < 0 || c.position > part.length - c.length)
-            return false;
-    }
     auto destinations = s.members(track);
     if (part.sourceTracks.size() > 1 && part.sourceTracks.size() != destinations.size())
         return false;
     if (part.sourceTracks.size() == 1 && destinations.size() > 1)
         return false;
+    for (auto& c : part.clips) {
+        auto asset =
+            std::find_if(s.assets.begin(), s.assets.end(), [&](auto& a) { return a.id == c.asset; });
+        const auto target =
+            part.sourceTracks.size() > 1 ? destinations[part.sourceTracks.indexOf(c.track)] : track;
+        auto strip =
+            std::find_if(s.tracks.begin(), s.tracks.end(), [&](auto& t) { return t.id == target; });
+        if (strip == s.tracks.end() || asset == s.assets.end() ||
+            (strip->kind == "midi") != asset->path.endsWithIgnoreCase(".mid") || c.offset < 0 ||
+            c.length <= 0 || c.offset > asset->length - c.length || c.position < 0 ||
+            c.position > part.length - c.length)
+            return false;
+    }
     eraseSpan(s, track, {at, at + part.length});
     for (auto c : part.clips) {
         c.id = juce::Uuid().toString();

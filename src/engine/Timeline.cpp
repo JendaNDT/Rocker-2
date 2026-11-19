@@ -151,8 +151,7 @@ Playback::Playback(const Song& s, const AudioLibrary& lib) {
             for (const auto& clip : clips) {
                 if (track.id != clip.track)
                     continue;
-                auto it = lib.data.find(track.kind == "midi" ? clip.asset + "#" + String(track.kit)
-                                                             : clip.asset);
+                auto it = lib.waveFor(track, clip.asset);
                 if (it == lib.data.end())
                     continue;
                 output.push_back({it->second, clip.position, clip.offset, clip.length});
@@ -464,10 +463,8 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
                     return false;
                 if (isPunch())
                     playback.setPunch(size_t(&t - s.tracks.data()), punchFrom, punchTo, -1, -1, true);
-                entries.add(object({{"id", take.asset.id},
-                                    {"stopa", t.id},
-                                    {"midi", true},
-                                    {"posunMidi", std::max(0, midiDelay)}}));
+                entries.add(object(
+                    {{"id", take.asset.id}, {"stopa", t.id}, {"midi", true}, {"posunMidi", midiDelay}}));
                 takes.push_back(std::move(take));
                 continue;
             }
@@ -722,13 +719,19 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
             return false;
         if (std::none_of(next.tracks.begin(), next.tracks.end(), [&](auto& t) { return t.id == track; }))
             return false;
-        if (std::any_of(next.assets.begin(), next.assets.end(), [&](auto& a) { return a.id == id; }))
+        if (std::any_of(next.assets.begin(), next.assets.end(), [&](auto& a) { return a.id == id; })) {
+            if (bool(e.getProperty("midi", false)))
+                journals.add(journal.getSiblingFile(id + ".hits"));
             continue;
+        }
         auto path = "Zvuk/" + id + ".wav";
-        Frame length = 0, offset = delay;
+        Frame length = 0, offset = delay, position = at;
         int channels = 1;
         if (bool(e.getProperty("midi", false))) {
-            offset = std::max(0, (int)e.getProperty("posunMidi", 0));
+            const int correction =
+                std::clamp((int)e.getProperty("posunMidi", 0), -song.grid.rate, song.grid.rate * 2);
+            offset = std::max(0, correction);
+            position += std::max(0, -correction);
             auto log = journal.getSiblingFile(id + ".hits");
             FileInputStream in(log);
             if (!in.openedOk())
@@ -762,7 +765,7 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
         if (length <= offset)
             continue;
         next.assets.push_back({id, path, length, channels});
-        Clip pass{id, track, id, at, offset, length - offset};
+        Clip pass{id, track, id, position, offset, length - offset};
         Frame from = record.getProperty("opravaOd", 0), to = record.getProperty("opravaDo", 0);
         if (to <= from) {
             next.clips.push_back(std::move(pass));

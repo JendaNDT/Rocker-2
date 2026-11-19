@@ -25,6 +25,9 @@ struct MappedWave {
 };
 struct AudioLibrary {
     std::map<juce::String, std::shared_ptr<const MappedWave>> data;
+    auto waveFor(const Track& track, const juce::String& id) const {
+        return data.find(track.kind == "midi" ? id + "#" + juce::String(track.kit) : id);
+    }
     bool load(const Song&, const juce::File&);
 };
 struct PlaybackClip {

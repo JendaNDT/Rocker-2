@@ -766,7 +766,8 @@ void Studio::projectPage(Rect area) {
         StringArray armed;
         for (auto& t : song.tracks)
             if (t.armed)
-                armed.add(t.inputs.joinIntoString(" + ") + String(u8" → ") + t.name);
+                armed.add((t.kind == "midi" ? cs::midiModule : t.inputs.joinIntoString(" + ")) +
+                          String(u8" → ") + t.name);
         text(limit(skin.font(s::body), armed.isEmpty() ? cs::noneArmed : armed.joinIntoString(", "),
                    s::labelWidth),
              cell(info, s::labelWidth));
@@ -834,8 +835,10 @@ void Studio::projectPage(Rect area) {
             if (i == view.selected)
                 soundBadge = badge;
         } else
-            text(limit(skin.font(s::caption), t.inputs.joinIntoString(" + "), head.getWidth()), head,
-                 s::caption, s::muted);
+            text(limit(skin.font(s::caption),
+                       t.kind == "midi" ? cs::drumSounds[t.kit] : t.inputs.joinIntoString(" + "),
+                       head.getWidth()),
+                 head, s::caption, s::muted);
     }
     if (!song.tracks.empty()) {
         auto r = trackCommands;
@@ -1000,10 +1003,12 @@ void Studio::paintProject(Graphics& g) {
         auto lane = lanes[i].withTrimmedLeft(s::trackHead);
         g.setColour(s::line);
         g.drawHorizontalLine(lane.getBottom() - 1, (float)lane.getX(), (float)lane.getRight());
-        auto ink = t.kind == "kytara" ? s::guitar : t.kind == "bici" ? s::drums : s::other;
+        auto ink = t.kind == "kytara"                       ? s::guitar
+                   : (t.kind == "bici" || t.kind == "midi") ? s::drums
+                                                            : s::other;
         auto drawClip = [&](const Clip& c, Frame firstFrame, Frame lastFrame, bool cover) {
             if (c.track == t.id && lastFrame > begin && firstFrame < last && lastFrame > firstFrame) {
-                auto cache = library.data.find(c.asset);
+                auto cache = library.waveFor(t, c.asset);
                 if (cache == library.data.end())
                     return;
                 auto bounds = lane.withLeft(x(std::max(firstFrame, begin)))

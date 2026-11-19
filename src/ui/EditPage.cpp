@@ -761,7 +761,11 @@ void Studio::paintOverChildren(Graphics& g) {
     }
     for (auto& c : song.clips)
         if (c.id == view.selectedClip) {
-            auto wave = library.data.find(c.asset);
+            auto track = std::find_if(song.tracks.begin(), song.tracks.end(),
+                                      [&](auto& t) { return t.id == c.track; });
+            if (track == song.tracks.end())
+                break;
+            auto wave = library.waveFor(*track, c.asset);
             if (wave == library.data.end())
                 break;
             for (int i = 0; i < box.getWidth(); ++i) {

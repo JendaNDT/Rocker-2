@@ -1110,6 +1110,9 @@ TEST_CASE("A-24 MIDI module alone and paired with its stereo audio record throug
         CHECK(notes->front().frame == 3 * 512 + 50);
         CHECK(notes->front().velocity == 112);
         click(view, cs::trackEdit);
+        if (paired)
+            for (int px : {1280, 1920})
+                snapshot(view, "28-sada-midi", px);
         chooseItem(view, cs::kitPreset, 1);
         click(view, cs::apply);
         song = Song::load(dir, bad);

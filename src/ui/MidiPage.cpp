@@ -156,19 +156,21 @@ void Studio::compareMidi() {
     for (auto i = song.clips.rbegin(); i != song.clips.rend(); ++i)
         if (i->track == midi->id) {
             for (auto j = song.clips.rbegin(); j != song.clips.rend(); ++j)
-                if (j->track == audio->id && j->position == i->position) {
+                if (j->track == audio->id && i->position >= j->position &&
+                    i->position - j->position <= song.grid.rate) {
                     auto hits = readMidi(asset(*i), song.grid.rate);
                     auto reader = waveReader(asset(*j));
                     if (!reader || !hits)
                         continue;
-                    const auto shift = compareSnare(*hits, *reader, i->offset, j->offset);
+                    const auto applied = i->offset - (i->position - j->position);
+                    const auto shift = compareSnare(*hits, *reader, applied, j->offset);
                     if (!shift)
                         continue;
                     auto& correction =
                         settings.midiCorrections[Settings::calibrationKey(link.current) + activeMidi];
                     // Replace the correction associated with this recording, so measuring twice is
                     // idempotent.
-                    correction = int(i->offset) - link.caps.outputLatency + *shift;
+                    correction = int(applied) - link.caps.outputLatency + *shift;
                     persist();
                     status(cs::midiOffset + " " + String(*shift * 1000. / song.grid.rate, 2) + " ms");
                     return;
