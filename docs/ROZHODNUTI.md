@@ -97,3 +97,9 @@ Kodér MP3 ve Windows ARM64 přidal v první zkoušce k dvousekundovému výběr
 | Zdroj Pojistky | Pojistka a rychlý záznam používají zvolený vstup kytary. Pro dva či více vstupů je v knihovně jejich výběr. Dvě minuty a pěti­sekundová rezerva zůstanou pod limitem 256 MB i při 384 kHz. Vypnutí uvolní dlouhou paměť a zachová pouze paměť pro dvousekundový předstih. | U všech vstupů současně by délku při vícekanálové sestavě omezila dostupná paměť. Více stop patří do skladby. |
 | První doba volně hraného riffu | Osm ťuknutí určí tempo. Nový klip se umístí tak, aby první ťuknutí připadlo na začátek taktu. Uloží se i hra před první dobou. | Oříznout začátek riffu. |
 | Formáty podkladu | Převod frekvence obstarává libsamplerate 0.2.2 v režimu SINC_BEST_QUALITY. Zdroj se kopíruje do nového 32bitového WAV. Licence BSD-2-Clause cestuje se sestavením. M4A/AAC využívá Windows Media Foundation. | Při každém přehrávání znovu dekódovat původní soubor. |
+
+## E9 · dvě aktivní zásuvky a klávesy u soupravy
+
+Dva vstupy mohou znamenat jediný stereo modul i dva akustické mikrofony. Průvodce nabídne obě možnosti a dovolí zaměnit pořadí vstupů. Sestavu ukládá podle zařízení. Pro čistý stereo odposlech vede každou stranu modulu do odpovídajícího sluchátka.
+
+JUCE předává oba Enter jako stejnou klávesu. Ve skladbě tedy oba ovládají záznam. Při porovnávání pokusů má Enter původní význam a v textovém poli slouží k potvrzení. Spínač, který se v systému hlásí jako klávesnice, se učí jediným stiskem. MIDI spínač patří do rozšíření po v1.
