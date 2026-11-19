@@ -1,6 +1,7 @@
 #pragma once
 #include "Live.h"
 #include "Timeline.h"
+#include "IdeaInput.h"
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -19,6 +20,8 @@ class Audio {
     std::atomic<bool> measuringLoad{false};
     std::atomic<float> peakLoad{0};
     Live live;
+    std::shared_ptr<IdeaInput> ideaInput;
+    std::atomic<int> ideaPort{0};
     Timeline timeline;
     void prepare(int inputs, int sampleRate);
     void playTone() noexcept { command.store(1); }

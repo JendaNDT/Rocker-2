@@ -16,6 +16,7 @@ void Audio::prepare(int inputs, int sampleRate) {
     count = inputs;
     rate = sampleRate;
     live.prepare(rate);
+    ideaInput=inputs>0 ? std::make_shared<IdeaInput>(rate) : nullptr;
     position = -1;
     command = 0;
     meters = std::make_unique<Meter[]>(count);
@@ -54,6 +55,8 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
         if (peak >= 0.9885530947f)
             m.clipped.store(true); // 10^(-0.1/20)
     }
+    int port=ideaPort.load();
+    if(ideaInput && port>=0 && port<inputCount) ideaInput->push(inputs[port],frames);
     const auto action = command.exchange(0);
     if (action != 0)
         position = action > 0 ? 0 : -1;
