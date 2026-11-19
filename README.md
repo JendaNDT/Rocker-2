@@ -6,11 +6,19 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-9**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E9](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-9)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-10**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E10](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-10)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
 5. Při prvním startu se otevře **Zapojení**. Tlačítko **Úvodní obrazovka** tě vezme na úvod podle náčrtu 01 / 5.7. Odtud se do průvodce kdykoli vrátíš přes **Zapojení a zvukovka**.
+
+## Jak nahrát elektronické bicí přes MIDI
+
+1. Připoj modul USB nebo MIDI a zvukový výstup pro sluchátka. V **Zapojení → Vstupy → Bicí (MIDI)** vyber modul. Výchozí rozložení padů je General MIDI. Když některý pad hraje jiný buben, zvol **Naučit pady** a postupně udeř do ukázaných osmi padů.
+2. K záznamu úderů zvol **Údery MIDI** a vytvoř skladbu. Ve stávající skladbě lze přidat stopu přes **Přidat nastavené bicí**. Zapni na ní nahrávání a stiskni R. Sluchátka připoj ke zvukovce.
+3. Chceš-li také původní zvuk modulu, nastav v **Zahraj na bicí** stereo dvojici a potom u MIDI zvol **Zvuk modulu i MIDI**. Obě stopy se připraví společně. **Poslech MIDI** a **Poslech modulu** přepínají, kterou slyšíš.
+4. Vyber stopu **Bicí (MIDI)**, otevři nastavení stopy a změň **Zvuk sady**. Původní údery zůstanou uložené. Pokusy, díly, střih i export používají vybranou sadu.
+5. Pro měření společně nahraj 16 oddělených úderů do virblu. V Diagnostice otevři **Porovnat MIDI a zvuk**. Změřenou korekci Rocker použije pro další záznam se stejným modulem a nastavením zvukovky.
 
 ## Jak připravit bicí
 

@@ -103,3 +103,9 @@ Kodér MP3 ve Windows ARM64 přidal v první zkoušce k dvousekundovému výběr
 Dva vstupy mohou znamenat jediný stereo modul i dva akustické mikrofony. Průvodce nabídne obě možnosti a dovolí zaměnit pořadí vstupů. Sestavu ukládá podle zařízení. Pro čistý stereo odposlech vede každou stranu modulu do odpovídajícího sluchátka.
 
 JUCE předává oba Enter jako stejnou klávesu. Ve skladbě tedy oba ovládají záznam. Při porovnávání pokusů má Enter původní význam a v textovém poli slouží k potvrzení. Spínač, který se v systému hlásí jako klávesnice, se učí jediným stiskem. MIDI spínač patří do rozšíření po v1.
+
+## E10 · původní sady a přehrávání úderů
+
+Architektura navrhuje juce::Synthesiser a současně vylučuje zámky ve zvukovém vlákně. Přehrávač proto připraví vlastní jednoúderové vzorky předem a na výstupu používá pevný počet 32 hlasů. Dvě původní sady vznikají syntézou. Na výsledné zvuky se vztahuje přiložená CC0. [Původ zvuků](../assets/drums/README.md)
+
+Zdroj ve skladbě je standardní MIDI s časovými značkami. Pro střih, pokusy, přehrání a export se mimo zvukové vlákno připraví dočasný WAV pro danou sadu. Uzavření skladby dočasné soubory uvolní. Při změně sady zůstávají původní údery a jejich síla uložené. Při souběžném záznamu je zprvu slyšet původní modul, aby oba zvuky nehrály přes sebe.
