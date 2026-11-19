@@ -54,42 +54,60 @@ ComPtr<IMFMediaType> encoderType() {
     }
     return {};
 }
-ComPtr<IMFSourceReader> source(const juce::File& f, bool force16=false) {
+ComPtr<IMFSourceReader> source(const juce::File& f, bool force16 = false) {
     ComPtr<IMFSourceReader> reader;
     if (FAILED(MFCreateSourceReaderFromURL(f.getFullPathName().toWideCharPointer(), nullptr, &reader)))
         return {};
     ComPtr<IMFMediaType> type;
     if (FAILED(MFCreateMediaType(&type)) || FAILED(type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio)) ||
         FAILED(type->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM)) ||
-        (force16 && FAILED(type->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE,16))) ||
+        (force16 && FAILED(type->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16))) ||
         FAILED(reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr, type.Get())))
         return {};
     return reader;
 }
 } // namespace
-bool decodeSystemAudio(const juce::File& file,const juce::File& target) {
+bool decodeSystemAudio(const juce::File& file, const juce::File& target) {
     MediaRuntime runtime;
-    if(!runtime.active) return false;
-    auto reader=source(file,true); ComPtr<IMFMediaType> raw;
-    if(!reader || FAILED(reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM,&raw))) return false;
-    int channels=(int)MFGetAttributeUINT32(raw.Get(),MF_MT_AUDIO_NUM_CHANNELS,0);
-    int rate=(int)MFGetAttributeUINT32(raw.Get(),MF_MT_AUDIO_SAMPLES_PER_SECOND,0);
-    if(channels<1 || channels>2 || rate<8000 || rate>384000 || MFGetAttributeUINT32(raw.Get(),MF_MT_AUDIO_BITS_PER_SAMPLE,0)!=16) return false;
-    auto writer=waveWriter(target,rate,channels); if(!writer) return false;
-    while(true) {
-        DWORD flags=0;ComPtr<IMFSample> sample;
-        if(FAILED(reader->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM,0,nullptr,&flags,nullptr,&sample))) return false;
-        if(sample) {
-            ComPtr<IMFMediaBuffer> data;BYTE* bytes=nullptr;DWORD size=0;
-            if(FAILED(sample->ConvertToContiguousBuffer(&data)) || FAILED(data->Lock(&bytes,nullptr,&size))) return false;
-            int n=(int)(size/(2*channels));
-            juce::AudioBuffer<float> block(channels,n);
-            for(int c=0;c<channels;++c) for(int i=0;i<n;++i)
-                block.setSample(c,i,float(reinterpret_cast<const int16_t*>(bytes)[i*channels+c])/32768.f);
+    if (!runtime.active)
+        return false;
+    auto reader = source(file, true);
+    ComPtr<IMFMediaType> raw;
+    if (!reader || FAILED(reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &raw)))
+        return false;
+    int channels = (int)MFGetAttributeUINT32(raw.Get(), MF_MT_AUDIO_NUM_CHANNELS, 0);
+    int rate = (int)MFGetAttributeUINT32(raw.Get(), MF_MT_AUDIO_SAMPLES_PER_SECOND, 0);
+    if (channels < 1 || channels > 2 || rate < 8000 || rate > 384000 ||
+        MFGetAttributeUINT32(raw.Get(), MF_MT_AUDIO_BITS_PER_SAMPLE, 0) != 16)
+        return false;
+    auto writer = waveWriter(target, rate, channels);
+    if (!writer)
+        return false;
+    while (true) {
+        DWORD flags = 0;
+        ComPtr<IMFSample> sample;
+        if (FAILED(reader->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, nullptr, &flags, nullptr,
+                                      &sample)))
+            return false;
+        if (sample) {
+            ComPtr<IMFMediaBuffer> data;
+            BYTE* bytes = nullptr;
+            DWORD size = 0;
+            if (FAILED(sample->ConvertToContiguousBuffer(&data)) ||
+                FAILED(data->Lock(&bytes, nullptr, &size)))
+                return false;
+            int n = (int)(size / (2 * channels));
+            juce::AudioBuffer<float> block(channels, n);
+            for (int c = 0; c < channels; ++c)
+                for (int i = 0; i < n; ++i)
+                    block.setSample(
+                        c, i, float(reinterpret_cast<const int16_t*>(bytes)[i * channels + c]) / 32768.f);
             data->Unlock();
-            if(!writer->writeFromAudioSampleBuffer(block,0,n)) return false;
+            if (!writer->writeFromAudioSampleBuffer(block, 0, n))
+                return false;
         }
-        if(flags & MF_SOURCE_READERF_ENDOFSTREAM) return writer->flush();
+        if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
+            return writer->flush();
     }
 }
 bool mp3Available() {
@@ -154,7 +172,9 @@ std::optional<Frame> decodedMp3Frames(const juce::File& file) {
 } // namespace rocker
 #else
 namespace rocker {
-bool decodeSystemAudio(const juce::File&, const juce::File&) {return false;}
+bool decodeSystemAudio(const juce::File&, const juce::File&) {
+    return false;
+}
 bool mp3Available() {
     return false;
 }

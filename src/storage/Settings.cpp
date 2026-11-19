@@ -40,7 +40,7 @@ Settings Settings::load(const juce::File& file) {
     result.device.buffer = integer("buffer", 128, 1, 1000000);
     const auto visited = data.getProperty("visited", false);
     result.visited = visited.isBool() && static_cast<bool>(visited);
-    result.insurance = data.getProperty("pojistka",true);
+    result.insurance = data.getProperty("pojistka", true);
     auto aliases = data.getProperty("aliases", {});
     if (auto* obj = aliases.getDynamicObject())
         for (auto& item : obj->getProperties())
@@ -78,7 +78,7 @@ bool Settings::save(const juce::File& file) const {
     juce::var data(object);
     object->setProperty("schemaVersion", 1);
     object->setProperty("visited", visited);
-    object->setProperty("pojistka",insurance);
+    object->setProperty("pojistka", insurance);
     object->setProperty("driver", static_cast<int>(device.driver));
     object->setProperty("input", device.input);
     object->setProperty("laptopInput", laptopInput);

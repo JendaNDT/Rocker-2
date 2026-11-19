@@ -38,7 +38,10 @@ class Theme final : public juce::LookAndFeel_V4 {
   private:
     juce::Typeface::Ptr regular, heavy, digits;
 };
-class Studio final : public juce::Component, public juce::FileDragAndDropTarget, private juce::Timer, private juce::AsyncUpdater {
+class Studio final : public juce::Component,
+                     public juce::FileDragAndDropTarget,
+                     private juce::Timer,
+                     private juce::AsyncUpdater {
   public:
     Studio(DeviceSystem&, juce::File, juce::File songLibrary = {});
     void mouseDown(const juce::MouseEvent&) override;
@@ -49,7 +52,7 @@ class Studio final : public juce::Component, public juce::FileDragAndDropTarget,
     void resized() override;
     bool keyPressed(const juce::KeyPress&) override;
     bool isInterestedInFileDrag(const juce::StringArray&) override;
-    void filesDropped(const juce::StringArray&,int,int) override;
+    void filesDropped(const juce::StringArray&, int, int) override;
     Page currentPage() const { return page; }
     juce::StringArray layoutErrors() const;
     const Theme& theme() const { return skin; }
@@ -75,29 +78,29 @@ class Studio final : public juce::Component, public juce::FileDragAndDropTarget,
         AudioLibrary audio;
         juce::File temp;
         juce::String id;
-        int rate=0;
-        bool ok=false, tap=false;
+        int rate = 0;
+        bool ok = false, tap = false;
     };
     std::future<PreviewSource> preparingPreview;
-    bool acceptPreview=false;
+    bool acceptPreview = false;
     void finishPreview();
-    juce::String ideaId,ideaFilter,ideaNote;
+    juce::String ideaId, ideaFilter, ideaNote;
     Idea capturedIdea;
-    bool starsOnly=false,tapping=false,ideaClick=false;
-    double ideaTempo=112;
+    bool starsOnly = false, tapping = false, ideaClick = false;
+    double ideaTempo = 112;
     std::vector<Frame> taps;
     std::unique_ptr<Performance> ideaMetronome;
-    std::map<juce::String,Rect> ideaWaves;
+    std::map<juce::String, Rect> ideaWaves;
     std::deque<float> recentInput;
     Rect ideaTrace;
     std::future<bool> savingIdea;
-    int ideaOffset=0;
-    bool importAtCursor=false;
+    int ideaOffset = 0;
+    bool importAtCursor = false;
     std::unique_ptr<juce::FileChooser> importChooser;
     std::future<std::optional<Asset>> importing;
     juce::File importProject;
     juce::String importName;
-    Frame importPosition=0;
+    Frame importPosition = 0;
     const Idea* pickedIdea() const;
     void ideaPage(Rect);
     void chooseIdea(const Idea&);

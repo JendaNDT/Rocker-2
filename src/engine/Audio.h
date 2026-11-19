@@ -35,7 +35,7 @@ class Audio {
   private:
     std::atomic<IdeaInput*> rolling{nullptr};
     std::atomic<bool> writingIdea{false};
-    bool insuranceEnabled=true;
+    bool insuranceEnabled = true;
     struct Meter {
         float hold = 0;
         int remaining = 0;

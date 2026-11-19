@@ -564,8 +564,13 @@ void Studio::projectPage(Rect area) {
         return;
     }
     if (!performance && !view.editing) {
-        button(cs::addBacking,cell(modes,s::clipWidth),[this]{chooseImport();})->setEnabled(!importing.valid());
-        button(importAtCursor?cs::atCursor:cs::atBeginning,cell(modes,s::nameWidth),[this]{importAtCursor=!importAtCursor;triggerAsyncUpdate();});
+        button(cs::addBacking, cell(modes, s::clipWidth), [this] {
+            chooseImport();
+        })->setEnabled(!importing.valid());
+        button(importAtCursor ? cs::atCursor : cs::atBeginning, cell(modes, s::nameWidth), [this] {
+            importAtCursor = !importAtCursor;
+            triggerAsyncUpdate();
+        });
     }
     if (!performance)
         button(cs::fileMenu, cell(modes, s::compactButton), [this] { showVersions(); });
