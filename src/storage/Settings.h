@@ -11,7 +11,7 @@ struct Calibration {
 struct Settings {
     std::vector<GuitarSound> guitarPresets;
     DeviceChoice device;
-    bool visited = false;
+    bool visited = false, insurance = true;
     juce::String laptopInput;
     std::map<juce::String, juce::String> aliases;
     std::vector<Tuning> tunings;

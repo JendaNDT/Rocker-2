@@ -89,3 +89,11 @@ Při tempu s necelou délkou doby ve vzorcích se poloha na době převádí př
 | MP3 | Ve Windows použijeme systémový stereo kodér pro 320 kb/s při 44,1 kHz. Pokud systém takový kodér nenabídne, hráč vidí důvod u šedé volby MP3. | Přibalit další kodér a jeho licenci. Dokument 02 požaduje Media Foundation. |
 
 Kodér MP3 ve Windows ARM64 přidal v první zkoušce k dvousekundovému výběru 1 776 dekódovaných vzorků navíc. Rocker do souboru přidává hlavičku Info s počtem zvukových rámců a s délkou rozběhu a výplně. A-12 kontroluje soubor systémovým dekodérem a nezávislým dekodérem minimp3 (CC0) s podporou přesné délky. Kontroluje také zvuk na obou krajích výběru a datový tok zvukových rámců. Přehrávače, které tuto informaci ignorují, mohou přehrát i krátkou výplň kodéru.
+
+## E8 · nápad a jeho tempo
+
+| Otázka | Volba a důvod | Alternativa |
+|---|---|---|
+| Zdroj Pojistky | Pojistka a rychlý záznam používají zvolený vstup kytary. Pro dva či více vstupů je v knihovně jejich výběr. Dvě minuty a pěti­sekundová rezerva zůstanou pod limitem 256 MB i při 384 kHz. Vypnutí uvolní dlouhou paměť a zachová pouze paměť pro dvousekundový předstih. | U všech vstupů současně by délku při vícekanálové sestavě omezila dostupná paměť. Více stop patří do skladby. |
+| První doba volně hraného riffu | Osm ťuknutí určí tempo. Nový klip se umístí tak, aby první ťuknutí připadlo na začátek taktu. Uloží se i hra před první dobou. | Oříznout začátek riffu. |
+| Formáty podkladu | Převod frekvence obstarává libsamplerate 0.2.2 v režimu SINC_BEST_QUALITY. Zdroj se kopíruje do nového 32bitového WAV. Licence BSD-2-Clause cestuje se sestavením. M4A/AAC využívá Windows Media Foundation. | Při každém přehrávání znovu dekódovat původní soubor. |

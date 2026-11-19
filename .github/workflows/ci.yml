@@ -75,12 +75,14 @@ jobs:
         run: |
           New-Item -Type Directory pack
           Copy-Item "build/Rocker2_artefacts/Release/Rocker 2.exe",LICENSE,assets/fonts/*-OFL.txt,build/_deps/juce-src/LICENSE.md,build/_deps/juce-src/modules/juce_audio_devices/native/asio/LICENSE.txt pack/
+          Copy-Item build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
           Compress-Archive -Path pack/* -DestinationPath Rocker2-${{ matrix.name }}.zip
       - name: Package macOS
         if: runner.os == 'macOS'
         run: |
           mkdir pack
           cp -R "build/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
+          cp build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
           ditto -c -k --sequesterRsrc pack Rocker2-Mac.zip
       - uses: actions/upload-artifact@v6
         with:

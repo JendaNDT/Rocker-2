@@ -2,6 +2,27 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String divider=u8" · ", rangeDash=u8" – ", starMark=u8"★ ";
+inline const juce::String
+    totalIdeas = u8"celkem",
+    ideaTitle = u8"Nápad ", insurance = u8"Pojistka", insuranceOn = u8"Pojistka · 2:00",
+    insuranceOff = u8"Pojistka vypnutá", keepHistory = u8"Ulož, co jsem hrál",
+    emptyHistory = u8"Zatím není co uložit. Zahraj několik tónů.", ideaRecording = u8"NAHRÁVÁM NÁPAD",
+    savingIdea = u8"Ukládám nápad…", ideaSaved = u8"Uloženo jako ", ideaStar = u8"★ Povedené",
+    starredOnly = u8"Jen ★", allIdeas = u8"Všechny", note = u8"Poznámka", saveNote = u8"Uložit poznámku",
+    searchNote = u8"Hledat v poznámkách", filterIdeas = u8"Vyhledat", nextIdeas = u8"Starší",
+    prevIdeas = u8"Novější", useIdea = u8"Udělat z toho skladbu", tapIdea = u8"Doťukat tempo",
+    tapHint = u8"Ťukni osmkrát mezerníkem do rytmu, začni na první době.",
+    freeTempo = u8"Na volně hraný nápad mřížka sedí přibližně. Finální verzi nahraj s klikem.",
+    badTaps = u8"Zkus osm pravidelných dob při 30 až 300 BPM.", addBacking = u8"Přidat podklad",
+    backing = u8"Podklad", atCursor = u8"Na ukazatel", atBeginning = u8"Na začátek skladby",
+    importing = u8"Převádím podklad…",
+    importFailed =
+        u8"Soubor se nepodařilo přečíst. Vyber podporovaný zvukový soubor s jedním nebo dvěma kanály.",
+    badIdeaInput = u8"V Zapojení vyber zvukovku a vstup kytary.",
+    previewRate = u8"Náhled se nepodařilo přehrát.", keepRecording = u8"Zastavit a uložit",
+    chooseIdeaInput = u8"Vstup pro nápady", ideaClick = u8"Klik pro nápad",
+    noMatches = u8"Tomuto výběru neodpovídá žádný nápad.";
 inline const juce::String
     mixMode = u8"3 Míchej",
     sendMix = u8"Poslat mix…", gainLabel = u8"Hlasitost", panLabel = u8"Poloha L / P",

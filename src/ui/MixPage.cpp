@@ -110,7 +110,7 @@ void Studio::mixPage(Rect area) {
             lane.removeFromLeft(s::clipWidth);
         trackMeters.push_back(lane.removeFromLeft(s::nameWidth));
         if (t.inputOver >= 0)
-            button(cs::inputOver + " · " + bar(song, t.inputOver), lane.removeFromLeft(s::labelWidth),
+            button(cs::inputOver + cs::divider + bar(song, t.inputOver), lane.removeFromLeft(s::labelWidth),
                    [this, frame = t.inputOver] { seekMix(frame); });
     }
     timelineArea = ruler.withBottom(lanes.empty() ? ruler.getBottom() : lanes.back().getBottom());
@@ -125,7 +125,7 @@ void Studio::mixPage(Rect area) {
     actions.removeFromLeft(s::gap);
     auto meter = performance ? performance->playback.meter() : lastMeter;
     if (meter.over >= 0)
-        button(cs::mixOver + " · " + bar(song, meter.over), actions.removeFromLeft(s::labelWidth),
+        button(cs::mixOver + cs::divider + bar(song, meter.over), actions.removeFromLeft(s::labelWidth),
                [this, frame = meter.over] { seekMix(frame); });
     else
         text(cs::noOver, actions.removeFromLeft(s::clipWidth), s::body, s::ready);
@@ -165,7 +165,7 @@ void Studio::paintMix(Graphics& g) {
     draw(r, performance ? m.right : 0, cs::rightShort);
     g.setColour(m.maximum > 1 ? s::clipping : s::chalk);
     g.drawText(cs::mixPeak + " " + db(m.maximum) +
-                   (m.loudest >= 0 ? " · " + bar(song, m.loudest) : String{}),
+                   (m.loudest >= 0 ? cs::divider + bar(song, m.loudest) : String{}),
                mixReadout, Justification::centredLeft);
 }
 void Studio::exportPage(Rect area) {
@@ -205,7 +205,7 @@ void Studio::exportPage(Rect area) {
         selectedRange ? 1 : 0)
         ->setEnabled(!delivery.valid() && selection().valid());
     if (selection().valid())
-        text(bar(song, selection().from) + " – " + bar(song, selection().to - 1), scope, s::body,
+        text(bar(song, selection().from) + cs::rangeDash + bar(song, selection().to - 1), scope, s::body,
              s::muted);
     auto solo = soloNames();
     if (solo.isNotEmpty())
@@ -223,7 +223,7 @@ void Studio::exportPage(Rect area) {
              s::heading);
         auto m = delivered.meter;
         text(cs::mixPeak + " " + db(m.maximum) +
-                 (m.loudest >= 0 ? " · " + bar(song, m.loudest) : String{}),
+                 (m.loudest >= 0 ? cs::divider + bar(song, m.loudest) : String{}),
              line(area), s::body, m.over >= 0 ? s::clipping : s::chalk);
         auto play = line(area);
         button(cs::playMix, play.removeFromLeft(s::labelWidth), [this] {
@@ -234,7 +234,7 @@ void Studio::exportPage(Rect area) {
                [this] { delivered.file.revealToUser(); });
         if (m.over >= 0) {
             auto repair = line(area);
-            button(cs::mixOver + " · " + bar(song, m.over), repair.removeFromLeft(s::labelWidth),
+            button(cs::mixOver + cs::divider + bar(song, m.over), repair.removeFromLeft(s::labelWidth),
                    [this, m] {
                        mixMode(false);
                        seekMix(m.over);

@@ -222,6 +222,10 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
         if (tunings[i].name == settings.tuningName)
             tuningIndex = i;
     libraryRoot = root == File{} ? settingsFile.getSiblingFile("Skladby") : root;
+    ideas = std::make_unique<Ideas>(libraryRoot.getSiblingFile("Napady"));
+    ideas->recover();
+    if (!ideas->all().empty())
+        chooseIdea(ideas->all().front());
     resetTuning();
     devices.changed = [this] { refresh(true); };
     refresh(false);
@@ -235,6 +239,19 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
 }
 Studio::~Studio() {
     stopTimer();
+    stopPreview();
+    stopIdea();
+    if (preparingPreview.valid()) {
+        preparingPreview.wait();
+        finishPreview();
+    }
+    if (savingIdea.valid())
+        savingIdea.wait();
+    if (importing.valid()) {
+        stopProject();
+        importing.wait();
+        finishImport();
+    }
     finishProject();
     cancelPendingUpdate();
     devices.changed = {};
@@ -247,6 +264,8 @@ void Studio::persist() {
         message = cs::writeError;
 }
 void Studio::refresh(bool notify) {
+    stopPreview();
+    stopIdea();
     activityBeforePluck.clear();
     if (performance)
         stopProject();
@@ -276,6 +295,8 @@ void Studio::refresh(bool notify) {
     triggerAsyncUpdate();
 }
 void Studio::choose(DeviceChoice d) {
+    stopPreview();
+    stopIdea();
     const bool ok = link.select(d);
     resetRoute();
     message = ok ? String{} : String(cs::failed);
@@ -296,6 +317,10 @@ void Studio::finish() {
     persist();
 }
 void Studio::show(Page value) {
+    if (value != Page::ideas) {
+        stopPreview();
+        stopIdea();
+    }
     if (performance)
         stopProject();
     if ((value == Page::amp || value == Page::live) && page != Page::amp && page != Page::live)
@@ -337,6 +362,7 @@ void Studio::status(String value) {
 }
 void Studio::timerCallback() {
     projectTick();
+    ideaTick();
     if ((page >= Page::live && page <= Page::customTuning) || (page == Page::project && soundDeckOpen))
         pollLive();
     if (page == Page::inputs) {
@@ -385,6 +411,8 @@ void Studio::paint(Graphics& g) {
     g.fillRect(0, getHeight() - s::footer, getWidth(), s::hairline);
     if (page == Page::project)
         paintProject(g);
+    if (page == Page::home || page == Page::ideas)
+        paintIdeas(g);
     if (page == Page::live) {
         auto drawMeter = [&](Rect r, float value, float held, bool clipped) {
             auto track = r.withSizeKeepingCentre(r.getWidth(), s::grid * 2);
@@ -482,6 +510,8 @@ void Studio::combo(const String& title, Rect r, const StringArray& items, int se
 }
 void Studio::rebuild() {
     controls.clear();
+    ideaWaves.clear();
+    ideaTrace = {};
     soundBadge = nullptr;
     dynamicLines.clear();
     needleArea = {};
@@ -495,6 +525,11 @@ void Studio::rebuild() {
         return;
     auto area = getLocalBounds().reduced(s::margin, 0);
     area = area.withSizeKeepingCentre(std::min(area.getWidth(), s::maxWidth), area.getHeight());
+    if (page == Page::ideas) {
+        ideaPage(area);
+        repaint();
+        return;
+    }
     if (page >= Page::newProject) {
         projectPage(area);
         repaint();
@@ -526,12 +561,19 @@ void Studio::makeHome(Rect area) {
     button(cs::tuner, footer.removeFromLeft(s::nameWidth), [this] { toggleTuner(); }, tunerButton, "T");
     footer.removeFromLeft(s::gap);
     button(cs::livePage, footer.removeFromLeft(s::clipWidth), [this] { show(Page::live); }, primary);
-    text(message, footer.reduced(s::inset, 0), s::body, message == cs::saved ? s::ready : s::warning,
-         false, false, true);
+    if (message.isEmpty()) {
+        button(settings.insurance ? cs::insuranceOn : cs::insuranceOff,
+               footer.removeFromLeft(s::clipWidth), [this] { show(Page::ideas); });
+        button(cs::keepHistory, footer.removeFromLeft(s::nameWidth), [this] {
+            startIdea(true);
+        })->setEnabled(settings.insurance);
+    } else
+        text(limit(skin.font(s::body), message, footer.getWidth() - 2 * s::inset),
+             footer.reduced(s::inset, 0), s::body, s::warning);
     area.reduce(0, s::gutter);
     auto actions = area.removeFromTop(s::recordButton);
     int card = (actions.getWidth() - s::inset) / 2;
-    button(cs::record, actions.removeFromLeft(card), [this] { status(cs::coming(8)); }, recording, "R");
+    button(cs::record, actions.removeFromLeft(card), [this] { startIdea(false); }, recording, "R");
     actions.removeFromLeft(s::inset);
     button(cs::song, actions, [this] { newProject(); }, newSong, "N");
     area.removeFromTop(s::gutter);
@@ -540,32 +582,65 @@ void Studio::makeHome(Rect area) {
         panels.push_back(p);
         p.reduce(s::gutter, s::inset);
         auto h = p.removeFromTop(s::transport);
-        text(String(i ? cs::ideas : cs::resume).toUpperCase(), h, s::section, s::muted, false, true);
+        auto heading = String(i ? cs::ideas : cs::resume).toUpperCase();
+        if (i && !ideas->all().empty())
+            heading += "   " + cs::starMark +
+                       String(int(std::count_if(ideas->all().begin(), ideas->all().end(),
+                                                [](auto& x) { return x.star; }))) +
+                       cs::divider + cs::totalIdeas + " " + String(int(ideas->all().size()));
+        text(heading, h, s::section, s::muted, false, true);
         auto b = h.removeFromRight(s::nameWidth).withSizeKeepingCentre(s::nameWidth, s::button);
         if (i)
-            button(cs::library, b, [this] { status(cs::coming(8)); });
+            button(cs::library, b, [this] { show(Page::ideas); });
         else
             button(cs::resume, b, [this] { openProject(File(settings.lastSong)); }, plain, "Enter");
         if (!i && libraryRoot.isDirectory()) {
             auto projects = libraryRoot.findChildFiles(File::findDirectories, false);
-            StringArray names;
-            int selected = 0;
+            std::vector<File> recent;
             for (auto& dir : projects)
-                if (dir.getChildFile("skladba.json").existsAsFile() ||
-                    Song::latestVersion(dir) != File{}) {
-                    if (dir.getFullPathName() == settings.lastSong)
-                        selected = names.size();
-                    names.add(dir.getFileName());
-                }
-            if (!names.isEmpty()) {
+                if (dir.getChildFile("skladba.json").existsAsFile() || Song::latestVersion(dir) != File{})
+                    recent.push_back(dir);
+            std::stable_sort(recent.begin(), recent.end(), [this](const auto& a, const auto& b) {
+                if (a == b)
+                    return false;
+                if (a.getFullPathName() == settings.lastSong)
+                    return true;
+                if (b.getFullPathName() == settings.lastSong)
+                    return false;
+                return a.getChildFile("skladba.json").getLastModificationTime() >
+                       b.getChildFile("skladba.json").getLastModificationTime();
+            });
+            if (!recent.empty()) {
                 if (settings.lastSong.isEmpty())
-                    settings.lastSong = libraryRoot.getChildFile(names[selected]).getFullPathName();
-                combo(cs::chooseSong, p.removeFromTop(s::button), names, selected, [this, names](int i) {
-                    settings.lastSong = libraryRoot.getChildFile(names[i]).getFullPathName();
-                    persist();
-                });
+                    settings.lastSong = recent.front().getFullPathName();
+                for (auto& dir : recent) {
+                    if (p.getHeight() < s::button)
+                        break;
+                    auto line = p.removeFromTop(s::button);
+                    p.removeFromTop(s::grid);
+                    bool bad = false;
+                    auto project = Song::load(dir, bad);
+                    auto label = project ? project->title : dir.getFileName();
+                    button(limit(skin.font(s::body, false, true), label, s::nameWidth - 2 * s::inset),
+                           line.removeFromLeft(s::nameWidth), [this, dir] { openProject(dir); });
+                    line.removeFromLeft(s::gap);
+                    if (project) {
+                        auto pos = ViewState::load(dir).cursor;
+                        auto info = dir.getChildFile("skladba.json")
+                                        .getLastModificationTime()
+                                        .formatted("%d. %m. %H:%M") +
+                                    cs::divider + cs::bar + " " +
+                                    String(project->grid.beatAt(pos) / project->grid.beats + 1) + cs::divider +
+                                    project->tuning + cs::divider + String(project->grid.bpm, 1) + " BPM";
+                        text(limit(skin.font(s::body), info, line.getWidth()), line, s::body, s::muted);
+                    }
+                }
                 continue;
             }
+        }
+        if (i && !ideas->all().empty()) {
+            ideaHome(p);
+            continue;
         }
         text(i ? cs::emptyIdeas : cs::emptySongs, p, s::heading, s::chalk);
         area.removeFromTop(s::gap);
@@ -742,6 +817,8 @@ void Studio::inputPage(Rect area) {
             show(Page::live);
         });
     }
+    button(settings.insurance ? cs::insuranceOn : cs::insuranceOff, options.removeFromRight(s::clipWidth),
+           [this] { enableInsurance(); });
     text(cs::clipHelp, options, s::caption, s::muted);
     if (link.caps.inputs.isEmpty()) {
         text(cs::noInputs, area, s::body, s::warning);
@@ -764,6 +841,30 @@ void Studio::inputPage(Rect area) {
     }
 }
 bool Studio::keyPressed(const KeyPress& key) {
+    if (page == Page::ideas && !key.getModifiers().isAnyModifierKeyDown()) {
+        if (dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()) &&
+            key != KeyPress::escapeKey)
+            return false;
+        auto code = CharacterFunctions::toUpperCase((juce_wchar)key.getKeyCode());
+        if (code == 'R' || (key == KeyPress::spaceKey && ideaRecording)) {
+            if (ideaRecording)
+                stopIdea();
+            else
+                startIdea(false);
+            return true;
+        }
+        if (code == 'U') {
+            startIdea(true);
+            return true;
+        }
+        if (key == KeyPress::spaceKey) {
+            if (tapping)
+                tapIdea();
+            else
+                playIdea(false);
+            return true;
+        }
+    }
     if (page == Page::project && !namingPreset && editKey(key))
         return true;
     if (page == Page::project && namingPreset && soundDeckOpen) {
@@ -852,8 +953,10 @@ bool Studio::keyPressed(const KeyPress& key) {
         return false;
     switch (CharacterFunctions::toUpperCase(static_cast<juce_wchar>(key.getKeyCode()))) {
     case 'R':
+        startIdea(false);
+        return true;
     case 'U':
-        status(cs::coming(8));
+        startIdea(true);
         return true;
     case 'N':
         newProject();
