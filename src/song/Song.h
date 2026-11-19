@@ -22,6 +22,8 @@ struct Track {
     GuitarSound amp;
     float gainDb = 0, pan = 0;
     Frame inputOver = -1;
+    juce::String group;
+    float groupDb=0;
 };
 struct Clip {
     bool operator==(const Clip&) const = default;
@@ -92,6 +94,8 @@ struct Song {
     void commitGroup(const TakeGroup&);
     void extendOrder(Frame);
     Frame end() const;
+    bool linkedTrack(const juce::String&, const juce::String&) const;
+    juce::StringArray members(const juce::String&) const;
     juce::var json() const;
     static std::optional<Song> parse(const juce::var&, bool& damaged);
     bool save(const juce::File&) const;

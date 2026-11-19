@@ -81,7 +81,7 @@ void Playback::updateMix(const Song& s) {
         auto& strip = *strips[i];
         const auto& t = s.tracks[i];
         strip.audible.store(!t.mute && (!solo || t.solo));
-        const auto amplitude = Decibels::decibelsToGain(t.gainDb, -96.f);
+        const auto amplitude = Decibels::decibelsToGain(t.gainDb, -96.f)*Decibels::decibelsToGain(t.groupDb,-96.f);
         const double p = t.pan;
         double left = strip.channels == 1 ? std::cos((p + 1) * MathConstants<double>::pi / 4)
                                           : (p > 0 ? std::cos(p * MathConstants<double>::halfPi) : 1);

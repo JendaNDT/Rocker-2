@@ -10,6 +10,7 @@ struct Span {
 struct Fragment {
     Frame length = 0;
     std::vector<Clip> clips;
+    juce::StringArray sourceTracks;
 };
 // Edits address source frames. Only the named track and intersecting material change.
 Fragment copySpan(const Song&, const juce::String& track, Span, const juce::String& clipId = {});
