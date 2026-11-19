@@ -2,7 +2,7 @@
 #include "Timeline.h"
 
 namespace rocker {
-enum class Delivery { wave24, wave16, mp3 };
+enum class Delivery { wave24, wave16, mp3, m4a };
 struct MixFile {
     juce::File file;
     Playback::Meter meter;

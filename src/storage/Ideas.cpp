@@ -124,6 +124,9 @@ bool Ideas::update(const Idea& x) {
         }
     return false;
 }
+bool Ideas::remove(const String&, const std::function<bool(const File&)>&) {
+    return false;
+}
 std::optional<Song> Ideas::toSong(const Idea& x, const File& dir, const String& title,
                                   const String& trackName) const {
     Song s;
