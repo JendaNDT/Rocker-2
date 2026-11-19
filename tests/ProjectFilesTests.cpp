@@ -1,6 +1,7 @@
 #include "storage/ProjectFiles.h"
 #include "engine/Devices.h"
 #include <catch2/catch_test_macros.hpp>
+#include <future>
 namespace {
 using namespace rocker;
 using namespace juce;
@@ -60,13 +61,19 @@ TEST_CASE("A-10 A-11 Czech long paths and all song files survive a ZIP64 package
     float* out[]{l, r};
     music.mix(out, 2, 256, 0);
     CHECK(l[25] > 0);
+    auto simultaneous =
+        std::async(std::launch::async, [&] { return unpackSong(pack, temp.dir.getChildFile("second")); });
     auto another = unpackSong(pack, temp.dir.getChildFile("second"));
+    auto third = simultaneous.get();
+    REQUIRE(third);
+    CHECK(third != another);
+    CHECK(third != dest);
     REQUIRE(another);
     CHECK(*another != *dest);
     auto broken = temp.dir.getChildFile("broken.rocker2");
     REQUIRE(broken.replaceWithText("broken"));
     CHECK_FALSE(unpackSong(broken, temp.dir.getChildFile("second")));
-    CHECK(temp.dir.getChildFile("second").findChildFiles(File::findDirectories, false).size() == 2);
+    CHECK(temp.dir.getChildFile("second").findChildFiles(File::findDirectories, false).size() == 3);
 }
 TEST_CASE("Explicit cleanup protects current clips, undo, archives and recovery") {
     Temp temp;

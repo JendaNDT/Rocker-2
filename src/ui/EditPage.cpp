@@ -222,7 +222,7 @@ void Studio::restoreVersion() {
 void Studio::versionsDeck(Rect area) {
     auto top = area.removeFromTop(s::button);
     fileOptions(top);
-    text(cs::versions, top.removeFromLeft(s::levelWidth), s::heading);
+    text(cs::versions, top, s::heading);
     area.removeFromTop(s::gap);
     auto row = area.removeFromTop(s::button);
     button(cs::back, row.removeFromRight(s::levelWidth), [this] {
