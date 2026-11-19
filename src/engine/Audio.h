@@ -20,6 +20,7 @@ class Audio {
     std::atomic<bool> measuringLoad{false};
     std::atomic<float> peakLoad{0};
     Live live;
+    DrumInput drums;
     std::shared_ptr<IdeaInput> ideaInput;
     std::atomic<int> ideaPort{0};
     Timeline timeline;

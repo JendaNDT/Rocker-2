@@ -16,6 +16,7 @@ void Audio::prepare(int inputs, int sampleRate) {
     count = inputs;
     rate = sampleRate;
     live.prepare(rate);
+    drums.prepare(rate);
     ideaInput = inputs > 0 ? std::make_shared<IdeaInput>(rate, insuranceEnabled) : nullptr;
     rolling.store(ideaInput.get());
     position = -1;
@@ -53,6 +54,7 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
                     int frames) noexcept {
     juce::ScopedNoDenormals denormals;
     const auto start = std::chrono::steady_clock::now();
+    auto hits=drums.block(frames,juce::Time::getMillisecondCounterHiRes()*.001);
     const auto generation = hitGeneration.load();
     for (int c = 0; c < count; ++c) {
         auto& m = meters[c];
@@ -103,7 +105,8 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
             position = -1;
     }
     live.render(inputs, inputCount, outputs, outputCount, frames);
-    timeline.process(inputs, inputCount, outputs, outputCount, frames);
+    timeline.process(inputs,inputCount,outputs,outputCount,frames,hits,drums.position,drums.overflow.exchange(false));
+    drums.render(outputs,outputCount,frames,hits);
     if (frames > 0) {
         const auto elapsed =
             std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();

@@ -24,6 +24,7 @@ struct Track {
     Frame inputOver = -1;
     juce::String group;
     float groupDb = 0;
+    int kit = 0;
 };
 struct Clip {
     bool operator==(const Clip&) const = default;
