@@ -87,6 +87,9 @@ void Studio::openProject(File dir) {
     finishProject();
     const bool sameProject = projectDir == dir;
     projectDir = dir;
+    comparing = false;
+    preview = -1;
+    previewGroup.clear();
     browsingVersions = false;
     drag = Drag::none;
     if (!sameProject)
@@ -190,7 +193,7 @@ void Studio::editTrack(bool fresh) {
     }
     show(Page::trackSettings);
 }
-void Studio::startProject(bool record) {
+void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
     if (performance)
         return;
     if (!link.online) {
@@ -205,40 +208,72 @@ void Studio::startProject(bool record) {
         status(cs::partialProject);
         return;
     }
-    if (!record && view.cursor >= song.end())
+    if (!record && !auditionGroup && view.cursor >= song.end())
         view.cursor = 0;
-    auto p = std::make_unique<Performance>(song, library, view.cursor, record, view.click,
+    Frame start = view.cursor;
+
+    if (repair) {
+        start = std::max<Frame>(0, selection().from - song.grid.beat(view.leadBars * song.grid.beats));
+    }
+    auto p = std::make_unique<Performance>(song, library, start, record, view.click,
                                            record && view.countIn ? song.grid.beats : 0);
+    if (repair) {
+        p->punchFrom = selection().from;
+        p->punchTo = selection().to;
+        p->monitorPunch = projectMonitor != 0;
+        p->cleanPunch = projectMonitor == 1;
+    }
+    if (auditionGroup) {
+        p->end = auditionGroup->to + song.grid.beat(song.grid.beats);
+        p->playback.selectAttempt(auditionGroup->id, previewGroup == auditionGroup->id && preview >= 0
+                                                         ? preview
+                                                         : auditionGroup->active);
+    }
     if (record) {
+        Song capture = song;
+        if (repair)
+            for (auto& t : capture.tracks)
+                t.armed = t.id == selectedTrack();
         int latency = link.caps.inputLatency + link.caps.outputLatency;
         auto saved = settings.latency.find(Settings::calibrationKey(link.current));
         if (saved != settings.latency.end())
             latency = saved->second.samples;
-        if (std::none_of(song.tracks.begin(), song.tracks.end(), [](auto& t) { return t.armed; })) {
+        if (std::none_of(capture.tracks.begin(), capture.tracks.end(), [](auto& t) { return t.armed; })) {
             status(cs::noneArmed);
             return;
         }
-        for (auto& t : song.tracks)
+        for (auto& t : capture.tracks)
             if (t.armed && (t.inputs.isEmpty() || !link.caps.inputs.contains(t.inputs[0]) ||
                             (t.inputs.size() > 1 && !link.caps.inputs.contains(t.inputs[1])))) {
                 status(cs::missingInputs);
                 return;
             }
-        if (!p->arm(song, projectDir, link.caps.inputs, latency)) {
+        if (!p->arm(capture, projectDir, link.caps.inputs, latency)) {
             status(cs::writeError);
             return;
+        }
+        if (repair) {
+            p->end = p->punchTo + song.grid.beat(view.tailBars * song.grid.beats) + p->compensation;
+            link.audio.live.monitor = Monitor::off;
         }
         preventSleep(true);
     }
     liveWaves.clear();
     performance = std::move(p);
     link.audio.timeline.attach(*performance);
-    status({});
+    if (repair) {
+        auto* group = song.groupAt(selectedTrack(), selection().from, selection().to);
+        status(cs::repairState + " · " + cs::bars + " " +
+               String(song.grid.beatAt(selection().from) / song.grid.beats + 1) + " · " +
+               cs::attemptLabel + " " + String(group ? (int)group->attempts.size() + 2 : 2));
+    } else
+        status({});
 }
 void Studio::stopProject() {
     if (!performance)
         return;
     link.audio.timeline.detach();
+    comparing = false;
     auto p = std::move(performance);
     p->finishDisk();
     if (p->recording)
@@ -256,15 +291,26 @@ void Studio::stopProject() {
     view.cursor = std::max(p->start, p->cursor.load());
     if (p->drop >= 0)
         song.dropouts.push_back(p->drop.load());
+    bool complete = false;
     if (p->recording) {
         if (!recoverTake(song, projectDir, p->journal) || !library.load(song, projectDir) ||
             p->failed.load())
             status(cs::writeError);
-        else
+        else {
+            complete = p->finished && !p->failed && p->drop < 0;
             status(p->drop >= 0 ? cs::dropout : cs::savedSong);
+        }
     }
     if (p->recording)
         history.remember(song, cs::newTake);
+    if (p->isPunch()) {
+        configureSongMonitor();
+        if (auto* g = song.groupAt(selectedTrack(), p->punchFrom, p->punchTo); g && complete) {
+            preview = g->active;
+            previewGroup = g->id;
+            audition(*g);
+        }
+    }
     if (!view.save(projectDir))
         status(cs::writeError);
     triggerAsyncUpdate();
@@ -278,7 +324,7 @@ void Studio::projectTick() {
         auto frame = playPosition();
         if (frame >= performance->start)
             for (const auto& t : song.tracks)
-                if (t.armed && !t.inputs.isEmpty()) {
+                if ((performance->isPunch() ? t.id == selectedTrack() : t.armed) && !t.inputs.isEmpty()) {
                     auto& peaks = liveWaves[t.id];
                     if (peaks.empty() || peaks.back().first != frame) {
                         peaks.emplace_back(frame,
@@ -702,10 +748,11 @@ void Studio::paintProject(Graphics& g) {
     const auto beat = song.grid.beatAt(std::max<Frame>(pos, 0));
     const bool counting = performance && pos < performance->start;
     const bool rec = performance && performance->recording && !counting;
-    const String state = counting      ? cs::countIn
-                         : rec         ? cs::stateRecord
-                         : performance ? cs::statePlay
-                                       : cs::stateStop;
+    const String state = performance && performance->isPunch() && !counting ? cs::repairState
+                         : counting                                         ? cs::countIn
+                         : rec                                              ? cs::stateRecord
+                         : performance                                      ? cs::statePlay
+                                                                            : cs::stateStop;
     const String clock =
         counting ? String(std::max<Frame>(1, -song.grid.beatAt(pos - performance->start)))
                  : String(beat / song.grid.beats + 1) + "." + String(beat % song.grid.beats + 1);
@@ -773,14 +820,18 @@ void Studio::paintProject(Graphics& g) {
         g.setColour(s::line);
         g.drawHorizontalLine(lane.getBottom() - 1, (float)lane.getX(), (float)lane.getRight());
         auto ink = t.kind == "kytara" ? s::guitar : t.kind == "bici" ? s::drums : s::other;
-        for (auto& c : song.clips)
-            if (c.track == t.id && c.position < last && c.position + c.length > begin) {
+        auto drawClip = [&](const Clip& c, Frame firstFrame, Frame lastFrame, bool cover) {
+            if (c.track == t.id && lastFrame > begin && firstFrame < last && lastFrame > firstFrame) {
                 auto cache = library.data.find(c.asset);
                 if (cache == library.data.end())
-                    continue;
-                auto bounds = lane.withLeft(x(std::max(c.position, begin)))
-                                  .withRight(x(std::min(c.position + c.length, last)))
+                    return;
+                auto bounds = lane.withLeft(x(std::max(firstFrame, begin)))
+                                  .withRight(x(std::min(lastFrame, last)))
                                   .reduced(0, s::grid);
+                if (cover) {
+                    g.setColour(s::panel);
+                    g.fillRect(bounds);
+                }
                 g.setColour(ink.withAlpha(s::selectionOpacity));
                 g.fillRect(bounds);
                 g.setColour(ink);
@@ -795,7 +846,17 @@ void Studio::paintProject(Graphics& g) {
                     g.drawVerticalLine(px, bounds.getCentreY() - height, bounds.getCentreY() + height);
                 }
             }
-        if (rec && t.armed && pos > begin) {
+        };
+        for (const auto& clip : song.clips)
+            drawClip(clip, clip.position, clip.position + clip.length, false);
+        for (const auto& group : song.groups) {
+            int index = previewGroup == group.id && preview >= 0 ? preview : group.active;
+            if (group.track == t.id && index > 0 && index <= (int)group.attempts.size())
+                for (const auto& pass : group.attempts[index - 1].clips)
+                    drawClip(pass, std::max(pass.position, group.from),
+                             std::min(pass.position + pass.length, group.to), true);
+        }
+        if (rec && (performance->isPunch() ? t.id == selectedTrack() : t.armed) && pos > begin) {
             auto recorded = lane.withLeft(x(std::max(begin, performance->start)))
                                 .withRight(x(std::min(pos, last)))
                                 .reduced(0, s::grid);

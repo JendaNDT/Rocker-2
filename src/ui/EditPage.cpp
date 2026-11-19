@@ -35,6 +35,8 @@ int Studio::pixelAt(Frame pos) const {
                       axis.getWidth());
 }
 void Studio::pick(Span span, String id) {
+    preview = -1;
+    previewGroup.clear();
     view.selectionStart = span.from;
     view.selectionEnd = span.to;
     view.selectedClip = std::move(id);
@@ -157,6 +159,8 @@ void Studio::undo(bool forward) {
     auto action = history.step(song, forward);
     if (action.isEmpty())
         return;
+    preview = -1;
+    previewGroup.clear();
     normalizeSelection();
     view.cursor = std::min(view.cursor, song.end());
     soundDeckOpen = namingPreset = false;
@@ -226,9 +230,109 @@ void Studio::versionsDeck(Rect area) {
         names.add(file.getLastModificationTime().formatted("%d.%m.%Y   %H:%M:%S"));
     combo(cs::versionTime, row, names, versionIndex, [this](int i) { versionIndex = i; });
 }
-void Studio::editDeck(Rect area) {
+void Studio::startRepair() {
+    if (comparing)
+        stopProject();
+    if (performance)
+        return;
+    if (!selection().valid() || selectedTrack().isEmpty()) {
+        status(cs::pickRepair);
+        return;
+    }
+    startProject(true, true);
+}
+void Studio::audition(TakeGroup& group) {
+    view.cursor = std::max<Frame>(0, group.from - song.grid.beat(song.grid.beats));
+    startProject(false, false, &group);
+    comparing = performance != nullptr;
+}
+void Studio::chooseAttempt(bool keep) {
+    auto* g = song.groupAt(selectedTrack(), selection().from, selection().to);
+    if (!g || (performance && performance->recording))
+        return;
+    if (previewGroup != g->id || preview < 0 || preview > (int)g->attempts.size()) {
+        preview = g->active;
+        previewGroup = g->id;
+    }
+    if (keep) {
+        g->active = preview;
+        history.remember(song, cs::keepAttempt);
+        saveSong();
+        status(cs::savedAttempt);
+        return;
+    }
+    do {
+        preview = (preview + 1) % (1 + (int)g->attempts.size());
+    } while (preview && g->attempts[preview - 1].discarded);
+    if (performance)
+        performance->playback.selectAttempt(g->id, preview);
+    else
+        audition(*g);
+    triggerAsyncUpdate();
+}
+void Studio::discardAttempt() {
+    auto* g = song.groupAt(selectedTrack(), selection().from, selection().to);
+    if (!g || (performance && performance->recording))
+        return;
+    int index = previewGroup == g->id && preview >= 0 ? preview : g->active;
+    if (!index || index > (int)g->attempts.size())
+        return;
+    g->active = index;
+    g->discard();
+    preview = g->active;
+    previewGroup = g->id;
+    if (performance)
+        performance->playback.selectAttempt(g->id, preview);
+    history.remember(song, cs::discardAttempt);
+    saveSong();
+    status(cs::discardedAttempt);
+}
+void Studio::attemptDeck(TakeGroup& g, Rect area) {
+    int index =
+        previewGroup == g.id && preview >= 0 && preview <= (int)g.attempts.size() ? preview : g.active;
     auto line = area.removeFromTop(s::button);
+    text(cs::takeGroup, line.removeFromLeft(s::levelWidth), s::heading);
+    String name =
+        cs::attemptLabel + " " + String(index + 1) + " · " +
+        (index ? Time(g.attempts[index - 1].created).formatted("%d.%m. %H:%M:%S") : cs::originalTake);
+    text(name, line, s::body);
+    auto row = area.removeFromTop(s::button);
+    auto add = [&](String label, Handler fn) {
+        auto* b = button(label, row.removeFromLeft(s::clipWidth), std::move(fn));
+        row.removeFromLeft(s::grid);
+        return b;
+    };
+    add(cs::repair, [this] { startRepair(); });
+    add(cs::nextAttempt, [this] { chooseAttempt(false); });
+    add(cs::keepAttempt, [this] { chooseAttempt(true); });
+    add(cs::discardAttempt, [this] { discardAttempt(); })->setEnabled(index != 0);
+    if (std::any_of(g.attempts.begin(), g.attempts.end(), [](auto& a) { return a.discarded; }))
+        add(cs::restoredTake, [this] {
+            auto* active = song.groupAt(selectedTrack(), selection().from, selection().to);
+            if (!active || performance)
+                return;
+            for (size_t i = active->attempts.size(); i > 0; --i) {
+                auto& take = active->attempts[i - 1];
+                if (!take.discarded)
+                    continue;
+                take.discarded = false;
+                active->active = (int)i;
+                previewGroup = active->id;
+                preview = (int)i;
+                history.remember(song, cs::restoredTake);
+                saveSong();
+                triggerAsyncUpdate();
+                break;
+            }
+        });
+}
+void Studio::editDeck(Rect area) {
     auto span = selection();
+    if (auto* group = song.groupAt(selectedTrack(), span.from, span.to)) {
+        attemptDeck(*group, area);
+        return;
+    }
+    auto line = area.removeFromTop(s::button);
     String caption = cs::rangeHint;
     if (span.valid() && !selectedTrack().isEmpty()) {
         auto first = song.grid.beatAt(span.from) / song.grid.beats + 1,
@@ -256,7 +360,21 @@ void Studio::editDeck(Rect area) {
     action(cs::erase, [this] { editOp(EditOp::erase); }, selected);
     action(cs::undo, [this] { undo(false); }, history.canStep(false));
     action(cs::redo, [this] { undo(true); }, history.canStep(true));
-    text(cs::editHint, area, s::caption, s::muted);
+    action(cs::repair, [this] { startRepair(); }, selected);
+    auto settingsRow = area.removeFromBottom(s::button);
+    StringArray lengths;
+    for (int i = 0; i <= 8; ++i)
+        lengths.add(String(i));
+    combo(cs::preRoll, settingsRow.removeFromLeft(s::clipWidth), lengths, view.leadBars, [this](int n) {
+        view.leadBars = n;
+        view.save(projectDir);
+    });
+    settingsRow.removeFromLeft(s::gap);
+    combo(cs::postRoll, settingsRow.removeFromLeft(s::clipWidth), lengths, view.tailBars, [this](int n) {
+        view.tailBars = n;
+        view.save(projectDir);
+    });
+    text(cs::editHint, settingsRow.withTrimmedLeft(s::gap), s::caption, s::muted);
 }
 bool Studio::editKey(const KeyPress& key) {
     auto code = key.getKeyCode();
@@ -286,7 +404,16 @@ bool Studio::editKey(const KeyPress& key) {
     }
     if (!view.editing)
         return false;
+    if (code == KeyPress::tabKey || code == KeyPress::returnKey) {
+        if (!song.groupAt(selectedTrack(), selection().from, selection().to))
+            return false;
+        chooseAttempt(code == KeyPress::returnKey);
+        return true;
+    }
     switch (code) {
+    case 'P':
+        startRepair();
+        return true;
     case 'X':
         editOp(EditOp::split);
         return true;
@@ -350,6 +477,32 @@ void Studio::editMouseDown(const MouseEvent& e) {
                     configureSongMonitor();
                 }
                 auto track = selectedTrack();
+                for (const auto& group : song.groups)
+                    if (track == group.track && e.x >= pixelAt(group.from) - s::grid &&
+                        e.x <= pixelAt(group.to) + s::grid && pointer.y < lanes[i].getY() + s::button) {
+                        pick({group.from, group.to});
+                        if (e.mods.isPopupMenu()) {
+                            PopupMenu menu;
+                            menu.addItem(1, cs::discardAttempt, group.active != 0);
+                            Component::SafePointer<Studio> safe(this);
+                            menu.showMenuAsync(PopupMenu::Options{}.withTargetComponent(this),
+                                               [safe, id = group.id](int chosen) {
+                                                   if (!safe || chosen != 1)
+                                                       return;
+                                                   auto* current = safe->song.groupAt(
+                                                       safe->selectedTrack(), safe->selection().from,
+                                                       safe->selection().to);
+                                                   if (current && current->id == id)
+                                                       safe->discardAttempt();
+                                               });
+                        } else if (std::abs(e.x - pixelAt(group.from)) <= s::grid)
+                            drag = Drag::takeLeft;
+                        else if (std::abs(e.x - pixelAt(group.to)) <= s::grid)
+                            drag = Drag::takeRight;
+                        view.save(projectDir);
+                        triggerAsyncUpdate();
+                        return;
+                    }
                 auto it = std::find_if(song.clips.rbegin(), song.clips.rend(), [&](const Clip& c) {
                     if (c.track != track)
                         return false;
@@ -417,7 +570,23 @@ void Studio::mouseDrag(const MouseEvent& e) {
 void Studio::mouseUp(const MouseEvent&) {
     if (!view.editing || drag == Drag::none)
         return;
-    if (dragged && drag != Drag::bars)
+    if (dragged && (drag == Drag::takeLeft || drag == Drag::takeRight)) {
+        if (auto* group = song.groupAt(selectedTrack(), selection().from, selection().to)) {
+            Frame first = 0, last = std::numeric_limits<Frame>::max();
+            for (const auto& attempt : group->attempts)
+                for (const auto& pass : attempt.clips) {
+                    first = std::max(first, pass.position);
+                    last = std::min(last, pass.position + pass.length);
+                }
+            if (drag == Drag::takeLeft && first < group->to)
+                group->from = jlimit(first, group->to - 1, dragTarget);
+            if (drag == Drag::takeRight && last > group->from)
+                group->to = jlimit(group->from + 1, last, dragTarget);
+            pick({group->from, group->to});
+            history.remember(song, cs::trim);
+            saveSong();
+        }
+    } else if (dragged && drag != Drag::bars)
         editOp(drag == Drag::move   ? EditOp::move
                : drag == Drag::left ? EditOp::trimLeft
                                     : EditOp::trimRight);
@@ -436,9 +605,30 @@ void Studio::paintEditOverlay(Graphics& g) {
             int x = pixelAt(song.grid.beat((firstBar() + i) * song.grid.beats + b));
             g.drawVerticalLine(x, axis.getY() + s::button, axis.getBottom());
         }
+    for (size_t i = 0; i < lanes.size(); ++i)
+        for (const auto& group : song.groups) {
+            if (group.track != song.tracks[firstTrack + i].id)
+                continue;
+            auto badge =
+                lanes[i].withLeft(pixelAt(group.from)).withRight(pixelAt(group.to)).withHeight(s::button);
+            g.setColour(s::raised);
+            g.fillRect(badge);
+            g.setColour(s::chalk);
+            g.setFont(skin.font(s::caption));
+            StringArray numbers{"1"};
+            for (size_t n = 0; n < group.attempts.size(); ++n)
+                if (!group.attempts[n].discarded)
+                    numbers.add(String((int)n + 2));
+            g.drawFittedText(cs::takeGroup + " " + numbers.joinIntoString(" | "), badge,
+                             Justification::centred, 1);
+        }
     Span span = selection();
     if (dragged && drag == Drag::move)
         span = {dragTarget, dragTarget + span.length()};
+    if (dragged && drag == Drag::takeLeft)
+        span.from = std::min(dragTarget, span.to - 1);
+    if (dragged && drag == Drag::takeRight)
+        span.to = std::max(dragTarget, span.from + 1);
     if (span.valid()) {
         auto bounds = axis.withLeft(pixelAt(span.from)).withRight(pixelAt(span.to));
         g.setColour(s::selection.withAlpha(s::selectionOpacity));

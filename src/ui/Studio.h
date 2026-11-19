@@ -120,7 +120,15 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void finishProject();
     void projectPage(Rect);
     void paintProject(juce::Graphics&);
-    void startProject(bool);
+    void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr);
+    void startRepair();
+    void audition(TakeGroup&);
+    void chooseAttempt(bool keep);
+    void discardAttempt();
+    bool comparing = false;
+    int preview = -1;
+    juce::String previewGroup;
+    void attemptDeck(TakeGroup&, Rect);
     void stopProject();
     void projectTick();
     void saveSong(juce::String action = {});
@@ -130,7 +138,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int versionIndex = 0;
     bool browsingVersions = false;
     Frame anchorBar = 0;
-    enum class Drag { none, move, left, right, bars };
+    enum class Drag { none, move, left, right, bars, takeLeft, takeRight };
     Drag drag = Drag::none;
     Frame grabOffset = 0, dragTarget = 0;
     juce::Point<int> pointer;
