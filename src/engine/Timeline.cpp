@@ -135,7 +135,9 @@ void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
     auto& strip = *strips[track];
     strip.command.publish(sound.values, sound.enabled, recall);
 }
-void Playback::setVoice(size_t, const VoiceSound&, bool) {}
+void Playback::setVoice(size_t track, const VoiceSound& sound, bool recall) {
+    strips.at(track)->voiceCommand.publish(sound, recall);
+}
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
     cutFade = std::max(1, roundToInt(.005 * s.grid.rate));
     int bar = 0;
@@ -178,6 +180,13 @@ Playback::Playback(const Song& s, const AudioLibrary& lib) {
             for (auto& amp : strip.amps)
                 amp.prepare(s.grid.rate);
             setSound(strips.size() - 1, track.amp, true);
+            if (!strip.clips.empty() || !strip.groups.empty())
+                tail = 2 * s.grid.rate;
+        } else if (track.kind == "jine") {
+            strip.voices.resize(strip.channels);
+            for (auto& voice : strip.voices)
+                voice.prepare(s.grid.rate);
+            setVoice(strips.size() - 1, track.voice, true);
             if (!strip.clips.empty() || !strip.groups.empty())
                 tail = 2 * s.grid.rate;
         }
@@ -264,6 +273,18 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
         }
     }
     applied = word;
+    const auto voiceSnapshot = voiceCommand.consume();
+    const auto voiceWord = voiceSnapshot & ~VoiceCommand::reset;
+    const bool voiceWet = !voices.empty() && (voiceWord & VoiceCommand::enabled) != 0;
+    const bool voiceReset = next != at || (voiceSnapshot & VoiceCommand::reset) != 0 ||
+                            ((appliedVoice ^ voiceWord) & VoiceCommand::enabled) != 0;
+    if (voiceWet && (voiceWord != appliedVoice || voiceReset))
+        for (auto& voice : voices) {
+            voice.configure(VoiceParameters::unpack(voiceWord));
+            if (voiceReset)
+                voice.reset();
+        }
+    appliedVoice = voiceWord;
     next = at + size;
     const bool heard = audible.load();
     float channelGain[]{gain[0].load(), gain[1].load()};
@@ -322,6 +343,10 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
             for (int ch = 0; ch < channels; ++ch)
                 for (int i = 0; i < count; ++i)
                     block[ch][i] = amps[ch].process(block[ch][i]);
+        if (voiceWet)
+            for (int ch = 0; ch < channels; ++ch)
+                for (int i = 0; i < count; ++i)
+                    block[ch][i] = voices[ch].process(block[ch][i]);
         if (cleanPunch && input && offset >= 0) {
             for (int ch = 0; ch < channels; ++ch) {
                 int port = livePorts[ch];

@@ -183,6 +183,8 @@ void Studio::pollLive() {
     if (auto limit = live.takeThreshold();
         limit && (page == Page::amp || (page == Page::project && soundDeckOpen))) {
         if (page == Page::project) {
+            if (song.tracks[view.selected].kind != "kytara")
+                return;
             auto& a = song.tracks[view.selected].amp;
             a.values.gate = static_cast<std::uint8_t>(*limit);
             a.modified = true;
@@ -515,7 +517,48 @@ void Studio::applyTrackSound(bool recall) {
         pendingSoundSave = Time::getMillisecondCounterHiRes() + 1200;
 }
 
+void Studio::voiceSoundDeck(Rect area) {
+    auto header = row(area);
+    text(cs::voicePanel, header.removeFromLeft(s::labelWidth), s::heading);
+    button(cs::useProject, header.removeFromRight(s::clipWidth), [this] {
+        soundDeckOpen = false;
+        triggerAsyncUpdate();
+    });
+    auto& voice = song.tracks[view.selected].voice;
+    combo(cs::presetTitle, header, cs::voicePresets, voice.preset, [this](int index) {
+        auto& chosen = song.tracks[view.selected].voice;
+        chosen = {voicePresets[size_t(index)], index};
+        if (performance)
+            performance->playback.setVoice(view.selected, chosen, true);
+        saveSong();
+        triggerAsyncUpdate();
+    });
+    if (voice.preset == 0)
+        return;
+    auto left = area.removeFromLeft((area.getWidth() - s::gutter) / 2);
+    area.removeFromLeft(s::gutter);
+    auto slider = [&](const String& title, Rect r, auto member, int high, int centre, const String& unit) {
+        fader(title, r, -centre, high - centre, voice.values.*member - centre, unit,
+              [this, member, centre](int value) {
+                  auto& chosen = song.tracks[view.selected].voice;
+                  chosen.values.*member = std::uint8_t(value + centre);
+                  if (performance)
+                      performance->playback.setVoice(view.selected, chosen, false);
+                  pendingSoundSave = Time::getMillisecondCounterHiRes() + 1200;
+              });
+    };
+    slider(cs::bass, row(left), &VoiceParameters::low, 24, 12, cs::gainUnit);
+    slider(cs::middle, row(left), &VoiceParameters::mid, 24, 12, cs::gainUnit);
+    slider(cs::treble, row(left), &VoiceParameters::high, 24, 12, cs::gainUnit);
+    slider(cs::voiceCompression, row(area), &VoiceParameters::compression, 100, 0, cs::percentUnit);
+    slider(cs::voiceDecay, row(area), &VoiceParameters::room, 100, 0, cs::percentUnit);
+}
+
 void Studio::trackSoundDeck(Rect area) {
+    if (song.tracks[view.selected].kind == "jine") {
+        voiceSoundDeck(area);
+        return;
+    }
     auto& track = song.tracks[view.selected];
     auto& amp = track.amp;
     auto header = row(area);

@@ -311,6 +311,8 @@ inline const juce::String
     useProject = u8"Zpět do skladby", inputMono = u8"Jeden vstup", inputPair = u8"Dva sousední vstupy",
     prepared = u8"Stopy připravené k nahrávání", audioTracks = u8"Stopy",
     availableSpace = u8"Volno na disku";
+inline const juce::String voicePanel = u8"Zvuk stopy", voiceCompression = u8"Komprese", voiceDecay = u8"Dozvuk";
+inline const juce::StringArray voicePresets{juce::String(u8"Bez úprav"), juce::String(u8"Zpěv"), juce::String(u8"Baskytara")};
 inline const juce::StringArray trackKinds{juce::String(u8"Bicí"), juce::String("Kytara"),
                                           juce::String(u8"Jiná")};
 } // namespace rocker::cs

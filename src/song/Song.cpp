@@ -128,7 +128,12 @@ Frame Song::end() const {
 }
 var Song::json() const {
     Array<var> ts, files, marks;
-    for (auto& t : tracks)
+    for (auto& t : tracks) {
+        var voice;
+        if (t.kind == "jine")
+            voice = object({{"predvolba", t.voice.preset}, {"basy", int(t.voice.values.low)},
+                            {"stredy", int(t.voice.values.mid)}, {"vysky", int(t.voice.values.high)},
+                            {"komprese", int(t.voice.values.compression)}, {"dozvuk", int(t.voice.values.room)}});
         ts.add(object({{"id", t.id},
                        {"nazev", t.name},
                        {"druh", t.kind},
@@ -138,11 +143,13 @@ var Song::json() const {
                        {"skupinaDb", t.groupDb},
                        {"sadaMidi", t.kit},
                        {"amp", t.kind == "kytara" ? t.amp.json() : var()},
+                       {"zvuk", voice},
                        {"mix", object({{"mute", t.mute},
                                        {"solo", t.solo},
                                        {"gainDb", t.gainDb},
                                        {"pan", t.pan},
                                        {"vstupPres", t.inputOver}})}}));
+    }
     auto encode = [](const Section& sec) {
         Array<var> cs;
         for (auto& c : sec.clips)
@@ -238,6 +245,16 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
             if (n.isString() && x.inputs.size() < 2)
                 x.inputs.add(n.toString());
         x.amp = GuitarSound::read(field(t, "amp"));
+        if (x.kind == "jine") {
+            const auto voice = field(t, "zvuk");
+            x.voice.preset = jlimit(0, 2, int(field(voice, "predvolba", 0)));
+            auto p = voicePresets[size_t(x.voice.preset)];
+            x.voice.values = {std::uint8_t(jlimit(0, 24, int(field(voice, "basy", int(p.low))))),
+                              std::uint8_t(jlimit(0, 24, int(field(voice, "stredy", int(p.mid))))),
+                              std::uint8_t(jlimit(0, 24, int(field(voice, "vysky", int(p.high))))),
+                              std::uint8_t(jlimit(0, 100, int(field(voice, "komprese", int(p.compression))))),
+                              std::uint8_t(jlimit(0, 100, int(field(voice, "dozvuk", int(p.room)))))};
+        }
         x.armed = field(t, "nahravat");
         x.kit = jlimit(0, 1, (int)field(t, "sadaMidi", 0));
         x.group = field(t, "skupina").toString();

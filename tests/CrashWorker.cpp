@@ -36,7 +36,21 @@ int main(int argc, char** argv) {
             if (k % 90 == 0)
                 Thread::sleep(4);
         }
-        Thread::sleep(40);
+        const auto logs = dir.getChildFile("Zachrana").findChildFiles(File::findFiles, false, "*.hits");
+        if (logs.size() != 1)
+            return 16;
+        const auto deadline = Time::getMillisecondCounterHiRes() + 3000;
+        bool checkpoint = false;
+        while (!checkpoint && Time::getMillisecondCounterHiRes() < deadline) {
+            const auto lines = StringArray::fromLines(logs[0].loadFileAsString());
+            checkpoint = std::any_of(lines.begin(), lines.end(), [&](const String& line) {
+                return line.startsWith("end ") && line.substring(4).getLargeIntValue() >= (blocks - 100) * 480LL;
+            });
+            if (!checkpoint)
+                Thread::sleep(5);
+        }
+        if (!checkpoint)
+            return 16;
         std::cout << "READY" << std::endl;
         for (;;)
             Thread::sleep(1000);

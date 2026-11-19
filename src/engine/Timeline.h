@@ -74,6 +74,9 @@ class Playback {
         int livePorts[2]{-1, -1}, fade = 1;
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
+        std::vector<Voice> voices;
+        VoiceCommand voiceCommand;
+        std::uint64_t appliedVoice = 0;
         std::atomic<bool> audible{true};
         std::atomic<float> gain[2]{{1}, {1}}, peak{0};
         AmpCommand command;
