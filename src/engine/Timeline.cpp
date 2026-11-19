@@ -447,7 +447,8 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
     : grid(s.grid), playback(s, library), start(from),
       end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()),
       clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock) {
-    juce::ignoreUnused(rhythm);
+    if (metronome && rhythm)
+        guide.emplace(grid, from);
     // Anchor count-in to the punch position; normal beats follow the song grid.
     beatIndex = count ? -count : grid.beatAt(from);
     nextBeat = count ? clock : grid.beat(beatIndex);
@@ -675,7 +676,7 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
             if (syncPulse && now < Frame(grid.rate) * 600 && no > 0 && out[0])
                 out[0][i] += 0.125f;
             accent = beatIndex % grid.beats == 0;
-            clickAge = (click || now < start) ? 0 : -1;
+            clickAge = ((click && !guide) || now < start) ? 0 : -1;
             ++beatIndex;
             if (now < start && beatIndex <= 0) {
                 nextBeat = start + grid.beat(beatIndex);
@@ -687,6 +688,12 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
                 }
             } else
                 nextBeat = grid.beat(beatIndex);
+        }
+        if (guide && now >= start) {
+            const float beat = guide->sample(now);
+            for (int c = 0; c < std::min(2, no); ++c)
+                if (out[c])
+                    out[c][i] += beat;
         }
         if (clickAge >= 0) {
             float pulse =

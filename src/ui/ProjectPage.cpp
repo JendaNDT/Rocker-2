@@ -253,7 +253,7 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
         start = std::max<Frame>(0, selection().from - song.grid.beat(view.leadBars * song.grid.beats));
     }
     auto p = std::make_unique<Performance>(song, library, start, record, view.click,
-                                           record && view.countIn ? song.grid.beats : 0);
+                                           record && view.countIn ? song.grid.beats : 0, view.rhythm);
     if (repair) {
         p->punchFrom = selection().from;
         p->punchTo = selection().to;
@@ -729,10 +729,19 @@ void Studio::projectPage(Rect area) {
             draftUnit = song.grid.unit;
             show(Page::newProject);
         });
+        const auto guide = !view.click ? cs::guideOff : view.rhythm ? cs::guideRhythm : cs::songClick;
         button(
-            cs::songClick, cell(tools, s::compactButton),
+            guide, cell(tools, s::compactButton),
             [this] {
-                view.click = !view.click;
+                if (!view.click) {
+                    view.click = true;
+                    view.rhythm = false;
+                } else if (!view.rhythm) {
+                    view.rhythm = true;
+                } else {
+                    view.click = false;
+                    view.rhythm = false;
+                }
                 view.save(projectDir);
                 triggerAsyncUpdate();
             },
@@ -803,8 +812,10 @@ void Studio::projectPage(Rect area) {
                     std::any_of(song.clips.begin(), song.clips.end(),
                                 [&](auto& c) { return c.track == t.id; }))
                     heard.add(t.name);
-            if (view.click || playPosition() < performance->start)
+            if (playPosition() < performance->start)
                 heard.add(cs::songClick);
+            else if (view.click)
+                heard.add(view.rhythm ? cs::guideRhythm : cs::songClick);
         }
         if (projectMonitor > 0 && view.selected < (int)song.tracks.size())
             heard.add(song.tracks[view.selected].name + " / " +

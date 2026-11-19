@@ -261,6 +261,39 @@ TEST_CASE("A-31 guide rhythm follows exact grid samples for ten minutes and stay
         CHECK(dry.hasIdenticalContentTo(mixed));
     }
 }
+TEST_CASE("A-31 guide signals leave the captured input waveform identical") {
+    for (int mode = 0; mode < 3; ++mode) {
+        Workspace w;
+        Song song;
+        song.title = "Guide recording";
+        song.bars = 1;
+        song.tracks = {{"g", "Guitar", "kytara", {"in"}, true}};
+        Performance take(song, {}, 0, true, mode != 0, 0, mode == 2);
+        REQUIRE(take.arm(song, w.dir, {"in"}, 0, false));
+        constexpr int size = 256;
+        std::array<float, size> input{}, output{};
+        input.fill(.125f);
+        const float* channels[]{input.data()};
+        float* monitor[]{output.data()};
+        bool audible = false;
+        for (int i = 0; i < 120; ++i) {
+            output.fill(0);
+            take.process(channels, 1, monitor, 1, size);
+            REQUIRE(take.drain());
+            audible |= std::any_of(output.begin(), output.end(), [](float v) { return v != 0; });
+        }
+        CHECK(audible == (mode != 0));
+        take.finishDisk();
+        REQUIRE(recoverTake(song, w.dir, take.journal));
+        REQUIRE(song.assets.size() == 1);
+        auto reader = waveReader(w.dir.getChildFile(song.assets[0].path));
+        REQUIRE(reader);
+        AudioBuffer<float> samples(1, int(reader->lengthInSamples));
+        REQUIRE(reader->read(&samples, 0, samples.getNumSamples(), 0, true, false));
+        auto* dry = samples.getReadPointer(0);
+        CHECK(std::all_of(dry, dry + samples.getNumSamples(), [](float v) { return v == .125f; }));
+    }
+}
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
     auto s = example();
     s.bars = 400;

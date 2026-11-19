@@ -291,7 +291,7 @@ inline const juce::String
     recordSong = u8"Nahrávat", playSong = u8"Přehrát", stopSong = u8"Zastavit", atStart = u8"Na začátek",
     distantView = u8"Zdálky", normal = u8"Zpět k časové ose", bars = u8"Takty", verse = verseName,
     arm = u8"Připravit", disarm = u8"Připraveno", mute = u8"Ztlumit", solo = u8"Sólo",
-    songClick = u8"Klik", countIn = u8"Odpočet", enabled = u8"Zapnuto", disabled = u8"Vypnuto",
+    songClick = u8"Klik", guideRhythm = u8"Rytmus", guideOff = u8"Bez kliku", countIn = u8"Odpočet", enabled = u8"Zapnuto", disabled = u8"Vypnuto",
     missingInputs = u8"Vyber vstup u každé připravené stopy.",
     stateStop = u8"Zastaveno",
     statePlay = u8"Přehrávání", stateRecord = u8"NAHRÁVÁNÍ", bar = u8"Takt", toRecord = u8"Co nahrávám",

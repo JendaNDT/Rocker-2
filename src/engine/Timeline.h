@@ -1,5 +1,5 @@
 #pragma once
-#include "MidiDrums.h"
+#include "GuideRhythm.h"
 #include <atomic>
 #include <thread>
 
@@ -149,6 +149,7 @@ class Performance {
     std::thread worker, readAhead;
     std::atomic<bool> stopping{false};
     Frame nextBeat, beatIndex;
+    std::optional<GuideRhythm> guide;
     int clickAge = -1;
     bool accent = false;
 };
