@@ -119,3 +119,15 @@ Běžná skladba může překročit 4 GB. Pro balíky používáme miniz 3.0.2 s
 V režimech Windows Audio porovnáváme identitu zařízení vstupu a výstupu. Když ji Windows neurčí a názvy se liší, nahrávání přes stopy vyžaduje volbu společné zvukovky nebo vědomé povolení dané kombinace. Rozhraní ukáže důvod.
 
 Instalátory jsou určené pro běžný účet, každá architektura se instaluje, spouští a odinstaluje v CI. Vydání se sestavuje z hlavní větve. Balíky se stáhnou zpět a ověří před zveřejněním. Ruční ověření na reálném vybavení se podle Jendova pokynu přesouvá za vydání v1.
+
+## E12 · složka nápadů, historie a připojení
+
+Jenda určil pořadí E12 až E18 a přesunul hraní celé písničky i další ruční zkoušky na konec po E18. V průběhu rozhodují o dokončení jednotlivých etap automatické zkoušky.
+
+Nápady pokračují v dosavadní složce `Rocker 2/Napady` vedle výchozí složky skladeb. Nahrávání i náhled berou cestu ze stejné knihovny. Přesouvat nápady při každé změně cíle pro skladby by vyžadovalo migraci a zvýšilo riziko ztráty přístupu k uloženým riffům.
+
+U historie porovnáváme načtený obsah nejnovější verze. Skutečné změny dostávají vzestupné názvy, i když vzniknou během jedné milisekundy. Poškozený poslední soubor vyvolá nový zápis. Čisté porovnání textu by mohlo považovat odlišně formátovaný JSON za novou verzi.
+
+Zpráva o očekávané obnově nahrávky se ukáže, jen pokud je k dispozici deník. Při částečném úklidu systém uchová již přesunuté soubory v koši.
+
+Při přepnutí frekvence z nové skladby zrušíme kalibraci pro nově aktivní kombinaci a uchováme ostatní měření. Pokud zvukovka frekvenci skladby nenabízí, Rocker zobrazí požadovanou hodnotu. Alternativou je převod celé skladby včetně historie a MIDI. Takový převod vyžaduje vlastní etapu.

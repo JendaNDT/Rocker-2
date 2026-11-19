@@ -14,6 +14,7 @@ struct Idea {
 class Ideas {
   public:
     explicit Ideas(juce::File root);
+    const juce::File& root() const { return folder; }
     void load();
     void recover();
     juce::File wave(const juce::String& id) const;

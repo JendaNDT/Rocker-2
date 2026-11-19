@@ -30,7 +30,7 @@ void Studio::cleanProject() {
     const int result =
         trashAudio(song, projectDir, history, [](const File& f) { return f.moveToTrash(); });
     bool loaded = library.load(song, projectDir);
-    status(result < 0 || !loaded ? cs::writeError : cs::moveTrash + " · " + String(result));
+    status(result < 0 || !loaded ? cs::cleanupError : cs::moveTrash + " · " + String(result));
 }
 void Studio::choosePack(bool open) {
     if (fileTask.valid() || performance || importing.valid() || delivery.valid())
@@ -53,7 +53,7 @@ void Studio::startPackage(bool open, File file) {
         return;
     if (!open) {
         if (!song.save(projectDir) || !view.save(projectDir)) {
-            status(cs::writeError);
+            status(cs::songSaveError);
             return;
         }
     }

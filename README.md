@@ -25,6 +25,10 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 4. Pod 30 minut volného místa pro právě připravené vstupy se objeví varování. Pod rezervou 500 MB Rocker záznam zastaví a dokončí zápis. Při odpojení zvukovky otevři Zapojení, připoj ji a zkontroluj vstupy.
 5. V **Hraj → Diagnostika** najdeš **Kontrolu sestavy**. **Uložit zprávu** vytvoří místní textový soubor pro Jendu. **Složka skladeb** vybere místo pro nové skladby, například místní složku mimo OneDrive. Při různých vstupních a výstupních zařízeních Windows Audio nejprve vyber jednu zvukovku pro oba směry.
 
+Pokud se frekvence přenesené skladby liší od nastavení zvukovky, Rocker ukáže obě hodnoty. Nabízí-li zvukovka požadovanou frekvenci, použij přímo ve skladbě **Přepnout zvukovku na …**. Po přepnutí můžeš znovu změřit zpoždění v Diagnostice.
+
+**Složka skladeb** určuje místo pro nové skladby. Nápady dál najdeš ve stejné knihovně a ze zachyceného riffu můžeš vytvořit skladbu v nově vybrané složce.
+
 ## Co vyzkoušet po vydání
 
 - **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.

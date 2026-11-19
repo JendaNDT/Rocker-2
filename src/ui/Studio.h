@@ -58,6 +58,7 @@ class Studio final : public juce::Component,
     void filesDropped(const juce::StringArray&, int, int) override;
     Page currentPage() const { return page; }
     juce::StringArray layoutErrors() const;
+    const juce::String& statusText() const { return message; }
     const Theme& theme() const { return skin; }
 
   private:
@@ -176,7 +177,7 @@ class Studio final : public juce::Component,
     juce::Button* button(const juce::String&, Rect, Handler, int look = 0, juce::String key = {});
     void combo(const juce::String&, Rect, const juce::StringArray&, int selected,
                std::function<void(int)> change, bool mono = false);
-    void choose(DeviceChoice);
+    void choose(DeviceChoice, bool refreshCalibration = false);
     juce::File libraryRoot, projectDir, diagnosticDir;
     Song song, diagnosticSong;
     AudioLibrary library;
@@ -233,6 +234,7 @@ class Studio final : public juce::Component,
     void exportPage(Rect);
     void paintMix(juce::Graphics&);
     void toggleMix(int index, bool solo);
+    void appendFaderLayoutErrors(juce::StringArray&) const;
     void mixSlider(const juce::String&, Rect, float initial, bool pan, std::function<void(float)>);
     void seekMix(Frame);
     void beginExport();

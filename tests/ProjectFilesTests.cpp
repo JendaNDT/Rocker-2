@@ -102,11 +102,19 @@ TEST_CASE("Explicit cleanup protects current clips, undo, archives and recovery"
     REQUIRE(log.replaceWithText("{}"));
     CHECK(unusedAudio(s, dir, h).isEmpty());
     REQUIRE(log.deleteFile());
+    REQUIRE(s.archive(dir));
+    const auto firstVersion = Song::latestVersion(dir);
     CHECK(trashAudio(s, dir, h,
                      [&](const File& f) { return f.moveFileTo(temp.dir.getChildFile("bin.wav")); }) == 1);
     CHECK(audio.getChildFile("used.wav").existsAsFile());
     CHECK(audio.getChildFile("undo.wav").existsAsFile());
     CHECK(s.assets.size() == 2);
+    REQUIRE(s.archive(dir));
+    CHECK(Song::latestVersion(dir) == firstVersion);
+    s.grid.bpm += 1;
+    REQUIRE(s.archive(dir));
+    CHECK(Song::latestVersion(dir) != firstVersion);
+    CHECK(firstVersion.existsAsFile());
 }
 TEST_CASE("A-13 free space warning and a controlled stop preserve every sample already accepted") {
     Temp temp;

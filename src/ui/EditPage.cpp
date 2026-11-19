@@ -202,7 +202,7 @@ void Studio::restoreVersion() {
     if (pendingSoundSave)
         saveSong();
     if (!song.archive(projectDir) || !restored->save(projectDir)) {
-        status(cs::writeError);
+        status(cs::songSaveError);
         return;
     }
     song = std::move(*restored);
