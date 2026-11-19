@@ -239,6 +239,8 @@ class Studio final : public juce::Component,
     void appendFaderLayoutErrors(juce::StringArray&) const;
     void mixSlider(const juce::String&, Rect, float initial, bool pan, std::function<void(float)>);
     void seekMix(Frame);
+    bool louderExport = false;
+    std::optional<LoudnessReading> lastLoudness;
     void beginExport();
     void pollExport();
     std::unique_ptr<juce::FileChooser> fileChooser;

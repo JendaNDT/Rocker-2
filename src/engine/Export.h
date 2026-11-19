@@ -10,6 +10,7 @@ struct MixFile {
     bool ok = false;
     Frame begin = 0;
     juce::String detail;
+    std::optional<LoudnessReading> loudness;
 };
 // A range ends at its exclusive boundary. Whole-song delivery includes the effect tail.
 MixFile exportMix(const Song&, const AudioLibrary&, const juce::File&, Delivery, Frame begin = 0,
