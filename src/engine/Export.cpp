@@ -109,7 +109,8 @@ bool deliveryAvailable(Delivery format) {
     return false;
 }
 MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, Delivery format,
-                  Frame begin, Frame end) {
+                  Frame begin, Frame end, bool louder) {
+    juce::ignoreUnused(louder);
     MixFile result{dest};
     result.begin = begin;
     if (dest.getParentDirectory().createDirectory().failed() ||
