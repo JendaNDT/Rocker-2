@@ -608,6 +608,12 @@ bool Performance::drain() {
             return false;
     return true;
 }
+bool Performance::hasAudioCaptureRoom(int frames) const noexcept {
+    for (const auto& take : takes)
+        if (take.queue && !take.queue->hasRoom(frames))
+            return false;
+    return true;
+}
 bool Performance::captures(const String& track) const {
     return std::any_of(takes.begin(), takes.end(), [&](const Take& take) { return take.track == track; });
 }
@@ -734,12 +740,11 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
         }
     }
     if (capture > skip) {
-        for (auto& t : takes)
-            if (!t.midi && !t.queue->hasRoom(capture - skip)) {
-                drop = clock + skip;
-                finished = true;
-                return;
-            }
+        if (!hasAudioCaptureRoom(capture - skip)) {
+            drop = clock + skip;
+            finished = true;
+            return;
+        }
         for (auto& t : takes) {
             if (t.midi) {
                 t.midi->duration = clock + capture - start;
