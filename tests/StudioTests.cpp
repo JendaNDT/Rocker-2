@@ -1127,36 +1127,68 @@ TEST_CASE("A-24 MIDI module alone and paired with its stereo audio record throug
     }
 }
 
-TEST_CASE("A-24 separate clocks, unplugged recording and package remapping through the UI"){
-    ScopedJuceInitialiser_GUI gui;Temp temp;test::FakeDevice fake;
-    fake.asio=false;fake.separate=true;fake.channels=1;
-    Studio studio(fake,temp.file,temp.dir.getChildFile("songs"));
-    click(studio,cs::home);
-    click(studio,cs::song);click(studio,cs::createSong);
-    click(studio,cs::countIn);click(studio,cs::arm);click(studio,cs::recordSong);
-    CHECK_FALSE(find<Button>(studio,cs::stopSong));
-    click(studio,cs::home);click(studio,cs::setup);
-    click(studio,cs::clockOverride);click(studio,cs::home);
-    REQUIRE(studio.keyPressed(KeyPress(KeyPress::returnKey)));studio.resized();
-    click(studio,cs::recordSong);
-    test::FakeDevice::Block block(1,std::vector<float>(1024,.25f));
-    for(int i=0;i<20;++i)fake.process(block,1024);
-    fake.disconnect();studio.resized();
-    CHECK(studio.currentPage()==Page::device);
-    auto dir=File(Settings::load(temp.file).lastSong);bool bad=false;
-    auto s=Song::load(dir,bad);REQUIRE(s);REQUIRE(s->assets.size()==1);CHECK(s->assets[0].length==20480);
-    fake.attached=true;fake.changed();studio.resized();
-    REQUIRE(fake.active);click(studio,cs::home);
-    s->tracks[0].inputs=StringArray{"Old input"};REQUIRE(s->save(dir));
-    auto file=temp.dir.getChildFile("transfer.rocker2");REQUIRE(packSong(dir,file));
+TEST_CASE("A-24 separate clocks, unplugged recording and package remapping through the UI") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    fake.asio = false;
+    fake.separate = true;
+    fake.channels = 1;
+    Studio studio(fake, temp.file, temp.dir.getChildFile("songs"));
+    click(studio, cs::home);
+    click(studio, cs::song);
+    click(studio, cs::createSong);
+    click(studio, cs::countIn);
+    click(studio, cs::arm);
+    click(studio, cs::recordSong);
+    CHECK_FALSE(find<Button>(studio, cs::stopSong));
+    click(studio, cs::home);
+    click(studio, cs::setup);
+    click(studio, cs::clockOverride);
+    click(studio, cs::home);
+    REQUIRE(studio.keyPressed(KeyPress(KeyPress::returnKey)));
+    studio.resized();
+    click(studio, cs::recordSong);
+    test::FakeDevice::Block block(1, std::vector<float>(1024, .25f));
+    for (int i = 0; i < 20; ++i)
+        fake.process(block, 1024);
+    fake.disconnect();
+    studio.resized();
+    CHECK(studio.currentPage() == Page::device);
+    auto dir = File(Settings::load(temp.file).lastSong);
+    bool bad = false;
+    auto s = Song::load(dir, bad);
+    REQUIRE(s);
+    REQUIRE(s->assets.size() == 1);
+    CHECK(s->assets[0].length == 20480);
+    fake.attached = true;
+    fake.changed();
+    studio.resized();
+    REQUIRE(fake.active);
+    click(studio, cs::home);
+    s->tracks[0].inputs = StringArray{"Old input"};
+    REQUIRE(s->save(dir));
+    auto file = temp.dir.getChildFile("transfer.rocker2");
+    REQUIRE(packSong(dir, file));
     REQUIRE(studio.isInterestedInFileDrag({file.getFullPathName()}));
-    studio.filesDropped({file.getFullPathName()},0,0);
-    for(int n=0;n<80 && studio.currentPage()!=Page::remap;++n){tick();studio.resized();}
-    REQUIRE(studio.currentPage()==Page::remap);fits(studio);
-    for(int px:{1280,1920}) snapshot(studio,"29-premapovani",px);
-    chooseItem(studio,cs::newInput+" 1",1);click(studio,cs::apply);
-    auto copy=File(Settings::load(temp.file).lastSong);CHECK(copy!=dir);
-    s=Song::load(copy,bad);REQUIRE(s);CHECK(s->tracks[0].inputs[0]=="In 1");
-    click(studio,cs::fileMenu);fits(studio);
-    for(int px:{1280,1920})snapshot(studio,"30-baleni-skladby",px);
+    studio.filesDropped({file.getFullPathName()}, 0, 0);
+    for (int n = 0; n < 80 && studio.currentPage() != Page::remap; ++n) {
+        tick();
+        studio.resized();
+    }
+    REQUIRE(studio.currentPage() == Page::remap);
+    fits(studio);
+    for (int px : {1280, 1920})
+        snapshot(studio, "29-premapovani", px);
+    chooseItem(studio, cs::newInput + " 1", 1);
+    click(studio, cs::apply);
+    auto copy = File(Settings::load(temp.file).lastSong);
+    CHECK(copy != dir);
+    s = Song::load(copy, bad);
+    REQUIRE(s);
+    CHECK(s->tracks[0].inputs[0] == "In 1");
+    click(studio, cs::fileMenu);
+    fits(studio);
+    for (int px : {1280, 1920})
+        snapshot(studio, "30-baleni-skladby", px);
 }

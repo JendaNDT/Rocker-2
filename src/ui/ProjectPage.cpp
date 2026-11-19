@@ -131,10 +131,15 @@ void Studio::openProject(File dir) {
         return;
     }
     show(Page::project);
-    if(link.online && std::any_of(song.tracks.begin(),song.tracks.end(),[this](auto& t){
-        for(auto& port:t.inputs)if(!link.caps.inputs.contains(port))return true;return false;
-    }))beginRemap();
-    if(syncedFolder(projectDir))status(cs::syncPath);
+    if (link.online && std::any_of(song.tracks.begin(), song.tracks.end(), [this](auto& t) {
+            for (auto& port : t.inputs)
+                if (!link.caps.inputs.contains(port))
+                    return true;
+            return false;
+        }))
+        beginRemap();
+    if (syncedFolder(projectDir))
+        status(cs::syncPath);
     if (damaged || !complete)
         status(cs::partialProject);
 }
@@ -223,7 +228,11 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
         status(cs::noDeviceSong);
         return;
     }
-    if(record && link.caps.separateClocks && settings.clockOverride!=Settings::calibrationKey(link.current)){status(cs::clockConflict);return;}
+    if (record && link.caps.separateClocks &&
+        settings.clockOverride != Settings::calibrationKey(link.current)) {
+        status(cs::clockConflict);
+        return;
+    }
     if (link.current.rate != song.grid.rate) {
         status(cs::rateMismatch);
         return;
@@ -277,7 +286,7 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
         if (!p->arm(capture, projectDir, link.caps.inputs, latency, true,
                     link.caps.outputLatency +
                         settings.midiCorrections[Settings::calibrationKey(link.current) + activeMidi])) {
-            status(p->diskStop?cs::diskFull:cs::writeError);
+            status(p->diskStop ? cs::diskFull : cs::writeError);
             return;
         }
         if (repair) {
@@ -338,8 +347,11 @@ void Studio::stopProject(bool automatic) {
             if (p->drop < 0 && song.assets.size() > before)
                 ++view.savedTakes;
             complete = p->finished && !p->failed && !p->diskStop && p->drop < 0;
-            const Frame sec=view.cursor/song.grid.rate;
-            status(p->diskStop ? cs::diskStop+" "+String(sec/60)+":"+String(sec%60).paddedLeft('0',2) : p->drop >= 0 ? cs::dropout : cs::savedSong);
+            const Frame sec = view.cursor / song.grid.rate;
+            status(p->diskStop
+                       ? cs::diskStop + " " + String(sec / 60) + ":" + String(sec % 60).paddedLeft('0', 2)
+                   : p->drop >= 0 ? cs::dropout
+                                  : cs::savedSong);
         }
     }
     if (p->recording)
@@ -358,8 +370,10 @@ void Studio::stopProject(bool automatic) {
     triggerAsyncUpdate();
 }
 void Studio::projectTick() {
-    pollExport();pollFiles();
-    if(performance && performance->diskWarning && !performance->diskStop && message!=cs::diskLow)status(cs::diskLow);
+    pollExport();
+    pollFiles();
+    if (performance && performance->diskWarning && !performance->diskStop && message != cs::diskLow)
+        status(cs::diskLow);
     if (performance && performance->finished.load()) {
         stopProject(true);
         return;

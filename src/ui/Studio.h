@@ -238,20 +238,24 @@ class Studio final : public juce::Component,
     void beginExport();
     void pollExport();
     std::unique_ptr<juce::FileChooser> fileChooser;
-    struct FileResult{ juce::File song; bool ok=false; };
+    struct FileResult {
+        juce::File song;
+        bool ok = false;
+    };
     std::future<FileResult> fileTask;
-    bool confirmClean=false;
-    int remapIndex=0;
+    bool confirmClean = false;
+    int remapIndex = 0;
     std::vector<juce::StringArray> remapped;
     void fileOptions(Rect&);
     void choosePack(bool open);
-    void startPackage(bool,juce::File);
+    void startPackage(bool, juce::File);
     void chooseLibrary();
     void pollFiles();
     void cleanProject();
     void remapPage(Rect);
     void beginRemap();
     void saveReport();
+    juce::String rigReport() const;
     void findClick();
     Rect stereoMeter, mixReadout;
     std::vector<Rect> trackMeters;

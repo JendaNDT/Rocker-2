@@ -454,13 +454,17 @@ void Studio::paintIdeas(Graphics& g) {
             draw(it->second, x.peaks);
 }
 bool Studio::isInterestedInFileDrag(const StringArray& files) {
-    if(fileTask.valid())return false;
-    if(files.size()==1 && (page==Page::home || page==Page::project) && !performance && File(files[0]).hasFileExtension("rocker2"))return true;
+    if (fileTask.valid())
+        return false;
+    if (files.size() == 1 && (page == Page::home || page == Page::project) && !performance &&
+        File(files[0]).hasFileExtension("rocker2"))
+        return true;
     return page == Page::project && files.size() == 1 && supportsImport(File(files[0])) && !performance &&
            !importing.valid();
 }
 void Studio::filesDropped(const StringArray& files, int, int) {
-    if(isInterestedInFileDrag(files) && File(files[0]).hasFileExtension("rocker2"))startPackage(true,File(files[0]));
+    if (isInterestedInFileDrag(files) && File(files[0]).hasFileExtension("rocker2"))
+        startPackage(true, File(files[0]));
     else if (isInterestedInFileDrag(files))
         beginImport(File(files[0]));
     else if (page == Page::project)

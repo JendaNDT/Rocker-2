@@ -181,7 +181,7 @@ void Studio::showVersions() {
     if (performance)
         return;
     versions = projectDir.getChildFile("Verze").findChildFiles(File::findFiles, false, "*.json");
-    confirmClean=false;
+    confirmClean = false;
     versions.sort();
     std::reverse(versions.begin(), versions.end());
     versionIndex = 0;

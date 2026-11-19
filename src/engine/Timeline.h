@@ -130,15 +130,17 @@ class Performance {
     int compensation = 0;
     Frame punchFrom = 0, punchTo = 0;
     bool monitorPunch = false, cleanPunch = false;
-    static constexpr Frame diskReserve=500000000;
-    std::function<Frame(const juce::File&)> diskSpace=[](const juce::File& dir){return dir.getBytesFreeOnVolume();};
-    std::atomic<bool> diskWarning{false},diskStop{false};
+    static constexpr Frame diskReserve = 500000000;
+    std::function<Frame(const juce::File&)> diskSpace = [](const juce::File& dir) {
+        return dir.getBytesFreeOnVolume();
+    };
+    std::atomic<bool> diskWarning{false}, diskStop{false};
     bool isPunch() const { return punchTo > punchFrom; }
 
   private:
     std::vector<Take> takes;
     juce::File captureDir;
-    Frame nextSpaceCheck=0,bytesPerSecond=0;
+    Frame nextSpaceCheck = 0, bytesPerSecond = 0;
     void checkSpace();
     std::thread worker, readAhead;
     std::atomic<bool> stopping{false};
