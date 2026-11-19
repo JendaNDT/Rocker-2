@@ -200,3 +200,39 @@ TEST_CASE("Edits in a cropped chorus preserve hidden source audio and propagate 
     CHECK(Song::parse(song.json(), bad) == song);
     CHECK_FALSE(bad);
 }
+
+TEST_CASE("A drum kit keeps offsets, cuts, take choices and destinations together") {
+    auto song = fixture();
+    song.tracks[0].group = song.tracks[1].group = "kit";
+    song.tracks[0].groupDb = song.tracks[1].groupDb = -6;
+    song.tracks.push_back({"outside", "Other", "jine"});
+    bool damaged = false;
+    auto loaded = Song::parse(song.json(), damaged);
+    REQUIRE(loaded);
+    CHECK(loaded->tracks[1].groupDb == -6);
+    REQUIRE(splitAt(song, "d", 2000, "d1"));
+    auto left = copySpan(song, "d", {0, 2000}, "d1");
+    REQUIRE(left.clips.size() == 2);
+    CHECK_FALSE(pasteAt(song, "outside", 8000, left));
+    REQUIRE(trimEdge(song, "g1", true, 300));
+    for (auto& c : song.clips)
+        if (c.position < 2000) {
+            CHECK(c.position == 300);
+            CHECK(c.length == 1700);
+            CHECK(c.offset == (c.track == "g" ? 473 : 300));
+        }
+    REQUIRE(moveSpan(song, "d", {300, 2000}, 9000, "d1"));
+    auto moved = copySpan(song, "g", {9000, 10700});
+    REQUIRE(moved.clips.size() == 2);
+    for (auto& t : song.tracks)
+        if (t.group == "kit")
+            REQUIRE(song.addAttempt({t.id + "a", t.id, "a", 0, 0, 4000}, 1000, 2000, 123));
+    auto* g = song.groupAt("d", 1000, 2000);
+    REQUIRE(g);
+    g->discard();
+    song.commitGroup(*g);
+    for (auto& take : song.groups) {
+        CHECK(take.active == 0);
+        CHECK(take.attempts.front().discarded);
+    }
+}

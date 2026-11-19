@@ -894,3 +894,96 @@ TEST_CASE("A-17 E8 an idea becomes a starred riff and a song with an imported ba
     key(KeyPress::rightKey, ModifierKeys::shiftModifier);
     CHECK(at() == 528);
 }
+
+TEST_CASE("A-24 acoustic and electronic drums use only the microphones that responded") {
+    ScopedJuceInitialiser_GUI gui;
+    for (int count : {1, 2, 8, 18}) {
+        CAPTURE(count);
+        Temp temp;
+        test::FakeDevice fake;
+        fake.channels = count;
+        fake.asio = count == 2;
+        fake.laptop = count == 1;
+        fake.rate = count == 8 ? 96000 : 44100;
+        Studio view(fake, temp.file, temp.dir.getChildFile("songs"));
+        click(view, cs::pedal);
+        REQUIRE(view.keyPressed(KeyPress('J')));
+        CHECK(Settings::load(temp.file).pedalKey == 'J');
+        click(view, cs::next);
+        click(view, cs::next);
+        click(view, cs::drumTest);
+        click(view, cs::finishHits);
+        CHECK_FALSE(find<Button>(view, cs::kitApply));
+        click(view, cs::drumAgain);
+        test::FakeDevice::Block signal(count, std::vector<float>(8, 0.f));
+        int active = std::min(count, 8);
+        for (int i = 0; i < active; ++i) {
+            signal[i][2] = i == 0 ? -.75f : .125f;
+            fake.process(signal, 8);
+            signal[i][2] = 0;
+        }
+        fake.process({}, 512);
+        CHECK(fake.active->hitPeak(0) == .75f);
+        click(view, cs::finishHits);
+        fits(view);
+        if (count == 8)
+            for (int px : {1280, 1920})
+                snapshot(view, "23-sada-bicich", px);
+        click(view, cs::kitApply);
+        click(view, cs::finish);
+        click(view, cs::song);
+        click(view, cs::createSong);
+        bool bad = false;
+        auto dir = File(Settings::load(temp.file).lastSong);
+        auto song = Song::load(dir, bad);
+        REQUIRE(song);
+        REQUIRE_FALSE(bad);
+        if (count == 2) {
+            CHECK(song->tracks[0].inputs.size() == 2);
+            auto stereo = fake.process({{.25f}, {-.75f}}, 1);
+            CHECK(stereo[0][0] == .25f);
+            CHECK(stereo[1][0] == -.75f);
+        } else {
+            REQUIRE(song->tracks.size() == (size_t)active + 1);
+            for (int i = 0; i < active; ++i) {
+                CHECK(song->tracks[i].inputs[0] == "In " + String(i + 1));
+                CHECK(song->linkedTrack(song->tracks[0].id, song->tracks[i].id));
+            }
+            if (active >= 4) {
+                CHECK(song->tracks[active - 2].pan == -1);
+                CHECK(song->tracks[active - 1].pan == 1);
+            }
+        }
+        click(view, cs::arm);
+        song = Song::load(dir, bad);
+        REQUIRE(song);
+        for (auto& t : song->tracks)
+            CHECK(t.armed == (t.kind == "bici"));
+        REQUIRE(view.keyPressed(KeyPress('J')));
+        view.resized();
+        click(view, cs::farOffer);
+        for (int i = 0; i < 480; ++i)
+            fake.process(signal, 8);
+        for (int px : {1280, 1920})
+            if (count == 8)
+                snapshot(view, "24-odpocet", px);
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::escapeKey)));
+        view.resized();
+        REQUIRE(find<Button>(view, cs::stopSong));
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::returnKey)));
+        view.resized();
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::numberPad0)));
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::numberPad0)));
+        if (count == 18) {
+            REQUIRE(view.keyPressed(KeyPress(KeyPress::escapeKey)));
+            view.resized();
+            click(view, cs::setup);
+            click(view, cs::next);
+            click(view, cs::next);
+            click(view, cs::drumTest);
+            fake.disconnect();
+            view.resized();
+            CHECK(view.currentPage() == Page::device);
+        }
+    }
+}
