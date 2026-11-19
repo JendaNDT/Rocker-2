@@ -37,7 +37,7 @@ std::optional<GUID> containerFor(EDataFlow flow, const juce::String& name) {
         PROPVARIANT id{};
         properties->GetValue(container, &id);
         std::optional<GUID> result;
-        if (id.vt == VT_CLSID && id.puuid && !IsEqualGUID(*id.puuid, GUID_NULL))
+        if (id.vt == VT_CLSID && id.puuid && !IsEqualGUID(*id.puuid, GUID{}))
             result = *id.puuid;
         PropVariantClear(&id);
         return result;

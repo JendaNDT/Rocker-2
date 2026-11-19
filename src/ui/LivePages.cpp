@@ -729,7 +729,6 @@ void Studio::diagnosticPanel(Rect area) {
     button(cs::checkClick, files.removeFromRight(s::nameWidth), [this] {
         findClick();
     })->setEnabled(!clickCheck.valid());
-    text(cs::checkRig, files, s::heading);
     auto advice = area.removeFromBottom(s::button * 2);
     text(cs::cableHelp, advice.removeFromTop(s::button), s::caption, s::muted);
     text(wireless(link.current.output) ? cs::bluetooth : cs::cableGain, advice, s::caption, s::warning);
