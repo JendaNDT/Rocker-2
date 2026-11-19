@@ -3,6 +3,7 @@
 #include "song/Song.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <numbers>
 namespace {
 using namespace rocker;
 using namespace juce;
@@ -292,6 +293,81 @@ TEST_CASE("A-31 guide signals leave the captured input waveform identical") {
         REQUIRE(reader->read(&samples, 0, samples.getNumSamples(), 0, true, false));
         auto* dry = samples.getReadPointer(0);
         CHECK(std::all_of(dry, dry + samples.getNumSamples(), [](float v) { return v == .125f; }));
+    }
+}
+TEST_CASE("A-32 independently generated EBU Tech 3341 minimum cases pass within 0.1 LU") {
+    Workspace w;
+    constexpr int rate = 48000;
+    constexpr int size = 1024;
+    const std::vector<std::vector<std::pair<double, double>>> cases{
+        {{20, -23}}, {{20, -33}}, {{10, -36}, {60, -23}, {10, -36}},
+        {{10, -72}, {10, -36}, {60, -23}, {10, -36}, {10, -72}},
+        {{20, -26}, {20.1, -20}, {20, -26}}};
+    const double expected[]{-23, -33, -23, -23, -23};
+    AudioBuffer<float> data(2, size);
+    for (size_t test = 0; test < cases.size(); ++test) {
+        CAPTURE(test);
+        auto wave = w.dir.getChildFile(String(test) + ".wav");
+        auto writer = waveWriter(wave, rate, 2);
+        REQUIRE(writer);
+        Frame start = 0;
+        for (auto [seconds, level] : cases[test]) {
+            auto length = std::llround(seconds * rate);
+            auto gain = Decibels::decibelsToGain(level);
+            for (Frame at = 0; at < length; at += size) {
+                int count = int(std::min<Frame>(size, length - at));
+                for (int n = 0; n < count; ++n) {
+                    float sample = float(gain * std::sin(2 * std::numbers::pi * 1000 * (start + at + n) / rate));
+                    data.setSample(0, n, sample);
+                    data.setSample(1, n, sample);
+                }
+                REQUIRE(writer->writeFromAudioSampleBuffer(data, 0, count));
+            }
+            start += length;
+        }
+        writer.reset();
+        auto reader = waveReader(wave);
+        REQUIRE(reader);
+        auto stats = measureLoudness(*reader);
+        REQUIRE(stats);
+        CHECK(std::abs(stats->integrated - expected[test]) <= .1);
+        reader.reset();
+        REQUIRE(wave.deleteFile());
+    }
+}
+TEST_CASE("A-32 louder delivery meets the integrated and true-peak limits after export") {
+    Workspace w;
+    Song song;
+    song.title = "Louder";
+    song.bars = 1;
+    song.tracks = {{"s", "Tone", "jine"}};
+    constexpr int duration = 96000;
+    auto path = w.dir.getChildFile("Zvuk/source.wav");
+    REQUIRE(path.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(path, song.grid.rate, 2);
+    REQUIRE(writer);
+    AudioBuffer<float> material(2, duration);
+    for (int channel = 0; channel < 2; ++channel) {
+        for (int i = 0; i < duration; ++i)
+            material.setSample(channel, i, float(.05 * std::sin(i * 2 * std::numbers::pi * 1000 / 48000)));
+        material.setSample(channel, 48101, .97f);
+    }
+    REQUIRE(writer->writeFromAudioSampleBuffer(material, 0, duration));
+    writer.reset();
+    song.assets = {{"audio", "Zvuk/source.wav", duration, 2}};
+    song.clips = {{"clip", "s", "audio", 0, 0, duration}};
+    AudioLibrary sources;
+    REQUIRE(sources.load(song, w.dir));
+    for (auto format : {Delivery::wave24, Delivery::wave16}) {
+        auto file = w.dir.getNonexistentChildFile("Louder", ".wav", true);
+        REQUIRE(exportMix(song, sources, file, format, 0, duration, true).ok);
+        auto reader = waveReader(file);
+        REQUIRE(reader);
+        CHECK(reader->lengthInSamples == Frame(reader->sampleRate) * 2);
+        auto outcome = measureLoudness(*reader);
+        REQUIRE(outcome);
+        CHECK(std::abs(outcome->integrated + 14.) <= .5);
+        CHECK(outcome->peak <= Decibels::decibelsToGain(-1.));
     }
 }
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {

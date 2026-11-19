@@ -89,6 +89,7 @@ void Studio::openProject(File dir) {
     exporting = false;
     delivered = {};
     lastMeter = {};
+    lastLoudness.reset();
     selectedOccurrence = -1;
     askingRepair = false;
     const bool sameProject = projectDir == dir;

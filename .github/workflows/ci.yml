@@ -81,6 +81,8 @@ jobs:
           New-Item -Type Directory pack
           Copy-Item "build/Rocker2_artefacts/Release/Rocker 2.exe",LICENSE,assets/fonts/*-OFL.txt,build/_deps/juce-src/LICENSE.md,build/_deps/juce-src/modules/juce_audio_devices/native/asio/LICENSE.txt pack/
           Copy-Item build/_deps/miniz-src/LICENSE pack/miniz-LICENSE.txt
+          Copy-Item build/_deps/ebur128-src/COPYING pack/libebur128-COPYING.txt
+          Get-Content build/_deps/ebur128-src/ebur128/queue/sys/queue.h -TotalCount 29 | Set-Content pack/libebur128-queue-LICENSE.txt
           Copy-Item assets/drums/CC0-1.0.txt pack/Drums-CC0.txt
           Copy-Item build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
           Compress-Archive -Path pack/* -DestinationPath Rocker2-${{ matrix.name }}.zip
@@ -107,6 +109,7 @@ jobs:
           mkdir pack
           cp -R "build-universal/Rocker2_artefacts/Release/Rocker 2.app" LICENSE assets/fonts/*-OFL.txt build/_deps/juce-src/LICENSE.md pack/
           cp build/_deps/miniz-src/LICENSE pack/miniz-LICENSE.txt
+          cp build/_deps/ebur128-src/COPYING pack/libebur128-COPYING.txt
           cp assets/drums/CC0-1.0.txt pack/Drums-CC0.txt
           cp build/_deps/libsamplerate-src/COPYING pack/libsamplerate-LICENSE.txt
           ditto -c -k --sequesterRsrc pack Rocker2-Mac.zip

@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## E17 · hlasitější poslech v telefonu
+
+Volitelný export cílí na −14 LUFS a chrání skutečné špičky pod −1 dBTP. A-32 ověřuje pět případů EBU a výsledné WAV při 44,1 a 48 kHz. Míchej ukazuje naměřenou hodnotu posledního exportu. Poslech čeká po E18. [Zkoušky a sestavení](https://github.com/JendaNDT/Rocker-2/pull/20)
+
 ## E16 · vodicí rytmus
 
 V Hraj lze přepnout mezi Klikem, Rytmem a tichem. A-31 porovnává každý zvukový vzorek vodítka po deseti minutách a ověřuje shodu vývozu s vodítkem a bez něj. Poslech a nahrávání na skutečné sestavě čekají po E18. [Zkoušky a sestavení](https://github.com/JendaNDT/Rocker-2/pull/19)

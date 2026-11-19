@@ -37,6 +37,8 @@ Stopu typu **Jiná** můžeš použít pro zpěv nebo baskytaru. Ve skladbě kli
 
 V režimu Hraj stiskni tlačítko **Klik** pro přechod na **Rytmus**. Další stisk zvolí **Bez kliku** a pak zase Klik. Rocker si nastavení pamatuje pro každou skladbu. Odpočet používá klik. Rytmus slyšíš během hraní ve sluchátkách, záznam vstupů a soubory exportu zůstávají čisté.
 
+Pro rychlé sdílení do telefonu zvol **Poslat mix… → Hlasitější (pro telefon)**. Rocker změří výsledek, přiblíží hlasitost k −14 LUFS a ohlídá skutečnou špičku. Název má příponu `hlasitejsi`. Hlasitost posledního exportu uvidíš v Míchej. Pro soubor s vlastní dynamikou zvol **Běžná hlasitost**.
+
 ## Co vyzkoušet po vydání
 
 - **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.

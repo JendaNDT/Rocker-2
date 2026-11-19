@@ -109,29 +109,90 @@ bool deliveryAvailable(Delivery format) {
     return false;
 }
 MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, Delivery format,
-                  Frame begin, Frame end) {
+                  Frame begin, Frame end, bool louder) {
     MixFile result{dest};
     result.begin = begin;
     if (dest.getParentDirectory().createDirectory().failed() ||
         !deliveryAvailable(format) || format == Delivery::stems)
         return result;
-    TemporaryFile stage(".wav"), pcm(".wav"), output(dest);
+    TemporaryFile stage(".wav");
     if (!renderSong(song, lib, stage.getFile(), begin, end))
         return result;
     auto input = waveReader(stage.getFile());
     if (!input)
         return result;
-    const bool compressed = format == Delivery::mp3 || format == Delivery::m4a;
-    if (!convert(*input, compressed ? pcm.getFile() : output.getFile(),
-                 format == Delivery::wave24 ? 48000 : 44100, format == Delivery::wave24 ? 24 : 16, begin,
-                 result.meter))
+
+    auto prepare = [&](AudioFormatReader& source, const File& file) {
+        TemporaryFile pcm(".wav");
+        const bool compressed = format == Delivery::mp3 || format == Delivery::m4a;
+        result.meter = {};
+        const int rate = format == Delivery::wave24 ? 48000 : 44100;
+        if (!convert(source, compressed ? pcm.getFile() : file, rate,
+                     format == Delivery::wave24 ? 24 : 16, begin, result.meter))
+            return false;
+        if (format == Delivery::mp3)
+            return encodeMp3(pcm.getFile(), file) &&
+                   tagMp3Length(file, std::llround(source.lengthInSamples * rate / source.sampleRate));
+        if (format == Delivery::m4a)
+            return encodeAac(pcm.getFile(), file, result.detail);
+        return true;
+    };
+    AudioFormatManager formats;
+    formats.registerBasicFormats();
+    auto measure = [&](const File& file) -> std::optional<LoudnessReading> {
+        auto reader = std::unique_ptr<AudioFormatReader>(formats.createReaderFor(file));
+        return reader ? measureLoudness(*reader) : std::nullopt;
+    };
+    if (!louder) {
+        TemporaryFile output(dest);
+        if (prepare(*input, output.getFile())) {
+            result.loudness = measure(output.getFile());
+            result.ok = commitTemporary(output);
+        }
         return result;
-    if (format == Delivery::mp3 && (!encodeMp3(pcm.getFile(), output.getFile()) ||
-                !tagMp3Length(output.getFile(),std::llround(input->lengthInSamples*44100./input->sampleRate))))
+    }
+
+    auto original = measureLoudness(*input);
+    if (!original)
         return result;
-    if (format == Delivery::m4a && !encodeAac(pcm.getFile(), output.getFile(), result.detail))
-        return result;
-    result.ok = commitTemporary(output);
+    constexpr double target = -14.;
+    const double limit = Decibels::decibelsToGain(-1.);
+    double gain = std::isfinite(original->integrated) ? Decibels::decibelsToGain(target - original->integrated)
+                                                      : 1.;
+    double ceiling = Decibels::decibelsToGain(-1.15);
+    std::unique_ptr<TemporaryFile> best;
+    Playback::Meter bestMeter;
+    double bestDifference = std::numeric_limits<double>::infinity();
+    for (int pass = 0; pass < 5; ++pass) {
+        TemporaryFile limited(".wav");
+        if (!writeLimitedMix(*input, limited.getFile(), gain, ceiling))
+            break;
+        auto after = waveReader(limited.getFile());
+        auto output = std::make_unique<TemporaryFile>(dest);
+        if (!after || !prepare(*after, output->getFile()))
+            break;
+        auto verified = measure(output->getFile());
+        if (!verified)
+            break;
+        if (verified->peak > limit) {
+            ceiling *= .98 * limit / verified->peak;
+            continue;
+        }
+        const double error = std::isfinite(verified->integrated) ? target - verified->integrated : 0.;
+        if (std::abs(error) < bestDifference) {
+            bestDifference = std::abs(error);
+            best = std::move(output);
+            bestMeter = result.meter;
+            result.loudness = verified;
+        }
+        if (bestDifference <= .25)
+            break;
+        gain *= Decibels::decibelsToGain(std::clamp(error, -6., 6.));
+    }
+    if (best) {
+        result.meter = bestMeter;
+        result.ok = commitTemporary(*best);
+    }
     return result;
 }
 MixFile exportStems(const Song& song, const AudioLibrary& library, const File& destination,

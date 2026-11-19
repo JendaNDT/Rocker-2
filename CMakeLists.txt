@@ -28,12 +28,21 @@ function(add_zip_library)
     FetchContent_MakeAvailable(miniz)
 endfunction()
 add_zip_library()
+FetchContent_Declare(ebur128 GIT_REPOSITORY https://github.com/jiixyj/libebur128.git GIT_TAG v1.2.6 GIT_SHALLOW TRUE SOURCE_SUBDIR unused)
+FetchContent_MakeAvailable(ebur128)
+add_library(RockerEbur128 STATIC "${ebur128_SOURCE_DIR}/ebur128/ebur128.c")
+target_include_directories(RockerEbur128 PUBLIC "${ebur128_SOURCE_DIR}/ebur128")
+if(MSVC)
+    target_compile_definitions(RockerEbur128 PRIVATE _USE_MATH_DEFINES)
+    target_compile_options(RockerEbur128 PRIVATE /std:clatest)
+    target_include_directories(RockerEbur128 SYSTEM PRIVATE "${ebur128_SOURCE_DIR}/ebur128/queue")
+endif()
 juce_add_binary_data(Fonts SOURCES assets/fonts/Inter.ttf assets/fonts/InterSemiBold.ttf assets/fonts/Mono.ttf)
-add_library(Studio STATIC src/storage/ProjectFiles.cpp src/engine/ClockDomains.cpp src/ui/FilePage.cpp src/engine/MidiDrums.cpp src/ui/MidiPage.cpp src/ui/DrumPage.cpp src/ui/IdeaPage.cpp src/storage/Ideas.cpp src/engine/Import.cpp src/engine/IdeaInput.cpp src/engine/Export.cpp src/engine/Mp3.cpp src/engine/Aac.cpp src/engine/Mp3Length.cpp src/song/Arrangement.cpp src/song/Edit.cpp src/engine/LoadTrial.cpp src/song/GuitarSound.cpp src/storage/AtomicFile.cpp src/song/Song.cpp src/engine/Timeline.cpp src/engine/GuideRhythm.cpp src/dsp/Amp.cpp src/dsp/Voice.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp src/ui/ProjectPage.cpp src/ui/MixPage.cpp src/ui/EditPage.cpp src/ui/SectionPage.cpp)
+add_library(Studio STATIC src/storage/ProjectFiles.cpp src/engine/ClockDomains.cpp src/ui/FilePage.cpp src/engine/MidiDrums.cpp src/ui/MidiPage.cpp src/ui/DrumPage.cpp src/ui/IdeaPage.cpp src/storage/Ideas.cpp src/engine/Import.cpp src/engine/IdeaInput.cpp src/engine/Export.cpp src/engine/Loudness.cpp src/engine/Mp3.cpp src/engine/Aac.cpp src/engine/Mp3Length.cpp src/song/Arrangement.cpp src/song/Edit.cpp src/engine/LoadTrial.cpp src/song/GuitarSound.cpp src/storage/AtomicFile.cpp src/song/Song.cpp src/engine/Timeline.cpp src/engine/GuideRhythm.cpp src/dsp/Amp.cpp src/dsp/Voice.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp src/ui/ProjectPage.cpp src/ui/MixPage.cpp src/ui/EditPage.cpp src/ui/SectionPage.cpp)
 target_include_directories(Studio PUBLIC src "${JUCE_MODULES_DIR}")
 target_compile_definitions(Studio PUBLIC JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
     JUCE_USE_WIN_WEBVIEW2=0 JUCE_REPORT_APP_USAGE=0 $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>)
-target_link_libraries(Studio PRIVATE miniz juce::juce_cryptography SampleRate::samplerate Fonts juce::juce_audio_formats juce::juce_audio_devices juce::juce_gui_basics
+target_link_libraries(Studio PRIVATE miniz RockerEbur128 juce::juce_cryptography SampleRate::samplerate Fonts juce::juce_audio_formats juce::juce_audio_devices juce::juce_gui_basics
     PUBLIC juce::juce_recommended_config_flags)
 juce_add_gui_app(Rocker2 PRODUCT_NAME "Rocker 2" BUNDLE_ID "cz.rocker2.studio"
     MICROPHONE_PERMISSION_ENABLED TRUE MICROPHONE_PERMISSION_TEXT "Rocker 2 potřebuje vstup pro měření signálu z nástroje.")

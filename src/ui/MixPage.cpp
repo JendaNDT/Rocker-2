@@ -15,6 +15,12 @@ String db(float level) {
     return level > 0 ? String(Decibels::gainToDecibels(level), 1).replaceCharacter('.', ',') + " dBFS"
                      : cs::silence;
 }
+String loudness(const LoudnessReading& measurement) {
+    if (!std::isfinite(measurement.integrated))
+        return cs::loudnessLabel + " " + cs::silence;
+    return cs::loudnessLabel + " " + String(measurement.integrated, 1).replaceCharacter('.', ',') +
+           cs::lufsUnit;
+}
 String bar(const Song& song, Frame pos) {
     return cs::bar + " " + String(song.grid.beatAt(std::max<Frame>(0, pos)) / song.grid.beats + 1);
 }
@@ -150,7 +156,11 @@ void Studio::mixPage(Rect area) {
             firstTrack += visible;
             triggerAsyncUpdate();
         });
-    text(message, line(foot), s::body, s::warning);
+    auto notice = line(foot);
+    if (lastLoudness)
+        text(cs::lastDelivery + loudness(*lastLoudness), notice.removeFromRight(s::fieldWidth),
+             s::caption, s::muted);
+    text(message, notice, s::body, s::warning);
 }
 void Studio::paintMix(Graphics& g) {
     const auto m = performance ? performance->playback.meter() : lastMeter;
@@ -227,6 +237,19 @@ void Studio::exportPage(Rect area) {
             text(bar(song, selection().from) + cs::rangeDash + bar(song, selection().to - 1), scope, s::body,
                  s::muted);
     }
+    if (!stems) {
+        auto level = line(area);
+        button(cs::normalExport, level.removeFromLeft(s::nameWidth), [this] {
+            louderExport = false;
+            delivered = {};
+            triggerAsyncUpdate();
+        }, louderExport ? 0 : 1)->setEnabled(!delivery.valid());
+        button(cs::louderExport, level.removeFromLeft(s::labelWidth), [this] {
+            louderExport = true;
+            delivered = {};
+            triggerAsyncUpdate();
+        }, louderExport ? 1 : 0)->setEnabled(!delivery.valid());
+    }
     auto solo = soloNames();
     if (solo.isNotEmpty())
         text(stems ? cs::stemsSolo : cs::soloNotice, line(area), s::body, s::warning);
@@ -250,6 +273,12 @@ void Studio::exportPage(Rect area) {
         text(cs::mixPeak + " " + db(m.maximum) +
                  (m.loudest >= 0 ? cs::divider + bar(song, m.loudest) : String{}),
              line(area), s::body, m.over >= 0 ? s::clipping : s::chalk);
+        if (delivered.loudness) {
+            const auto& stats = *delivered.loudness;
+            text(loudness(stats) + cs::divider + cs::truePeakLabel + " " +
+                     String(Decibels::gainToDecibels(stats.peak), 1).replaceCharacter('.', ',') + cs::truePeakUnit,
+                 line(area), s::body);
+        }
         auto play = line(area);
         button(cs::playMix, play.removeFromLeft(s::labelWidth), [this] {
             if (!delivered.file.startAsProcess())
@@ -289,18 +318,20 @@ void Studio::beginExport() {
     auto date = Time::getCurrentTime().formatted("%Y-%m-%d");
     const bool stems = format == Delivery::stems;
     const auto ext = stems ? "" : format == Delivery::mp3 ? ".mp3" : format == Delivery::m4a ? ".m4a" : ".wav";
-    const auto name = File::createLegalFileName(song.title + (stems ? cs::stemsSuffix : cs::mixSuffix) + date);
+    const bool louder = louderExport && !stems;
+    const auto name = File::createLegalFileName(song.title + (stems ? cs::stemsSuffix : cs::mixSuffix) + date +
+                                                (louder ? cs::louderSuffix : String{}));
     auto file = folder.getNonexistentChildFile(name, ext, true);
     deliveringProject = projectDir;
     delivered = {};
     message.clear();
-    delivery = std::async(std::launch::async, [copy = song, dir = projectDir, file, type = format, span] {
+    delivery = std::async(std::launch::async, [copy = song, dir = projectDir, file, type = format, span, louder] {
         AudioLibrary lib;
         if (!lib.load(copy, dir))
             return MixFile{file};
         if (type == Delivery::stems)
             return exportStems(copy, lib, file, cs::trackKinds[0]);
-        return exportMix(copy, lib, file, type, span.from, span.to);
+        return exportMix(copy, lib, file, type, span.from, span.to, louder);
     });
     triggerAsyncUpdate();
 }
@@ -315,6 +346,8 @@ void Studio::pollExport() {
             delivered = result;
             if (result.ok) {
                 lastMeter = result.meter;
+                if (result.loudness)
+                    lastLoudness = result.loudness;
                 if (page == Page::project && exporting && getPeer() != nullptr)
                     result.file.revealToUser();
             } else

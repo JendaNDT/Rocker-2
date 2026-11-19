@@ -794,6 +794,19 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
     REQUIRE(files.size() == 1);
     REQUIRE(waveReader(files[0])->lengthInSamples ==
             ViewState::load(dir).selectionEnd - ViewState::load(dir).selectionStart);
+    click(view, cs::wholeSong);
+    click(view, cs::louderExport);
+    fits(view);
+    click(view, cs::exportSolo);
+    for (int i = 0; i < 150 && !find<Button>(view, cs::playMix); ++i) {
+        tick();
+        view.resized();
+    }
+    REQUIRE(find<Button>(view, cs::playMix));
+    REQUIRE(dir.getChildFile("Exporty").findChildFiles(File::findFiles, false, "*hlasitejsi.wav").size() == 1);
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "35-hlasitejsi-export", pixels);
     click(view, cs::stems);
     CHECK_FALSE(find<Button>(view, cs::playMix));
     fits(view);
