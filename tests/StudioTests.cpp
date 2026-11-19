@@ -580,10 +580,18 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
         click(view, cs::resume);
         for (int i = 1; i <= 2; ++i) {
             REQUIRE(view.keyPressed(KeyPress('P')));
+            auto rescue = folder.getChildFile("Zachrana");
+            REQUIRE(rescue.findChildFiles(File::findFiles, false, "*.json").size() == 1);
             const test::FakeDevice::Block input{std::vector<float>(256, 0.15f * i)};
             for (int block = 0; block < 950; ++block)
                 device.process(input, 256);
-            tick();
+            // The message-thread timer closes the completed take and starts the audition.
+            for (int poll = 0;
+                 poll < 60 && !rescue.findChildFiles(File::findFiles, false, "*.json").isEmpty(); ++poll)
+                tick();
+            auto journals = rescue.findChildFiles(File::findFiles, false, "*.json");
+            INFO(journals.isEmpty() ? std::string{} : journals[0].loadFileAsString().toStdString());
+            REQUIRE(journals.isEmpty());
             view.resized();
             auto saved = Song::load(folder, bad);
             REQUIRE(saved);
