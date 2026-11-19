@@ -537,3 +537,100 @@ TEST_CASE("A-17 edit bars five and six, move to nine, repeat, undo and restore a
     REQUIRE(file.loadFileAsData(after));
     REQUIRE(after == before);
 }
+
+TEST_CASE("Repair bar six twice from the keyboard and keep the original after reopening") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice device;
+    auto folder = temp.dir.getChildFile("Repair");
+    Song initial;
+    initial.title = "Riff";
+    initial.grid.bpm = 240;
+    initial.tracks = {{"g", cs::guitar, "kytara", {"In 1"}}};
+    auto originalFile = folder.getChildFile("Zvuk/original.wav");
+    REQUIRE(originalFile.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(originalFile, initial.grid.rate, 1);
+    REQUIRE(writer);
+    const int beat = (int)initial.grid.beat(1);
+    AudioBuffer<float> phrase(1, beat);
+    for (int n = 0; n < 32; ++n) {
+        for (int i = 0; i < beat; ++i)
+            phrase.setSample(0, i, .5f * std::sin(i * (n == 20 ? .085f : .06f)) * std::exp(-i / 3300.f));
+        REQUIRE(writer->writeFromAudioSampleBuffer(phrase, 0, beat));
+    }
+    writer.reset();
+    initial.assets = {{"original", "Zvuk/original.wav", 32 * beat, 1}};
+    initial.clips = {{"original-clip", "g", "original", 0, 0, 32 * beat}};
+    MemoryBlock original;
+    REQUIRE(originalFile.loadFileAsData(original));
+    REQUIRE(initial.save(folder));
+    Settings settings;
+    settings.visited = true;
+    settings.lastSong = folder.getFullPathName();
+    REQUIRE(settings.save(temp.file));
+    ViewState state;
+    state.click = false;
+    state.editing = true;
+    state.selectionStart = initial.grid.beat(20);
+    state.selectionEnd = initial.grid.beat(24);
+    REQUIRE(state.save(folder));
+    bool bad = false;
+    {
+        Studio view(device, temp.file);
+        click(view, cs::resume);
+        for (int i = 1; i <= 2; ++i) {
+            REQUIRE(view.keyPressed(KeyPress('P')));
+            auto rescue = folder.getChildFile("Zachrana");
+            REQUIRE(rescue.findChildFiles(File::findFiles, false, "*.json").size() == 1);
+            const test::FakeDevice::Block input{std::vector<float>(256, 0.15f * i)};
+            for (int block = 0; block < 950; ++block)
+                device.process(input, 256);
+            // The message-thread timer closes the completed take and starts the audition.
+            for (int poll = 0;
+                 poll < 60 && !rescue.findChildFiles(File::findFiles, false, "*.json").isEmpty(); ++poll)
+                tick();
+            auto journals = rescue.findChildFiles(File::findFiles, false, "*.json");
+            INFO((journals.isEmpty() ? std::string{} : journals[0].loadFileAsString().toStdString()));
+            REQUIRE(journals.isEmpty());
+            view.resized();
+            auto saved = Song::load(folder, bad);
+            REQUIRE(saved);
+            REQUIRE_FALSE(bad);
+            REQUIRE(saved->groups.size() == 1);
+            auto& g = saved->groups.front();
+            REQUIRE(g.attempts.size() == i);
+            CHECK(g.from == state.selectionStart);
+            CHECK(g.to == state.selectionEnd);
+            auto& pass = g.attempts.back().clips.front();
+            CHECK(pass.position == initial.grid.beat(12));
+            CHECK(pass.length == initial.grid.beat(16));
+            CHECK(pass.offset == 373);
+            auto wave = waveReader(folder.getChildFile(saved->assets.back().path));
+            REQUIRE(wave);
+            CHECK(wave->lengthInSamples == pass.length + 373);
+        }
+        fits(view);
+        for (int pixels : {1280, 1920})
+            snapshot(view, "15-pokusy", pixels);
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::tabKey)));
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::returnKey)));
+        REQUIRE(Song::load(folder, bad)->groups.front().active == 0);
+        click(view, cs::stopSong);
+        REQUIRE(view.keyPressed(KeyPress(KeyPress::tabKey)));
+        view.resized();
+        click(view, cs::discardAttempt);
+        REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
+        click(view, cs::stopSong);
+        click(view, cs::restoredTake);
+        REQUIRE_FALSE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
+        REQUIRE(view.keyPressed(KeyPress('Z', ModifierKeys::ctrlModifier, 0)));
+        REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
+    }
+    MemoryBlock after;
+    REQUIRE(originalFile.loadFileAsData(after));
+    REQUIRE(after == original);
+    Studio reopened(device, temp.file);
+    click(reopened, cs::resume);
+    REQUIRE(find<Button>(reopened, cs::restoredTake));
+    fits(reopened);
+}

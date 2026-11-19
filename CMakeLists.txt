@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-project(Rocker2 VERSION 0.5.0 LANGUAGES C CXX)
+project(Rocker2 VERSION 0.6.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
@@ -20,6 +20,7 @@ target_link_libraries(Studio PRIVATE Fonts juce::juce_audio_formats juce::juce_a
 juce_add_gui_app(Rocker2 PRODUCT_NAME "Rocker 2" BUNDLE_ID "cz.rocker2.studio"
     MICROPHONE_PERMISSION_ENABLED TRUE MICROPHONE_PERMISSION_TEXT "Rocker 2 potřebuje vstup pro měření signálu z nástroje.")
 target_sources(Rocker2 PRIVATE src/app/Main.cpp)
+target_compile_definitions(Rocker2 PRIVATE ROCKER_VERSION="${PROJECT_VERSION}")
 target_link_libraries(Rocker2 PRIVATE Studio)
 if(APPLE)
     target_link_libraries(Studio PRIVATE "-framework IOKit")

@@ -86,22 +86,40 @@ void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
     for (auto& track : s.tracks) {
         auto& strip = *strips.emplace_back(std::make_unique<Strip>());
-        for (const auto& clip : s.clips) {
-            if (track.id != clip.track)
+        strip.channels = std::clamp(track.inputs.size(), 1, 2);
+        strip.fade = std::max(1, roundToInt(s.grid.rate * 0.010));
+        auto addClips = [&](const std::vector<Clip>& clips, std::vector<PlaybackClip>& output) {
+            for (const auto& clip : clips) {
+                if (track.id != clip.track)
+                    continue;
+                auto it = lib.data.find(clip.asset);
+                if (it == lib.data.end())
+                    continue;
+                output.push_back({it->second, clip.position, clip.offset, clip.length});
+                strip.channels = std::max(strip.channels, int(it->second->reader->numChannels));
+                hasClips = true;
+            }
+        };
+        addClips(s.clips, strip.clips);
+        for (const auto& group : s.groups) {
+            if (group.track != track.id)
                 continue;
-            auto wave = lib.data.find(clip.asset);
-            if (wave == lib.data.end())
-                continue;
-            strip.clips.push_back({wave->second, clip.position, clip.offset, clip.length});
-            strip.channels = std::max(strip.channels, int(wave->second->reader->numChannels));
-            hasClips = true;
+            auto& overlay = *strip.groups.emplace_back(std::make_unique<Overlay>());
+            overlay.id = group.id;
+            overlay.from = group.from;
+            overlay.to = group.to;
+            for (const auto& attempt : group.attempts)
+                addClips(attempt.clips, overlay.variants.emplace_back());
+            overlay.weights.resize(overlay.variants.size());
+            overlay.active.store(group.active);
         }
-        if (track.kind == "kytara" && !strip.clips.empty()) {
+        if (track.kind == "kytara") {
             strip.amps.resize(strip.channels);
             for (auto& amp : strip.amps)
                 amp.prepare(s.grid.rate);
             setSound(strips.size() - 1, track.amp, true);
-            tail = 2 * s.grid.rate;
+            if (!strip.clips.empty() || !strip.groups.empty())
+                tail = 2 * s.grid.rate;
         }
     }
     updateMix(s);
@@ -114,17 +132,45 @@ float MappedWave::peak(Frame start, int length) const noexcept {
     return result;
 }
 void Playback::prefetch(Frame from, Frame to) const {
-    for (const auto& strip : strips)
-        for (const auto& c : strip->clips)
+    auto warm = [&](const auto& clips) {
+        for (const auto& c : clips)
             for (Frame i = std::max(from, c.at); i < std::min(to, c.at + c.length); i += 512)
                 c.wave->reader->touchSample(c.offset + i - c.at);
+    };
+    for (const auto& strip : strips) {
+        warm(strip->clips);
+        for (const auto& group : strip->groups)
+            for (const auto& variant : group->variants)
+                warm(variant);
+    }
 }
-void Playback::Strip::read(float (&block)[2][256], int count, Frame at) const noexcept {
+void Playback::selectAttempt(const String& id, int index) {
+    for (auto& strip : strips)
+        for (auto& group : strip->groups)
+            if (group->id == id && index >= 0 && index <= (int)group->variants.size())
+                group->active.store(index);
+}
+void Playback::setPunch(size_t index, Frame from, Frame to, int left, int right, bool clean) {
+    auto& strip = *strips.at(index);
+    strip.punchFrom = from;
+    strip.punchTo = to;
+    strip.cleanPunch = clean;
+    strip.livePorts[0] = left;
+    strip.livePorts[1] = right;
+}
+static float envelope(Frame position, Frame from, Frame to, int fade) noexcept {
+    if (position < from || position >= to)
+        return 0.f;
+    Frame width = std::min<Frame>(fade, std::max<Frame>(1, (to - from) / 2));
+    return (float)std::min({width, position - from, to - 1 - position}) / (float)width;
+}
+void Playback::Strip::read(const std::vector<PlaybackClip>& material, float (&block)[2][256], int count,
+                           Frame at) const noexcept {
     for (int ch = 0; ch < channels; ++ch)
         std::fill_n(block[ch], count, 0.f);
     float source[2][256];
     int* raw[]{reinterpret_cast<int*>(source[0]), reinterpret_cast<int*>(source[1])};
-    for (const auto& clip : clips) {
+    for (const auto& clip : material) {
         auto first = std::max(at, clip.at);
         int n =
             static_cast<int>(std::max<Frame>(0, std::min(at + count, clip.at + clip.length) - first));
@@ -140,8 +186,9 @@ void Playback::Strip::read(float (&block)[2][256], int count, Frame at) const no
         }
     }
 }
-void Playback::Strip::process(float* const* out, int outputs, int size, Frame at) noexcept {
-    if (clips.empty())
+void Playback::Strip::process(float* const* out, int outputs, int size, Frame at,
+                              const float* const* input, int inputs, int inputOffset) noexcept {
+    if (clips.empty() && groups.empty() && punchTo <= punchFrom)
         return;
     const auto snapshot = command.consume();
     const auto word = snapshot & ~AmpCommand::recallBit;
@@ -163,11 +210,65 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
     for (int offset = restart ? -delay : 0; offset < size;) {
         int count = std::min(256, offset < 0 ? -offset : size - offset);
         float block[2][256];
-        read(block, count, at + delay + offset);
+        const Frame position = at + delay + offset;
+        read(clips, block, count, position);
+        for (const auto& group : groups) {
+            const int index = group->active.load();
+            if (position >= group->to || position + count <= group->from)
+                continue;
+            if (index != group->target || (restart && offset <= 0)) {
+                group->remaining = group->target < 0 || restart ? 0 : fade;
+                group->target = index;
+            }
+            float original[2][256];
+            for (int ch = 0; ch < channels; ++ch)
+                std::copy_n(block[ch], count, original[ch]);
+            for (size_t variant = 0; variant < group->variants.size(); ++variant) {
+                float wanted = int(variant) + 1 == index ? 1.f : 0.f;
+                float oldWeight = group->remaining ? group->weights[variant] : wanted;
+                if (oldWeight == 0 && wanted == 0) {
+                    group->weights[variant] = 0;
+                    continue;
+                }
+                float step = group->remaining ? (wanted - oldWeight) / group->remaining : 0.f;
+                float take[2][256];
+                read(group->variants[variant], take, count, position);
+                for (int i = 0; i < count; ++i) {
+                    float blend = i < group->remaining ? oldWeight + i * step : wanted;
+                    float weight = blend * envelope(position + i, group->from, group->to, fade);
+                    for (int ch = 0; ch < channels; ++ch)
+                        block[ch][i] += weight * (take[ch][i] - original[ch][i]);
+                }
+                group->weights[variant] = count < group->remaining ? oldWeight + count * step : wanted;
+            }
+            group->remaining = std::max(0, group->remaining - count);
+        }
+        if (position < punchTo && position + count > punchFrom && punchTo > punchFrom) {
+            for (int i = 0; i < count; ++i) {
+                float weight = envelope(position + i, punchFrom, punchTo, fade);
+                for (int ch = 0; ch < channels; ++ch) {
+                    int port = livePorts[ch];
+                    float live = !cleanPunch && input && port >= 0 && port < inputs && input[port] &&
+                                         offset + i >= 0
+                                     ? input[port][inputOffset + offset + i]
+                                     : 0.f;
+                    block[ch][i] += weight * (live - block[ch][i]);
+                }
+            }
+        }
         if (wet)
             for (int ch = 0; ch < channels; ++ch)
                 for (int i = 0; i < count; ++i)
                     block[ch][i] = amps[ch].process(block[ch][i]);
+        if (cleanPunch && input && offset >= 0) {
+            for (int ch = 0; ch < channels; ++ch) {
+                int port = livePorts[ch];
+                if (port >= 0 && port < inputs && input[port])
+                    for (int i = 0; i < count; ++i)
+                        block[ch][i] += envelope(at + offset + i, punchFrom, punchTo, fade) *
+                                        input[port][inputOffset + offset + i];
+            }
+        }
         if (heard && offset >= 0)
             for (int ch = 0; ch < std::min(2, outputs); ++ch)
                 if (out[ch]) {
@@ -178,10 +279,11 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
         offset += count;
     }
 }
-void Playback::mix(float* const* out, int outputs, int size, Frame at) noexcept {
+void Playback::mix(float* const* out, int outputs, int size, Frame at, const float* const* input,
+                   int inputs, int inputOffset) noexcept {
     const ScopedNoDenormals guard;
     for (auto& strip : strips)
-        strip->process(out, outputs, size, at);
+        strip->process(out, outputs, size, at, input, inputs, inputOffset);
 }
 bool renderSong(const Song& song, const AudioLibrary& library, const File& destination) {
     TemporaryFile output(destination);
@@ -240,6 +342,10 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
             take.right = t.inputs.size() == 2 ? ports.indexOf(t.inputs[1]) : -1;
             if (take.left < 0 || (t.inputs.size() == 2 && take.right < 0))
                 return false;
+            if (isPunch())
+                playback.setPunch(
+                    size_t(&t - s.tracks.data()), punchFrom, punchTo, monitorPunch ? take.left : -1,
+                    monitorPunch ? (take.right >= 0 ? take.right : take.left) : -1, cleanPunch);
             take.asset.id = Uuid().toString();
             take.asset.path = "Zvuk/" + take.asset.id + ".wav";
             take.asset.channels = t.inputs.size();
@@ -255,6 +361,9 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
     compensation = std::max(0, delay);
     journal = dir.getChildFile("Zachrana").getChildFile(Uuid().toString() + ".json");
     if (!atomicJson(journal, object({{"poloha", start},
+                                     {"opravaOd", punchFrom},
+                                     {"opravaDo", punchTo},
+                                     {"vznik", Time::currentTimeMillis()},
                                      {"kompenzace", compensation},
                                      {"sampleRate", grid.rate},
                                      {"stopy", entries}})))
@@ -299,7 +408,7 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
     if (n > skip) {
         float* outputs[]{no > 0 && out[0] ? out[0] + skip : nullptr,
                          no > 1 && out[1] ? out[1] + skip : nullptr};
-        playback.mix(outputs, std::min(2, no), n - skip, clock + skip);
+        playback.mix(outputs, std::min(2, no), n - skip, clock + skip, in, ni, skip);
         for (auto& t : takes)
             if (!t.queue->hasRoom(n - skip)) {
                 drop = clock + skip;
@@ -413,7 +522,20 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
         if (length <= delay)
             continue;
         next.assets.push_back({id, path, length, (int)reader->numChannels});
-        next.clips.push_back({id, track, id, at, delay, length - delay});
+        Clip pass{id, track, id, at, delay, length - delay};
+        Frame from = record.getProperty("opravaOd", 0), to = record.getProperty("opravaDo", 0);
+        if (to <= from)
+            next.clips.push_back(std::move(pass));
+        else {
+            // An interrupted pass remains recoverable without replacing an incomplete bar.
+            bool partial = pass.position + pass.length < to;
+            Frame first = partial ? pass.position : from;
+            Frame last = partial ? pass.position + pass.length : to;
+            if (!next.addAttempt(pass, first, last, record.getProperty("vznik", 0)))
+                return false;
+            if (partial)
+                next.groupAt(track, first, last)->discard();
+        }
     }
     next.bars = std::max(
         next.bars, (int)(next.grid.beatAt(std::max<Frame>(0, next.end() - 1)) / next.grid.beats + 1));

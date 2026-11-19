@@ -37,11 +37,26 @@ class Playback {
     void prefetch(Frame from, Frame to) const;
     bool empty() const { return !hasClips; }
     void setSound(size_t track, const GuitarSound&, bool recall);
-    void mix(float* const*, int outputs, int size, Frame at) noexcept;
+    void selectAttempt(const juce::String& group, int index);
+    void setPunch(size_t track, Frame from, Frame to, int left, int right, bool clean);
+    void mix(float* const*, int outputs, int size, Frame at, const float* const* input = nullptr,
+             int inputs = 0, int inputOffset = 0) noexcept;
     Frame tailFrames() const { return tail; }
 
   private:
+    struct Overlay {
+        juce::String id;
+        Frame from = 0, to = 0;
+        std::vector<std::vector<PlaybackClip>> variants;
+        std::atomic<int> active{0};
+        std::vector<float> weights;
+        int target = -1, remaining = 0;
+    };
     struct Strip {
+        std::vector<std::unique_ptr<Overlay>> groups;
+        Frame punchFrom = 0, punchTo = 0;
+        bool cleanPunch = false;
+        int livePorts[2]{-1, -1}, fade = 1;
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
         std::atomic<bool> audible{true};
@@ -49,8 +64,10 @@ class Playback {
         std::uint64_t applied = 0;
         Frame next = -1;
         int channels = 1;
-        void read(float (&block)[2][256], int count, Frame at) const noexcept;
-        void process(float* const*, int outputs, int count, Frame at) noexcept;
+        void read(const std::vector<PlaybackClip>&, float (&block)[2][256], int count,
+                  Frame at) const noexcept;
+        void process(float* const*, int outputs, int count, Frame at, const float* const*, int,
+                     int) noexcept;
     };
     std::vector<std::unique_ptr<Strip>> strips;
     bool hasClips = false;
@@ -82,6 +99,9 @@ class Performance {
     std::atomic<bool> finished{false}, failed{false};
     juce::File journal;
     int compensation = 0;
+    Frame punchFrom = 0, punchTo = 0;
+    bool monitorPunch = false, cleanPunch = false;
+    bool isPunch() const { return punchTo > punchFrom; }
 
   private:
     std::vector<Take> takes;

@@ -62,3 +62,11 @@ M-02, H-02, M-04 i H-10 proběhnou na vydané aplikaci podle Jendova rozhodnutí
 | Obsazený cíl | Přesun, vložení i opakování v cílovém rozsahu nahradí materiál vybrané stopy. Části před a za cílem zůstanou na místě, stejně jako ostatní stopy. Uvnitř výběru se zachovají mezery. Předchozí skladbu vrátí Zpět. | Odsunout zbytek stopy by posunulo její souhru s ostatními nástroji. |
 | Dvě historie | Zpět a Znovu drží během práce se skladbou její snímky v paměti. Režim, přiblížení, ukazatel a výběr se ukládají zvlášť. Obnovení datované verze kontroluje čitelnost popisu i nahrávek a má vlastní krok Zpět. | Procházet ručně starší soubory ve složce Verze. |
 | Samostatné pokračování | Jenda požádal o dokončení zbývajících etap v1 bez potvrzování každé z nich. Práce navazuje na automaticky ověřené větve a předání. Termín ručního hraní a měření zůstává po vydání. | Přerušovat práci mezi etapami a čekat na jednotlivé pokyny. |
+
+## E5 · záznam pokusů a koš
+
+Každý průchod má vlastní čistý WAV. Koš je příznak u pokusu ve skladbě. Přesunutí samotného WAV do jiné složky by zneplatnilo cesty ve starších uložených verzích. Příkaz **Vrátit z koše** zpřístupní zahozený průchod. O trvalém odstranění souborů bude v E11 rozhodovat **Uklidit skladbu**.
+
+Ovladač může dodat poslední vzorky vstupu se zpožděním. Zapisovač proto doběhne ještě o nastavenou kompenzaci. Po posunu má průchod přesnou délku od předstihu do konce dohry. Při přerušení před koncem opravovaného úseku se čitelná část uloží mezi zahozené pokusy v místě skutečného záznamu. Přerušený záznam tak automaticky nepřekryje původní hraní.
+
+Prolnutí mezi původním zahráním a opravou trvá 10 ms na každém okraji. U úseku kratšího než 20 ms se oba okraje vejdou do zvolené délky. Přepnutí během poslechu také používá krátké prolnutí. Stále běží stejný aparát dané stopy.

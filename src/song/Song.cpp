@@ -28,15 +28,55 @@ Array<var> items(const var& v, const char* key) {
         return *array;
     return {};
 }
+var clipJson(const Clip& c) {
+    return object({{"id", c.id},
+                   {"trackId", c.track},
+                   {"assetId", c.asset},
+                   {"position", c.position},
+                   {"sourceStart", c.offset},
+                   {"length", c.length}});
+}
 bool safeWave(const String& p) {
     return p.startsWith("Zvuk/") && p.substring(5).isNotEmpty() &&
            !p.substring(5).containsAnyOf("/\\:") && p.endsWithIgnoreCase(".wav");
 }
 } // namespace
+int TakeGroup::cycle() const {
+    int result = active;
+    do {
+        result = (result + 1) % (1 + (int)attempts.size());
+    } while (result && attempts[result - 1].discarded);
+    return result;
+}
+bool TakeGroup::discard() {
+    if (!active)
+        return false;
+    attempts[active - 1].discarded = true;
+    active = cycle();
+    return true;
+}
+TakeGroup* Song::groupAt(const String& track, Frame from, Frame to) {
+    for (auto& group : groups)
+        if (group.track == track && group.from == from && group.to == to)
+            return &group;
+    return nullptr;
+}
+bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created) {
+    if (from < 0 || to <= from || pass.position > from || pass.length < to - pass.position)
+        return false;
+    auto* group = groupAt(pass.track, from, to);
+    if (!group)
+        group = &groups.emplace_back(TakeGroup{Uuid().toString(), pass.track, from, to});
+    group->attempts.push_back({Uuid().toString(), created, false, {std::move(pass)}});
+    group->active = (int)group->attempts.size();
+    return true;
+}
 Frame Song::end() const {
     Frame end = grid.beat(Frame(bars) * grid.beats);
     for (auto& c : clips)
         end = std::max(end, c.position + c.length);
+    for (const auto& group : groups)
+        end = std::max(end, group.to);
     return end;
 }
 var Song::json() const {
@@ -50,12 +90,26 @@ var Song::json() const {
                        {"amp", t.kind == "kytara" ? t.amp.json() : var()},
                        {"mix", object({{"mute", t.mute}, {"solo", t.solo}})}}));
     for (auto& c : clips)
-        cs.add(object({{"id", c.id},
-                       {"trackId", c.track},
-                       {"assetId", c.asset},
-                       {"position", c.position},
-                       {"sourceStart", c.offset},
-                       {"length", c.length}}));
+        cs.add(clipJson(c));
+    Array<var> groupsJson;
+    for (const auto& group : groups) {
+        Array<var> attempts;
+        for (const auto& attempt : group.attempts) {
+            Array<var> recorded;
+            for (const auto& clip : attempt.clips)
+                recorded.add(clipJson(clip));
+            attempts.add(object({{"id", attempt.id},
+                                 {"vznik", attempt.created},
+                                 {"kos", attempt.discarded},
+                                 {"klipy", recorded}}));
+        }
+        groupsJson.add(object({{"id", group.id},
+                               {"stopa", group.track},
+                               {"od", group.from},
+                               {"do", group.to},
+                               {"aktivni", group.active},
+                               {"varianty", attempts}}));
+    }
     for (auto& a : assets)
         files.add(object({{"id", a.id},
                           {"soubor", a.path},
@@ -70,7 +124,7 @@ var Song::json() const {
                            {"barva", "sloka"},
                            {"delkaTaktu", bars},
                            {"klipy", cs},
-                           {"pokusy", Array<var>{}}});
+                           {"pokusy", groupsJson}});
     return object(
         {{"schemaVersion", 1},
          {"nazev", title},
@@ -133,7 +187,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
         return {};
     auto section = sections.getFirst();
     s.bars = jlimit(1, 1000000, (int)field(section, "delkaTaktu", 8));
-    for (auto& c : items(section, "klipy")) {
+    auto parseClip = [&](const var& c) -> std::optional<Clip> {
         Clip x{field(c, "id").toString(), field(c, "trackId").toString(), field(c, "assetId").toString(),
                field(c, "position"),      field(c, "sourceStart"),        field(c, "length")};
         auto asset =
@@ -143,9 +197,40 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
             x.offset > asset->length || x.length > asset->length - x.offset ||
             !clips.insert(x.id).second) {
             damaged = true;
+            return {};
+        }
+        return x;
+    };
+    for (auto& c : items(section, "klipy"))
+        if (auto clip = parseClip(c))
+            s.clips.push_back(*clip);
+    std::set<String> groupIds, attemptIds;
+    for (const auto& raw : items(section, "pokusy")) {
+        TakeGroup g{field(raw, "id").toString(), field(raw, "stopa").toString(), field(raw, "od", -1),
+                    field(raw, "do", -1)};
+        if (g.id.isEmpty() || !groupIds.insert(g.id).second || !tracks.contains(g.track) || g.from < 0 ||
+            g.to <= g.from || g.to > Frame(s.grid.rate) * 86400 * 30) {
+            damaged = true;
             continue;
         }
-        s.clips.push_back(x);
+        for (const auto& entry : items(raw, "varianty")) {
+            Attempt attempt{field(entry, "id").toString(), field(entry, "vznik"), field(entry, "kos")};
+            for (auto& c : items(entry, "klipy"))
+                if (auto clip = parseClip(c); clip && clip->track == g.track)
+                    attempt.clips.push_back(*clip);
+            if (attempt.clips.empty() || attempt.id.isEmpty() || !attemptIds.insert(attempt.id).second) {
+                damaged = true;
+                continue;
+            }
+            g.attempts.push_back(std::move(attempt));
+        }
+        g.active = field(raw, "aktivni", 0);
+        if (g.active < 0 || g.active > (int)g.attempts.size() ||
+            (g.active && g.attempts[g.active - 1].discarded)) {
+            damaged = true;
+            g.active = 0;
+        }
+        s.groups.push_back(std::move(g));
     }
     for (auto m : items(v, "vypadky"))
         if ((Frame)m >= 0)
@@ -188,6 +273,8 @@ bool ViewState::save(const File& d) const {
                                                                 {"vyberOd", selectionStart},
                                                                 {"vyberDo", selectionEnd},
                                                                 {"prvniTakt", firstBar},
+                                                                {"predstih", leadBars},
+                                                                {"dohra", tailBars},
                                                                 {"vybranyKlip", selectedClip}}));
 }
 ViewState ViewState::load(const File& d) {
@@ -202,7 +289,9 @@ ViewState ViewState::load(const File& d) {
             std::max<Frame>(0, field(v, "vyberOd")),
             std::max<Frame>(0, field(v, "vyberDo")),
             juce::jlimit<Frame>(0, 999999, field(v, "prvniTakt")),
-            field(v, "vybranyKlip").toString()};
+            field(v, "vybranyKlip").toString(),
+            jlimit(0, 8, (int)field(v, "predstih", 2)),
+            jlimit(0, 8, (int)field(v, "dohra", 1))};
 }
 std::unique_ptr<AudioFormatWriter> waveWriter(const File& file, int rate, int channels) {
     std::unique_ptr<OutputStream> stream = file.createOutputStream();

@@ -260,3 +260,62 @@ TEST_CASE("Sync diagnostic measures both ends of a ten minute virtual cable") {
     CHECK(offset->second == 4);
 }
 } // namespace
+
+TEST_CASE("A-21 sample continuity through both edges of opposite-phase takes", "[realtime]") {
+    Workspace w;
+    auto s = example();
+    s.tracks.resize(1);
+    s.tracks.front().kind = "jine";
+    const int length = 32000, start = 5371, stop = 23543;
+    auto track = s.tracks.front().id;
+    for (int id = 0; id < 2; ++id) {
+        String path = "Zvuk/" + String(id) + ".wav";
+        File file = w.dir.getChildFile(path);
+        REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+        auto writer = waveWriter(file, s.grid.rate, 1);
+        REQUIRE(writer);
+        AudioBuffer<float> source(1, length);
+        for (int i = 0; i < length; ++i)
+            source.setSample(0, i, (id ? -.7f : .7f) * std::cos(float(i) * 0.004f));
+        REQUIRE(writer->writeFromAudioSampleBuffer(source, 0, length));
+        s.assets.push_back({String(id), path, length, 1});
+    }
+    s.clips = {{"base", track, "0", 0, 0, length}};
+    REQUIRE(s.addAttempt({"pass", track, "1", 0, 0, length}, start, stop, 123));
+    AudioLibrary library;
+    REQUIRE(library.load(s, w.dir));
+    Playback playback(s, library);
+    std::vector<float> output(length);
+    for (int at = 0; at < length; at += 157) {
+        float* samples[]{output.data() + at};
+        playback.mix(samples, 1, std::min(157, length - at), at);
+    }
+    float maxStep = 0;
+    for (int i = 1; i < length; ++i) {
+        float original = .7f * std::cos(float(i) * 0.004f);
+        float weight = std::clamp(float(std::min(i - start, stop - 1 - i)) / 480.f, 0.f, 1.f);
+        if (std::abs(output[i] - original * (1 - 2 * weight)) > 0.00001f)
+            FAIL("Crossfade differs at sample " << i);
+        maxStep = std::max(maxStep, std::abs(output[i] - output[i - 1]));
+    }
+    CHECK(maxStep < .006f);
+    playback.selectAttempt(s.groups.front().id, 0);
+    std::array<float, 13> next{};
+    float* channels[]{next.data()};
+    playback.mix(channels, 1, 13, start + 3000);
+    CHECK(std::abs(next[0] - .7f * std::cos(float(start + 3000) * .004f)) < .00001f);
+    // Change selection in continuous playback, including a second request mid-fade.
+    int position = start + 3013;
+    for (int selected : {1, 0, 1, 1, 1}) {
+        playback.selectAttempt(s.groups.front().id, selected);
+        float previous = next.back();
+        next.fill(0);
+        playback.mix(channels, 1, (int)next.size(), position);
+        CHECK(std::abs(previous - next.front()) < .006f);
+        position += (int)next.size();
+    }
+    REQUIRE(s.save(w.dir));
+    bool bad = false;
+    REQUIRE(Song::load(w.dir, bad) == s);
+    REQUIRE_FALSE(bad);
+}

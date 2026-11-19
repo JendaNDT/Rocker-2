@@ -1,6 +1,13 @@
 #pragma once
 #include "engine/Devices.h"
 namespace rocker::cs {
+inline const juce::String repair = u8"P · Oprav takt", repairState = u8"OPRAVA", attemptLabel = u8"Pokus",
+                          takeGroup = u8"Pokusy", keepAttempt = u8"Ponechat tenhle",
+                          discardAttempt = u8"Zahodit pokus", nextAttempt = u8"Další pokus",
+                          originalTake = u8"Původní zahrání", restoredTake = u8"Vrátit z koše",
+                          savedAttempt = u8"Vybraný pokus je uložený.",
+                          discardedAttempt = u8"Pokus je v koši skladby.", preRoll = u8"Předstih",
+                          postRoll = u8"Dohra", pickRepair = u8"Vyber stopu a takt, který chceš opravit.";
 inline const juce::String editMode = u8"2 Stříhej", playMode = u8"1 Hraj", fileMenu = u8"Soubor",
                           versions = u8"Vrátit skladbu do stavu z…", versionTime = u8"Uložená verze",
                           applyVersion = u8"Obnovit tuto verzi",
