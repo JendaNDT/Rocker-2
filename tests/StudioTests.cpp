@@ -777,7 +777,7 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
         view.resized();
     }
     REQUIRE(find<Button>(view, cs::playMix));
-    auto files = dir.getChildFile("Export").findChildFiles(File::findFiles, false, "*.wav");
+    auto files = dir.getChildFile("Exporty").findChildFiles(File::findFiles, false, "*.wav");
     REQUIRE(files.size() == 1);
     REQUIRE(waveReader(files[0])->lengthInSamples ==
             ViewState::load(dir).selectionEnd - ViewState::load(dir).selectionStart);

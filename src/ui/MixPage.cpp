@@ -260,7 +260,7 @@ void Studio::beginExport() {
     if (pendingSoundSave)
         saveSong();
     auto span = selectedRange ? selection() : Span{0, -1};
-    auto folder = projectDir.getChildFile("Export");
+    auto folder = projectDir.getChildFile("Exporty");
     auto date = Time::getCurrentTime().formatted("%Y-%m-%d");
     auto file =
         folder.getNonexistentChildFile(File::createLegalFileName(song.title + cs::mixSuffix + date),
@@ -315,7 +315,7 @@ void Studio::findClick() {
     if (clickCheck.valid())
         return;
     clickChooser =
-        std::make_unique<FileChooser>(cs::checkClick, projectDir.getChildFile("Export"), "*.wav");
+        std::make_unique<FileChooser>(cs::checkClick, projectDir.getChildFile("Exporty"), "*.wav");
     clickChooser->launchAsync(FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles,
                               [self = Component::SafePointer<Studio>(this)](const FileChooser& chooser) {
                                   auto file = chooser.getResult();
