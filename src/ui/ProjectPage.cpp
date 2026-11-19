@@ -162,7 +162,7 @@ void Studio::openProject(File dir) {
 }
 void Studio::field(const String& label, Rect r, String& value) {
     text(label, r.removeFromLeft(std::min(s::labelWidth, r.getWidth() * 2 / 5)), s::body, s::muted);
-    auto* edit = new TextEditor;
+    auto* edit = new ThemedEditor;
     controls.add(edit);
     addAndMakeVisible(edit);
     edit->setName(label);
@@ -887,9 +887,9 @@ void Studio::paintProject(Graphics& g) {
     if (view.distant) {
         auto r = getLocalBounds().withTrimmedBottom(s::footer + s::inset);
         const bool saved = !performance && savedTake && message.endsWith(cs::savedTakeLabel);
-        g.setColour(counting ? s::warning : rec ? s::recording : saved ? s::ready : s::panel);
+        g.setColour(skin.colour(counting ? s::warning : rec ? s::recording : saved ? s::ready : s::panel));
         g.fillRect(r);
-        g.setColour(counting || saved ? s::background : s::chalk);
+        g.setColour(skin.colour(counting || saved || rec ? s::background : s::chalk));
         g.setFont(skin.font(s::distantRecord, false, true));
         String label = performance ? state : saved ? cs::farSaved : cs::farReady;
         auto top = r.removeFromTop(r.getHeight() / 3);
@@ -932,7 +932,7 @@ void Studio::paintProject(Graphics& g) {
     if (view.mixing)
         paintMix(g);
     if (rec) {
-        g.setColour(s::record);
+        g.setColour(skin.colour(s::record));
         g.fillRect(transportBounds.withHeight(s::stroke));
     }
     drawSections(g);
@@ -946,14 +946,14 @@ void Studio::paintProject(Graphics& g) {
     };
     for (int i = 0; i < bars; ++i) {
         int left = x(song.grid.beat((first + i) * song.grid.beats));
-        g.setColour(s::barGrid);
+        g.setColour(skin.colour(s::barGrid));
         g.drawVerticalLine(left, (float)axis.getY(), (float)timelineArea.getBottom());
         auto next = x(song.grid.beat((first + i + 1) * song.grid.beats));
         const auto label = String(first + i + 1);
         const auto font = skin.font(s::caption, true);
         if (GlyphArrangement::getStringWidth(font, label) <= next - left - s::stroke) {
             g.setFont(font);
-            g.setColour(s::chalk);
+            g.setColour(skin.colour(s::chalk));
             g.drawText(label, left + s::stroke, axis.getY(), next - left - s::stroke, axis.getHeight(),
                        Justification::centredLeft);
         }
@@ -964,7 +964,7 @@ void Studio::paintProject(Graphics& g) {
         const auto trackIndex = firstTrack + i;
         const auto& t = song.tracks[trackIndex];
         auto lane = lanes[i].withTrimmedLeft(s::trackHead);
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.drawHorizontalLine(lane.getBottom() - 1, (float)lane.getX(), (float)lane.getRight());
         const auto guitarsBefore = t.kind == "kytara" ?
             std::count_if(song.tracks.begin(), song.tracks.begin() + trackIndex,
@@ -977,16 +977,16 @@ void Studio::paintProject(Graphics& g) {
         const bool quiet = t.mute || (!t.solo && hasSolo);
         if (!view.mixing) {
             auto head = lanes[i].withWidth(s::trackHead);
-            g.setColour(view.selected == firstTrack + (int)i ? s::panel : s::background);
+            g.setColour(skin.colour(view.selected == firstTrack + (int)i ? s::accentSurface : s::panel));
             g.fillRect(head);
-            g.setColour(ink);
+            g.setColour(skin.colour(ink));
             g.fillRect(head.removeFromLeft(s::grid));
             if (!quiet && !t.inputs.isEmpty() && missingPorts(t).isEmpty()) {
                 const auto peak = link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak;
                 auto meter = head.reduced(s::gap, s::grid).removeFromBottom(s::traceHeight);
-                g.setColour(s::raised);
+                g.setColour(skin.colour(s::raised));
                 g.fillRect(meter);
-                g.setColour(peak >= 0.98855f ? s::clipping : s::ready);
+                g.setColour(skin.colour(peak >= 0.98855f ? s::clipping : s::ready));
                 g.fillRect(meter.withWidth(roundToInt(meter.getWidth() *
                     std::clamp((decibels(peak) + 60.f) / 60.f, 0.f, 1.f))));
             }
@@ -1000,10 +1000,11 @@ void Studio::paintProject(Graphics& g) {
                                   .withRight(x(std::min(lastFrame, last)))
                                   .reduced(0, s::grid);
                 if (cover) {
-                    g.setColour(s::panel);
+                    g.setColour(skin.colour(s::panel));
                     g.fillRect(bounds);
                 }
-                const auto clipInk = quiet ? ink.withAlpha(s::disabledOpacity) : ink;
+                const auto trackColour = skin.colour(ink);
+                const auto clipInk = quiet ? trackColour.withAlpha(s::disabledOpacity) : trackColour;
                 g.setColour(clipInk.withMultipliedAlpha(s::clipFillOpacity));
                 g.fillRect(bounds);
                 g.setColour(clipInk);
@@ -1028,7 +1029,7 @@ void Studio::paintProject(Graphics& g) {
                 if (group.retakeFamily.isNotEmpty() && group.to > begin && group.from < last) {
                     auto bounds = lane.withLeft(x(std::max(group.from, begin)))
                                       .withRight(x(std::min(group.to, last))).reduced(0, s::grid);
-                    g.setColour(s::panel);
+                    g.setColour(skin.colour(s::panel));
                     g.fillRect(bounds);
                 }
                 for (const auto& pass : group.attempts[index - 1].clips)
@@ -1041,9 +1042,9 @@ void Studio::paintProject(Graphics& g) {
             auto recorded = lane.withLeft(x(std::max(begin, performance->start)))
                                 .withRight(x(std::min(pos, last)))
                                 .reduced(0, s::grid);
-            g.setColour(s::record.withAlpha(s::selectionOpacity));
+            g.setColour(skin.colour(s::record).withAlpha(s::selectionOpacity));
             g.fillRect(recorded);
-            g.setColour(ink);
+            g.setColour(skin.colour(ink));
             if (auto it = liveWaves.find(t.id); it != liveWaves.end())
                 for (const auto& [frame, peak] : it->second) {
                     if (frame < begin || frame >= last)
@@ -1058,11 +1059,11 @@ void Studio::paintProject(Graphics& g) {
         paintEditOverlay(g);
     for (auto mark : song.dropouts)
         if (mark >= begin && mark < last) {
-            g.setColour(s::warning);
+            g.setColour(skin.colour(s::warning));
             g.fillRect(x(mark), ruler.getY(), s::stroke, timelineArea.getBottom() - ruler.getY());
         }
     if (pos >= begin && pos <= last) {
-        g.setColour(s::playhead);
+        g.setColour(skin.colour(s::playhead));
         g.fillRect(x(pos), ruler.getY(), s::stroke, timelineArea.getBottom() - ruler.getY());
     }
 }

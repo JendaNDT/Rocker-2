@@ -39,6 +39,10 @@ enum ButtonStyle {
 class Theme final : public juce::LookAndFeel_V4 {
   public:
     Theme();
+    bool applyAppearance(Appearance, bool systemDark);
+    bool isDark() const { return dark; }
+    juce::Colour colour(style::Ink ink) const { return ink.get(dark); }
+    int controlRadius() const { return dark ? style::graphiteRadius : style::porcelainRadius; }
     juce::Font font(float size, bool mono = false, bool bold = false) const;
     juce::Font getPopupMenuFont() override;
     juce::Font getComboBoxFont(juce::ComboBox&) override;
@@ -46,10 +50,16 @@ class Theme final : public juce::LookAndFeel_V4 {
     void positionComboBoxText(juce::ComboBox&, juce::Label&) override;
 
   private:
+    void setDark(bool);
+    bool dark = true;
     juce::Typeface::Ptr regular, heavy, digits;
+};
+class ThemedEditor final : public juce::TextEditor {
+    void lookAndFeelChanged() override;
 };
 class Studio final : public juce::Component,
                      public juce::FileDragAndDropTarget,
+                     private juce::DarkModeSettingListener,
                      private juce::Timer,
                      private juce::AsyncUpdater {
   public:
@@ -75,10 +85,13 @@ class Studio final : public juce::Component,
         juce::String value;
         Rect bounds;
         juce::Font font;
-        juce::Colour ink;
+        style::Ink ink;
         bool right;
     };
     Theme skin;
+    juce::ComboBox appearanceSelector;
+    void darkModeSettingChanged() override;
+    void updateAppearance();
     std::unique_ptr<Ideas> ideas;
     std::unique_ptr<IdeaRecording> ideaRecording;
     std::unique_ptr<Performance> ideaPreview;
@@ -178,7 +191,7 @@ class Studio final : public juce::Component,
     void status(juce::String);
     void makeHome(Rect);
     void deviceStatus(Rect);
-    std::vector<std::pair<Rect, juce::Colour>> homePreview;
+    std::vector<std::pair<Rect, style::Ink>> homePreview;
     int recentOffset = 0;
     void navigation(Rect);
     void paintWorkspace(juce::Graphics&);
@@ -202,7 +215,7 @@ class Studio final : public juce::Component,
     void devicePage(Rect);
     void tonePage(Rect);
     void inputPage(Rect);
-    void text(juce::String, Rect, int size = style::body, juce::Colour colour = style::chalk,
+    void text(juce::String, Rect, int size = style::body, style::Ink colour = style::chalk,
               bool mono = false, bool bold = false, bool right = false);
     juce::Button* button(const juce::String&, Rect, Handler, int look = plain, juce::String key = {},
                          Icon icon = Icon::none, juce::String visible = {});

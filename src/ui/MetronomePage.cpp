@@ -235,14 +235,14 @@ void Studio::paintMetronome(Graphics& g) {
         const int size = i == 0 ? s::transport : s::button;
         auto dot = Rect(x + i * spacing, area.getY(), spacing, area.getHeight())
                        .withSizeKeepingCentre(size, size).toFloat();
-        g.setColour(i == 0 ? s::guitar : i == beat ? s::chalk : s::barGrid);
+        g.setColour(skin.colour(i == 0 ? s::guitar : i == beat ? s::chalk : s::barGrid));
         if (i == beat)
             g.fillEllipse(dot);
         else
             g.drawEllipse(dot, s::stroke);
     }
     auto tempo = area.translated(0, area.getHeight()).withHeight(s::meterClock + s::gutter);
-    g.setColour(s::chalk);
+    g.setColour(skin.colour(s::chalk));
     g.setFont(skin.font(s::meterClock, true));
     g.drawText(String(metroGrid.bpm, metroGrid.bpm == std::round(metroGrid.bpm) ? 0 : 1)
                    .replaceCharacter('.', ','), tempo, Justification::centred);

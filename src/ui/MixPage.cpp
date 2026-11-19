@@ -198,16 +198,16 @@ void Studio::paintMix(Graphics& g) {
             return;
         g.setFont(skin.font(s::caption, true));
         if (name.isNotEmpty()) {
-            g.setColour(s::muted);
+            g.setColour(skin.colour(s::muted));
             g.drawText(name, r.removeFromLeft(s::inset), Justification::centredLeft);
         }
-        g.setColour(s::chalk);
+        g.setColour(skin.colour(s::chalk));
         g.drawText(db(level), r.removeFromRight(s::scaleWidth), Justification::centredRight);
         auto rail = r.withSizeKeepingCentre(r.getWidth(), s::grid * 2);
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.fillRect(rail);
         auto proportion = std::clamp((Decibels::gainToDecibels(level) + 60.f) / 60.f, 0.f, 1.f);
-        g.setColour(level > 1 ? s::clipping : s::ready);
+        g.setColour(skin.colour(level > 1 ? s::clipping : s::ready));
         g.fillRect(rail.withWidth(roundToInt(rail.getWidth() * proportion)));
     };
     for (size_t i = 0; i < trackMeters.size(); ++i)
@@ -215,7 +215,7 @@ void Studio::paintMix(Graphics& g) {
     auto r = stereoMeter;
     draw(r.removeFromTop(r.getHeight() / 2), performance ? m.left : 0, cs::leftShort);
     draw(r, performance ? m.right : 0, cs::rightShort);
-    g.setColour(m.maximum > 1 ? s::clipping : s::chalk);
+    g.setColour(skin.colour(m.maximum > 1 ? s::clipping : s::chalk));
     g.drawText(cs::mixPeak + " " + db(m.maximum) +
                    (m.loudest >= 0 ? cs::divider + bar(song, m.loudest) : String{}),
                mixReadout, Justification::centredLeft);

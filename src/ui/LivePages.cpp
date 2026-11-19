@@ -42,19 +42,22 @@ class Fader final : public Slider {
     void paint(Graphics& g) override {
         auto area = getLocalBounds().reduced(s::gap, 0);
         auto value = area.removeFromRight(readoutWidth());
-        g.setColour(s::chalk);
+        g.setColour(skin.colour(s::chalk));
         g.setFont(skin.font(s::body, true));
         g.drawText(readoutText(getValue()), value, Justification::centredRight, false);
         auto bar = area.withSizeKeepingCentre(area.getWidth() - s::inset, s::grid);
-        g.setColour(s::line);
+        g.setColour(skin.colour(s::line));
         g.fillRect(bar);
         const int x = bar.getX() + roundToInt(bar.getWidth() * valueToProportionOfLength(getValue()));
-        g.setColour(s::guitar);
+        g.setColour(skin.colour(s::accent));
         g.fillRect(bar.withRight(x));
-        g.setColour(s::chalk);
-        g.fillEllipse((float)(x - s::gap / 2), (float)(bar.getCentreY() - s::gap / 2), s::gap, s::gap);
+        auto thumb = Rectangle<int>(s::gap, s::gap).withCentre({x, bar.getCentreY()});
+        if (skin.isDark())
+            g.fillEllipse(thumb.toFloat());
+        else
+            g.fillRoundedRectangle(thumb.expanded(-s::stroke, s::stroke).toFloat(), s::stroke);
         if (hasKeyboardFocus(true)) {
-            g.setColour(s::selection);
+            g.setColour(skin.colour(s::selection));
             g.drawRect(getLocalBounds(), s::hairline);
         }
     }
@@ -750,7 +753,7 @@ void Studio::paintTuner(Graphics& g) {
     const auto ink = inTune ? s::ready : present ? s::warning : s::muted;
     const auto note = !present ? cs::emptyDash
                               : Tuning::noteName(tunings[tuningIndex].notes[nearestString]);
-    g.setColour(ink);
+    g.setColour(skin.colour(ink));
     g.setFont(skin.font(s::meterClock, true));
     g.drawText(note, tunerNote, Justification::centred);
     if (present) {
@@ -768,46 +771,46 @@ void Studio::paintTuner(Graphics& g) {
     auto labels = ticks.removeFromBottom(s::caption + s::grid);
     auto centre = ticks.getCentreY();
     auto scale = ticks.withSizeKeepingCentre(ticks.getWidth(), s::grid);
-    g.setColour(s::line);
+    g.setColour(skin.colour(s::line));
     g.fillRect(scale);
     auto x = [&](double c) {
         return ticks.getX() + roundToInt((std::clamp(c, -50., 50.) + 50.) / 100. * ticks.getWidth());
     };
-    g.setColour(s::ready.withAlpha(s::armedOpacity));
+    g.setColour(skin.colour(s::ready).withAlpha(s::armedOpacity));
     g.fillRect(x(-5), ticks.getY(), x(5) - x(-5), ticks.getHeight());
     g.setFont(skin.font(s::caption, true));
     for (int i = -50; i <= 50; i += 5) {
-        g.setColour(i == 0 ? s::ready : s::barGrid);
+        g.setColour(skin.colour(i == 0 ? s::ready : s::barGrid));
         const auto height = i % 25 == 0 ? s::gap : s::grid;
         g.drawVerticalLine(x(i), float(centre - height), float(centre + height));
         if (i % 25 == 0) {
-            g.setColour(s::muted);
+            g.setColour(skin.colour(s::muted));
             g.drawText(String(i), labels.withX(x(i) - s::levelWidth / 2).withWidth(s::levelWidth),
                        Justification::centred);
         }
     }
     if (present) {
-        g.setColour(ink);
+        g.setColour(skin.colour(ink));
         g.fillEllipse(Rect(x(needleCents) - s::inset / 2, centre - s::inset / 2, s::inset, s::inset).toFloat());
     }
     const auto hint = !present ? (link.caps.inputs.isEmpty() ? cs::noInputs : cs::waiting)
                                : inTune ? cs::inTune : cents < 0 ? cs::flat : cs::sharp;
-    g.setColour(ink);
+    g.setColour(skin.colour(ink));
     g.setFont(skin.font(s::heading, false, true));
     g.drawText(hint, tunerHint, Justification::centred);
     if (present) {
         const auto width = GlyphArrangement::getStringWidth(skin.font(s::heading, false, true), hint);
         auto spot = tunerHint.withRight(tunerHint.getCentreX() - roundToInt(width / 2) - s::gap);
         spot = spot.withLeft(spot.getRight() - s::icon).withSizeKeepingCentre(s::icon, s::icon);
-        paintIcon(g, inTune ? Icon::ok : cents < 0 ? Icon::up : Icon::down, ink, spot.toFloat());
+        paintIcon(g, inTune ? Icon::ok : cents < 0 ? Icon::up : Icon::down, skin.colour(ink), spot.toFloat());
     }
     g.setFont(skin.font(s::caption));
     for (size_t i = 0; i < tunerTiles.size(); ++i) {
         if (confirmed[i]) {
-            g.setColour(s::ready);
+            g.setColour(skin.colour(s::ready));
             g.drawText(cs::inTune, tunerTiles[i], Justification::centred);
         } else if (int(i) == targetString) {
-            g.setColour(s::muted);
+            g.setColour(skin.colour(s::muted));
             g.drawText(cs::tuningTarget, tunerTiles[i], Justification::centred);
         }
     }
@@ -816,7 +819,7 @@ void Studio::customPanel(Rect area) {
     auto field = [&](const String& label, String& value) {
         auto r = row(area);
         text(label, r.removeFromLeft(s::labelWidth), s::body, s::muted);
-        auto* editor = new TextEditor;
+        auto* editor = new ThemedEditor;
         controls.add(editor);
         addAndMakeVisible(editor);
         editor->setBounds(r.withWidth(s::fieldWidth));
