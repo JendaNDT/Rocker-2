@@ -3,6 +3,7 @@
 #include "ui/Studio.h"
 #include "ui/Strings.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <numbers>
 #include <cmath>
 using namespace rocker;
@@ -1204,7 +1205,7 @@ TEST_CASE("A-24 separate clocks, unplugged recording and package remapping throu
         fake.process(block, 1024);
     fake.disconnect();
     studio.resized();
-    CHECK(studio.currentPage() == Page::device);
+    CHECK(studio.currentPage() == Page::project);
     auto dir = File(Settings::load(temp.file).lastSong);
     bool bad = false;
     auto s = Song::load(dir, bad);
@@ -1483,6 +1484,10 @@ TEST_CASE("A-17 A-33 loop recording keeps passes and Tab compares them from the 
     REQUIRE(saved->groups.size() == 1);
     REQUIRE(saved->groups[0].attempts.size() == 3);
     CHECK(saved->groups[0].active == 3);
+    click(studio, cs::listenTake);
+    auto replay = fake.process({}, 512);
+    CHECK(replay[0][500] > .05f);
+    click(studio, cs::stopSong);
     REQUIRE(studio.keyPressed(KeyPress(KeyPress::tabKey)));
     studio.resized();
     CHECK(find<Button>(studio, cs::stopSong));
@@ -1551,4 +1556,298 @@ TEST_CASE("A-17 redesign keeps the transport stable and gives the mixer a collap
     click(studio, cs::openInspector);
     REQUIRE(find<Slider>(studio, cs::master));
     fits(studio);
+}
+
+TEST_CASE("Recording workflow offers the saved take, monitor help and explicit input repair", "[workflow]") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    const auto dir = temp.dir.getChildFile("song");
+    Song song;
+    song.title = "Riff";
+    song.tracks = {{"g", "Kytara", "kytara", {"In 1"}, true}};
+    REQUIRE(song.save(dir));
+    ViewState view;
+    view.click = view.countIn = false;
+    view.leadBars = view.tailBars = 0;
+    view.selectionEnd = song.barFrame(1);
+    REQUIRE(view.save(dir));
+    Settings config;
+    config.visited = true;
+    config.lastSong = dir.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Studio studio(fake, temp.file);
+    click(studio, cs::resume);
+    const auto process = [&](float level, int frames) {
+        return fake.process({std::vector<float>(frames, level)}, frames);
+    };
+
+    const auto capture = [&](const char* scene) {
+        fits(studio);
+        for (int pixels : {1280, 1920})
+            snapshot(studio, scene, pixels);
+    };
+    SECTION("Switching to edit follows the running transport") {
+        song.bars = 24;
+        song.grid.bpm = 300;
+        song.grid.beats = 1;
+        const auto backing = dir.getChildFile("Zvuk/pulse.wav");
+        REQUIRE(backing.getParentDirectory().createDirectory().wasOk());
+        auto writer = waveWriter(backing, song.grid.rate, 1);
+        REQUIRE(writer);
+        auto signal = [](int at) { return float((at % 1009) + 1) / 2048.f; };
+        const int duration = int(song.end());
+        AudioBuffer<float> sample(1, duration);
+        for (int at = 0; at < duration; ++at)
+            sample.setSample(0, at, signal(at));
+        REQUIRE(writer->writeFromAudioSampleBuffer(sample, 0, duration));
+        writer.reset();
+        song.tracks.push_back({"pulse", "Podklad", "podklad"});
+        song.tracks.back().pan = -1.f;
+        song.assets.push_back({"a", "Zvuk/pulse.wav", duration, 1});
+        song.clips.push_back({"c", "pulse", "a", 0, 0, duration});
+        REQUIRE(song.save(dir));
+        click(studio, cs::home);
+        click(studio, cs::resume);
+        click(studio, cs::playSong);
+        for (int block = 0; block < 150; ++block)
+            process(0, 1024);
+        click(studio, cs::editMode);
+        const auto state = ViewState::load(dir);
+        CHECK(state.firstBar > 0);
+        CHECK(state.firstBar <= 16);
+        CHECK(state.firstBar + state.zoom > 16);
+        capture("43-prechod-v-taktu");
+        int expected = 150 * 1024;
+        for (const char key : std::string("312132")) {
+            REQUIRE(studio.keyPressed(KeyPress(key)));
+            studio.resized();
+            auto continuedAudio = process(0, 128);
+            CHECK(std::abs(continuedAudio[0][0] - signal(expected)) < .00001f);
+            CHECK(std::abs(continuedAudio[0][127] - signal(expected + 127)) < .00001f);
+            expected += 128;
+            const auto continued = ViewState::load(dir);
+            CHECK(continued.trackId == "g");
+            CHECK(continued.zoom == state.zoom);
+            CHECK(continued.selectionStart == state.selectionStart);
+            CHECK(continued.selectionEnd == state.selectionEnd);
+        }
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        fits(studio);
+    }
+    SECTION("Opening a reordered song retains the track by identity") {
+        click(studio, cs::home);
+        song.tracks.insert(song.tracks.begin(), {"b", "Basa", "jine", {"In 2"}});
+        REQUIRE(song.save(dir));
+        click(studio, cs::resume);
+        auto* tracks = find<ComboBox>(studio, cs::audioTracks);
+        REQUIRE(tracks);
+        CHECK(tracks->getText() == "Kytara");
+    }
+    SECTION("One press plays the saved range and repeat keeps the original") {
+        click(studio, cs::recordSong);
+        process(.25f, 4096);
+        click(studio, cs::stopSong);
+        capture("42-ulozeny-pokus");
+        REQUIRE(studio.keyPressed(KeyPress(KeyPress::F5Key)));
+        studio.resized();
+        auto heard = process(0, 4096);
+        CHECK(std::abs(heard[0][1500]) > .05f);
+        CHECK(heard[0][4095] == 0.f);
+        tick();
+        studio.resized();
+        click(studio, cs::repeatTake);
+        process(-.5f, 3072);
+        click(studio, cs::stopSong);
+        bool bad = false;
+        auto saved = Song::load(dir, bad);
+        REQUIRE(saved);
+        REQUIRE_FALSE(bad);
+        REQUIRE(saved->assets.size() == 2);
+        REQUIRE(saved->groups.size() == 1);
+        CHECK(saved->groups.front().active == 1);
+        click(studio, cs::listenTake);
+        heard = process(0, 4096);
+        CHECK(heard[0][1500] < -.05f);
+        CHECK(heard[0][3072] == 0.f);
+        tick();
+        studio.resized();
+        REQUIRE(studio.keyPressed(KeyPress(KeyPress::F6Key)));
+        studio.resized();
+        process(.4f, 8192);
+        click(studio, cs::stopSong);
+        click(studio, cs::editMode);
+        click(studio, cs::home);
+        click(studio, cs::resume);
+        click(studio, cs::attemptLabel + " 1");
+        click(studio, cs::keepAttempt);
+        heard = process(0, 4096);
+        CHECK(heard[0][1500] > .05f);
+        saved = Song::load(dir, bad);
+        REQUIRE(saved);
+        CHECK_FALSE(bad);
+        CHECK(saved->groups.front().active == 0);
+        CHECK(saved->assets.size() == 3);
+    }
+    SECTION("Repeating both armed tracks keeps their independent inputs in one session") {
+        song.tracks.push_back({"bass", "Basa", "jine", {"In 2"}, true});
+        REQUIRE(song.save(dir));
+        click(studio, cs::home);
+        click(studio, cs::resume);
+        click(studio, cs::recordSong);
+        fake.process({std::vector<float>(4096, .1f), std::vector<float>(4096, .2f)}, 4096);
+        click(studio, cs::stopSong);
+        click(studio, cs::disarm);
+        click(studio, cs::repeatTake);
+        fake.process({std::vector<float>(4096, .2f), std::vector<float>(4096, .1f)}, 4096);
+        click(studio, cs::stopSong);
+        CHECK(studio.statusText().contains("Kytara, Basa"));
+        CHECK(studio.statusText().contains(cs::savedTakeLabel));
+        bool bad = false;
+        auto recorded = Song::load(dir, bad);
+        REQUIRE(recorded);
+        REQUIRE_FALSE(bad);
+        REQUIRE(recorded->groups.size() == 2);
+        CHECK(recorded->groups[0].sameSession(recorded->groups[1]));
+        click(studio, cs::editMode);
+        click(studio, cs::attemptLabel + " 1");
+        click(studio, cs::keepAttempt);
+        recorded = Song::load(dir, bad);
+        REQUIRE(recorded);
+        CHECK(recorded->groups[0].active == 0);
+        CHECK(recorded->groups[1].active == 0);
+    }
+    SECTION("Monitoring can be silenced during capture") {
+        const auto files = dir.getChildFile("Zvuk");
+        REQUIRE(files.createDirectory().wasOk());
+        auto writer = waveWriter(files.getChildFile("back.wav"), 48000, 1);
+        REQUIRE(writer);
+        AudioBuffer<float> backing(1, 8192);
+        std::fill_n(backing.getWritePointer(0), backing.getNumSamples(), -.125f);
+        REQUIRE(writer->writeFromAudioSampleBuffer(backing, 0, backing.getNumSamples()));
+        writer.reset();
+        song.tracks.push_back({"back", "Backing", "podklad"});
+        song.tracks.back().pan = 1.f;
+        song.assets.push_back({"a", "Zvuk/back.wav", 8192, 1});
+        song.clips.push_back({"c", "back", "a", 0, 0, 8192});
+        REQUIRE(song.save(dir));
+        click(studio, cs::home);
+        click(studio, cs::resume);
+        chooseItem(studio, cs::listen, 1);
+        click(studio, cs::recordSong);
+        CHECK(process(.25f, 1024)[0][500] > .1f);
+        click(studio, cs::monitorHelp);
+        capture("44-dvoji-odposlech");
+        click(studio, cs::monitorDisable);
+        const auto mixed = process(.25f, 2048);
+        CHECK(std::abs(mixed[0][1024]) < .00001f);
+        CHECK(std::abs(mixed[1][1024] + .125f) < .00001f);
+        CHECK(fake.active->read(0).peak > .2f);
+        click(studio, cs::monitorRestore);
+        CHECK(process(.25f, 1024)[0][500] > .1f);
+        click(studio, cs::stopSong);
+        bool bad = false;
+        auto saved = Song::load(dir, bad);
+        REQUIRE(saved);
+        REQUIRE(saved->assets.size() == 2);
+        auto wave = waveReader(dir.getChildFile(saved->assets.back().path));
+        REQUIRE(wave);
+        AudioBuffer<float> check(1, 1);
+        REQUIRE(wave->read(&check, 0, 1, 2000, true, false));
+        CHECK(std::abs(check.getSample(0, 0) - .25f) < .001f);
+    }
+    SECTION("Punch monitoring switches live for both clean and amplified guitar") {
+        click(studio, cs::home);
+        song.tracks.front().amp.enabled = true;
+        REQUIRE(song.save(dir));
+        click(studio, cs::resume);
+        const int mode = GENERATE(1, 2);
+        chooseItem(studio, cs::listen, mode);
+        click(studio, cs::editMode);
+        REQUIRE(studio.keyPressed(KeyPress('P')));
+        studio.resized();
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        auto sounding = process(.2f, 4096);
+        CHECK(FloatVectorOperations::findMaximum(sounding[0].data(), 4096) > .001f);
+        click(studio, cs::monitorHelp);
+        click(studio, cs::monitorDisable);
+        auto muted = process(.2f, 8192);
+        CHECK(std::abs(muted[0].back()) < .0001f);
+        CHECK(fake.active->live.monitor == Monitor::off);
+        click(studio, cs::monitorRestore);
+        auto restored = process(.2f, 4096);
+        CHECK(FloatVectorOperations::findMaximum(restored[0].data(), 4096) > .001f);
+    }
+    SECTION("No receipt for an empty count-in or failed atomic commit") {
+        click(studio, cs::countIn);
+        click(studio, cs::recordSong);
+        process(.25f, 128);
+        click(studio, cs::stopSong);
+        CHECK_FALSE(find<Button>(studio, cs::listenTake));
+        click(studio, cs::countIn);
+        click(studio, cs::recordSong);
+        process(.25f, 2048);
+        auto manifest = dir.getChildFile("skladba.json");
+        REQUIRE(manifest.moveFileTo(dir.getChildFile("backup")));
+        REQUIRE(manifest.createDirectory().wasOk());
+        REQUIRE(manifest.getChildFile("block").replaceWithText("test"));
+        click(studio, cs::stopSong);
+        CHECK_FALSE(find<Button>(studio, cs::listenTake));
+        CHECK(studio.statusText() == cs::takeNeedsRecovery);
+    }
+    SECTION("Only the missing side of a stereo track needs repair") {
+        song.tracks[0].inputs = StringArray{"In 1", "In 2"};
+        song.tracks.push_back({"other", "Basa", "jine", {"In 1"}});
+        REQUIRE(song.save(dir));
+        click(studio, cs::home);
+        click(studio, cs::resume);
+        fake.channels = 1;
+        fake.changed();
+        studio.resized();
+        auto* missing = find<Button>(studio, cs::chooseInput);
+        REQUIRE(missing);
+        CHECK(missing->getTooltip().contains(cs::channel(1)));
+        CHECK_FALSE(missing->getTooltip().contains(cs::channel(0)));
+        click(studio, cs::chooseInput);
+        click(studio, cs::useMono);
+        click(studio, cs::apply);
+        bool bad = false;
+        auto mono = Song::load(dir, bad);
+        REQUIRE(mono);
+        CHECK(mono->tracks.front().inputs.size() == 1);
+        CHECK(mono->tracks.back().inputs[0] == "In 1");
+        fake.disconnect();
+        fake.attached = true;
+        fake.channels = 2;
+        fake.changed();
+        studio.resized();
+        click(studio, cs::chooseInput);
+        chooseItem(studio, cs::newInput + " 1", 1);
+        click(studio, cs::apply);
+        CHECK_FALSE(find<Button>(studio, cs::chooseInput));
+        CHECK(find<Button>(studio, cs::chooseInput + cs::divider + "Basa"));
+    }
+    SECTION("An unplugged track stays in its song") {
+        process(0, 256);
+        CHECK_FALSE(find<Button>(studio, cs::chooseInput));
+        fake.disconnect();
+        studio.resized();
+        REQUIRE(studio.currentPage() == Page::project);
+        REQUIRE(find<Button>(studio, cs::chooseInput));
+        capture("45-odpojeny-vstup");
+        fake.attached = fake.laptop = true;
+        fake.asio = false;
+        fake.changed();
+        studio.resized();
+        click(studio, cs::recordSong);
+        CHECK_FALSE(find<Button>(studio, cs::stopSong));
+        click(studio, cs::chooseInput);
+        chooseItem(studio, cs::newInput + " 1", 1);
+        click(studio, cs::apply);
+        click(studio, cs::recordSong);
+        REQUIRE(find<Button>(studio, cs::stopSong));
+        fake.changed();
+        studio.resized();
+        REQUIRE(find<Button>(studio, cs::stopSong));
+    }
 }

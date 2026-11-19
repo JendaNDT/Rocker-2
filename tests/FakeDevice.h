@@ -22,6 +22,9 @@ class FakeDevice final : public DeviceSystem {
             }
         return false;
     }
+    bool streamMatches(const DeviceChoice&, const Capabilities& caps) const override {
+        return attached && active && channels == caps.inputs.size() && outputs == caps.outputChannels;
+    }
     Audio* active = nullptr;
     std::vector<Ports> scan() override {
         if (!attached)

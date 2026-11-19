@@ -27,7 +27,7 @@ class Native final : public DeviceSystem,
         if (audio && msg.isNoteOn())
             audio->drums.native(msg.getTimeStamp(), msg.getNoteNumber(), msg.getVelocity());
     }
-    std::atomic<bool> closing{false};
+    std::atomic<bool> closing{false}, streamFault{false};
     void add(Driver driver, Type* type) {
         if (type) {
             types.push_back({driver, std::unique_ptr<Type>(type)});
@@ -36,6 +36,19 @@ class Native final : public DeviceSystem,
     }
 
   public:
+    bool streamMatches(const DeviceChoice& route, const Capabilities& caps) const override {
+        if (streamFault.load() || !device || !device->isPlaying() ||
+            juce::roundToInt(device->getCurrentSampleRate()) != route.rate ||
+            device->getCurrentBufferSizeSamples() != route.buffer ||
+            device->getActiveOutputChannels().countNumberOfSetBits() != caps.outputChannels)
+            return false;
+        juce::StringArray inputs;
+        const auto names = device->getInputChannelNames();
+        const auto active = device->getActiveInputChannels();
+        for (int i = 0; i < names.size(); ++i)
+            if (active[i]) inputs.add(names[i]);
+        return inputs == caps.inputs;
+    }
     int xruns() const override { return device ? device->getXRunCount() : -1; }
     juce::Array<juce::MidiDeviceInfo> midiDevices() override {
         return juce::MidiInput::getAvailableDevices();
@@ -135,6 +148,7 @@ class Native final : public DeviceSystem,
             caps.inputLatency = device->getInputLatencyInSamples();
             caps.outputLatency = device->getOutputLatencyInSamples();
             audio = &processor;
+            streamFault = false;
             device->start(this);
             if (device->isPlaying())
                 return true;
@@ -151,10 +165,15 @@ class Native final : public DeviceSystem,
     }
     void audioDeviceAboutToStart(juce::AudioIODevice*) override {}
     void audioDeviceStopped() override {
-        if (!closing.load())
+        if (!closing.load()) {
+            streamFault = true;
             triggerAsyncUpdate();
+        }
     }
-    void audioDeviceError(const juce::String&) override { triggerAsyncUpdate(); }
+    void audioDeviceError(const juce::String&) override {
+        streamFault = true;
+        triggerAsyncUpdate();
+    }
     void audioDeviceListChanged() override { triggerAsyncUpdate(); }
     void handleAsyncUpdate() override {
         if (changed)

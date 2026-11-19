@@ -179,3 +179,9 @@ Samostatný Metronom používá stejný zdroj kliku a vodicího rytmu jako sklad
 Rozšířené nastavení aparátu, soubory a historie mají vlastní širší panel, protože obsahují více voleb, než ukazuje návrh režimu Hraj. Vývoz má vlastní formulář. Pohled zdálky používá celou plochu okna. Zapojení zobrazuje skutečné možnosti ovladače. Když Úvod ještě nemá načtený zvuk skladby, ukáže díly a poslední polohu.
 
 Ikony Lucide 0.460.0 se kreslí z vložených SVG. Licence je u souborů a v balících pro Windows i Mac. Inter a JetBrains Mono mají stejné soubory jako referenční maketa. [Vydání Lucide](https://github.com/lucide-icons/lucide/releases/tag/0.460.0) · [Licence ikon](../assets/icons/Lucide-LICENSE.txt)
+
+<a id="pokusy-a-prirazeni-vstupu"></a>
+## Pokusy a přiřazení vstupu
+
+- **Záběr po zastavení.** Běžné nahrávání zůstává vhodné pro přihrání další stopy. F5 přehraje právě uložený záběr s aktuálním mixem, F6 vytvoří jeho další variantu. Ve Stříhej jsou znovu dostupné i dřívější varianty. Obě akce fungují také pomocí tlačítek.
+- **Návrat zvukovky.** JUCE poskytuje jména vstupních zařízení a kanálů. Po zjištěné ztrátě celé zvukovky vyžaduje Rocker výslovné potvrzení vstupu. Automatické přiřazení jen podle názvu „In 1“ by mohlo nahrát mikrofon notebooku. Zmizí-li pouze jeden kanál, zůstane označený ve své stopě. Hudebník může oba kanály znovu přiřadit nebo vědomě zvolit mono.

@@ -34,6 +34,7 @@ class DeviceSystem {
     virtual juce::Array<juce::MidiDeviceInfo> midiDevices() { return {}; }
     virtual bool openMidi(const juce::String&, Audio&) { return false; }
     std::function<void()> midiChanged;
+    virtual bool streamMatches(const DeviceChoice&, const Capabilities&) const { return false; }
     virtual int xruns() const { return -1; }
     virtual void close() = 0;
     std::function<void()> changed;

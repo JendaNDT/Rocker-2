@@ -215,7 +215,9 @@ class Studio final : public juce::Component,
     juce::String draftTitle, draftTempo = "112", draftTrack;
     int draftBeats = 4, draftUnit = 4, draftKind = 0, draftPort = 0, draftChannels = 1;
     bool editingTempo = false, diagnosing = false;
-    int projectMonitor = 0;
+    int projectMonitor = 0, previousMonitor = 1;
+    bool monitorHelpOpen = false;
+    void monitorHelp(Rect&);
     double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler, sectionStrip;
     Rect navigationBounds, workspaceHeading, transportBounds, transportPosition, transportInfo;
@@ -240,6 +242,7 @@ class Studio final : public juce::Component,
 
     std::vector<Rect> lanes;
     int firstTrack = 0;
+    bool pendingModeReveal = false;
     std::map<juce::String, std::deque<std::pair<Frame, float>>> liveWaves;
     bool soundDeckOpen = false, namingPreset = false;
     juce::String presetDraft;
@@ -252,9 +255,31 @@ class Studio final : public juce::Component,
     void newProject();
     void openProject(juce::File);
     void finishProject();
+    bool saveView();
+    juce::String missingPorts(const Track&) const;
+    void bindInput(const Track&);
+    void initializeInputs();
+    static juce::String endpoint(const DeviceChoice&);
+    int singleRemap = -1;
     void projectPage(Rect);
     void paintProject(juce::Graphics&);
-    void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr, bool looping = false);
+    enum class TakeAction { normal, listen, repeat };
+    struct SavedTake {
+        Span audio, selection;
+        juce::StringArray tracks, assets;
+        std::map<juce::String, juce::String> attempts;
+        juce::String family, track, confirmation;
+        Frame start = 0, previousEnd = 0;
+        int number = 1;
+        bool loop = false;
+    };
+    std::optional<SavedTake> savedTake;
+    bool savedTakeAvailable() const;
+    void rememberTake(const Performance&, size_t firstAsset);
+    void takeActions(Rect&);
+    void runTakeAction(TakeAction);
+    void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr, bool looping = false,
+                      TakeAction action = TakeAction::normal);
     void startRepair(bool looping = false);
     void selectKitAttempt(Playback&, const TakeGroup&, int);
     void audition(TakeGroup&);
@@ -297,7 +322,7 @@ class Studio final : public juce::Component,
     void pollFiles();
     void cleanProject();
     void remapPage(Rect);
-    void beginRemap();
+    void beginRemap(int onlyTrack = -1);
     void saveReport();
     juce::String rigReport() const;
     void findClick();

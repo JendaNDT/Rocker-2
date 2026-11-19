@@ -76,7 +76,7 @@ void Studio::finishProject() {
     if (performance)
         stopProject();
     if (projectDir != File{} && song.title.isNotEmpty()) {
-        if (!view.save(projectDir) || !song.archive(projectDir))
+        if (!saveView() || !song.archive(projectDir))
             status(cs::songSaveError);
     }
 }
@@ -86,6 +86,8 @@ void Studio::openProject(File dir) {
         return;
     }
     finishProject();
+    savedTake.reset();
+    monitorHelpOpen = false;
     exporting = false;
     delivered = {};
     lastMeter = {};
@@ -120,6 +122,10 @@ void Studio::openProject(File dir) {
         }
     const bool complete = library.load(song, dir);
     view = ViewState::load(dir);
+    for (int i = 0; i < (int)song.tracks.size(); ++i)
+        if (song.tracks[i].id == view.trackId)
+            view.selected = i;
+    initializeInputs();
     view.selected = jlimit(0, std::max(0, (int)song.tracks.size() - 1), view.selected);
     view.cursor = std::min(view.cursor, song.end());
     normalizeSelection();
@@ -183,6 +189,8 @@ void Studio::configureSongMonitor() {
         soundDeckOpen = soundDeckOpen && t.kind == "jine";
         namingPreset = false;
     }
+    if (missingPorts(t).isNotEmpty())
+        return;
     int port = link.caps.inputs.indexOf(t.inputs[0]);
     if (port < 0)
         return;
@@ -192,6 +200,10 @@ void Studio::configureSongMonitor() {
     live.setAmp(t.amp.values);
     if (projectMonitor == 2 && (laptop || t.kind != "kytara"))
         projectMonitor = 0;
+    if (performance && performance->recording && performance->isPunch()) {
+        performance->playback.setPunchMonitor(projectMonitor);
+        return;
+    }
     live.monitor =
         projectMonitor == 2 && !t.amp.enabled ? Monitor::clean : static_cast<Monitor>(projectMonitor);
 }
@@ -206,7 +218,7 @@ void Studio::toggleDistant() {
     }
     offerDistant = false;
     view.distant = !view.distant;
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::editTrack(bool fresh) {
@@ -228,9 +240,21 @@ void Studio::editTrack(bool fresh) {
     }
     show(Page::trackSettings);
 }
-void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bool looping) {
+void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bool looping, TakeAction action) {
     if (performance)
         return;
+    if (action != TakeAction::normal && !savedTakeAvailable())
+        return;
+    const bool listening = action == TakeAction::listen, repeatingTake = action == TakeAction::repeat;
+    if (repeatingTake && savedTake->selection.valid()) {
+        repair = true;
+        looping = savedTake->loop;
+        pick(savedTake->selection);
+        for (int i = 0; i < (int)song.tracks.size(); ++i)
+            if (song.tracks[i].id == savedTake->track)
+                view.selected = i;
+        configureSongMonitor();
+    }
     if (!link.online) {
         status(cs::noDeviceSong);
         return;
@@ -248,13 +272,17 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bo
         status(cs::partialProject);
         return;
     }
-    if (!record && !auditionGroup && view.cursor >= song.end())
+    if (!listening && !record && !auditionGroup && view.cursor >= song.end())
         view.cursor = 0;
     Frame start = view.cursor;
 
     const auto span = selection();
-    const bool repeating = !record && !auditionGroup && view.playLoop && span.valid();
-    if (repair)
+    const bool repeating = !listening && !record && !auditionGroup && view.playLoop && span.valid();
+    if (listening)
+        start = savedTake->audio.from;
+    else if (repeatingTake)
+        start = savedTake->start;
+    else if (repair)
         start = std::max<Frame>(0, span.from - song.grid.beat(view.leadBars * song.grid.beats));
     else if (repeating)
         start = span.from;
@@ -270,6 +298,17 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bo
         p->monitorPunch = projectMonitor != 0;
         p->cleanPunch = projectMonitor == 1;
     }
+    if (listening) {
+        p->end = savedTake->audio.to;
+        for (const auto& group : song.groups) {
+            auto chosen = savedTake->attempts.find(group.id);
+            if (chosen == savedTake->attempts.end())
+                continue;
+            for (size_t i = 0; i < group.attempts.size(); ++i)
+                if (group.attempts[i].id == chosen->second)
+                    p->playback.selectAttempt(group.id, int(i + 1));
+        }
+    }
     if (auditionGroup) {
         p->end = auditionGroup->to + song.grid.beat(song.grid.beats);
         selectKitAttempt(p->playback, *auditionGroup,
@@ -278,7 +317,18 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bo
     }
     if (record) {
         Song capture = song;
-        if (repair)
+        if (repeatingTake) {
+            for (size_t i = 0; i < capture.tracks.size(); ++i) {
+                auto& t = capture.tracks[i];
+                t.armed = savedTake->tracks.contains(t.id);
+                if (t.armed && !repair)
+                    p->playback.setPunch(i, start, std::numeric_limits<Frame>::max(), -1, -1);
+            }
+            if (!repair) {
+                p->retakeFamily = savedTake->family;
+                p->previousTakeEnd = savedTake->previousEnd;
+            }
+        } else if (repair)
             for (auto& t : capture.tracks)
                 t.armed = song.linkedTrack(t.id, selectedTrack());
         int latency = link.caps.inputLatency + link.caps.outputLatency;
@@ -292,8 +342,7 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bo
         for (auto& t : capture.tracks)
             if (t.armed && (t.kind == "midi"
                                 ? activeMidi.isEmpty()
-                                : t.inputs.isEmpty() || !link.caps.inputs.contains(t.inputs[0]) ||
-                                      (t.inputs.size() > 1 && !link.caps.inputs.contains(t.inputs[1])))) {
+                                : t.inputs.isEmpty() || missingPorts(t).isNotEmpty())) {
                 status(cs::missingInputs);
                 return;
             }
@@ -308,6 +357,7 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bo
                 p->end = p->punchTo + song.grid.beat(view.tailBars * song.grid.beats) + p->compensation;
             link.audio.live.monitor = Monitor::off;
         }
+        savedTake.reset();
         offerDistant =
             !view.distant && std::any_of(capture.tracks.begin(), capture.tracks.end(), [](auto& t) {
                 return t.armed && (t.kind == "bici" || t.kind == "midi");
@@ -368,14 +418,17 @@ void Studio::stopProject(bool automatic) {
             p->failed.load())
             status(p->journal.existsAsFile() ? cs::takeNeedsRecovery : cs::takeSaveError);
         else {
-            if (p->drop < 0 && song.assets.size() > before)
-                ++view.savedTakes;
+            if (p->drop < 0 && !p->diskStop && song.assets.size() > before) {
+                rememberTake(*p, before);
+                if (savedTake)
+                    ++view.savedTakes;
+            }
             complete = p->finished && !p->failed && !p->diskStop && p->drop < 0;
             const Frame sec = view.cursor / song.grid.rate;
             status(p->diskStop
                        ? cs::diskStop + " " + String(sec / 60) + ":" + String(sec % 60).paddedLeft('0', 2)
                    : p->drop >= 0 ? cs::dropout
-                                  : cs::savedSong);
+                                  : savedTake ? message : song.assets.size() > before ? cs::savedPartial : cs::noTake);
         }
     }
     if (p->recording)
@@ -389,7 +442,7 @@ void Studio::stopProject(bool automatic) {
             audition(*g);
         }
     }
-    if (!view.save(projectDir))
+    if (!saveView())
         status(cs::songSaveError);
     triggerAsyncUpdate();
 }
@@ -412,7 +465,7 @@ void Studio::projectTick() {
         auto frame = playPosition();
         if (frame >= performance->start)
             for (const auto& t : song.tracks)
-                if ((performance->isPunch() ? song.linkedTrack(t.id, selectedTrack()) : t.armed) &&
+                if (performance->captures(t.id) &&
                     !t.inputs.isEmpty()) {
                     auto& peaks = liveWaves[t.id];
                     if (!peaks.empty() && peaks.back().first > frame)
@@ -504,10 +557,12 @@ void Studio::projectPage(Rect area) {
                     auto tracks = drumTracks();
                     if (tracks.empty())
                         return;
+                    for (const auto& track : tracks)
+                        bindInput(track);
                     song.tracks.insert(song.tracks.end(), tracks.begin(), tracks.end());
                     defaultMonitor();
                     saveSong();
-                    view.save(projectDir);
+                    saveView();
                     show(Page::project);
                 });
             combo(cs::trackKind, row(area), cs::trackKinds, draftKind, [this](int i) { draftKind = i; });
@@ -577,6 +632,7 @@ void Studio::projectPage(Rect area) {
                         openProject(folder);
                         return;
                     }
+                    savedTake.reset();
                     song.title = draftTitle.trim();
                     song.grid.bpm = bpm;
                     song.grid.beats = draftBeats;
@@ -609,10 +665,11 @@ void Studio::projectPage(Rect area) {
                     t.inputs.clear();
                     for (int i = 0; i < draftChannels && draftPort + i < link.caps.inputs.size(); ++i)
                         t.inputs.add(link.caps.inputs[draftPort + i]);
+                    bindInput(t);
                 }
                 show(Page::project);
                 saveSong();
-                view.save(projectDir);
+                saveView();
             },
             1);
         button(cs::back, cell(actions, s::nameWidth), [this, project] {
@@ -624,6 +681,10 @@ void Studio::projectPage(Rect area) {
     }
     if (view.distant) {
         auto footer = area.removeFromBottom(s::footer);
+        if (!performance && savedTakeAvailable()) {
+            auto actions = area.removeFromBottom(s::button);
+            takeActions(actions);
+        }
         button(cs::normal, cell(footer, s::nameWidth), [this] { toggleDistant(); });
         button(performance ? cs::stopSong : cs::recordSong, cell(footer, s::nameWidth), [this] {
             if (performance)
@@ -641,7 +702,7 @@ void Studio::projectPage(Rect area) {
                   selected, [this](int i) {
                       const int bars[]{0, 4, 8, 16, 32};
                       view.targetBars = bars[i];
-                      view.save(projectDir);
+                      saveView();
                       repaint();
                   });
         }
@@ -678,17 +739,23 @@ void Studio::projectPage(Rect area) {
     if (view.editing) {
         button(cs::beforeBars, control(s::clipWidth), [this] {
             view.firstBar = std::max<Frame>(0, view.firstBar - visibleBars());
-            view.save(projectDir);
+            saveView();
             repaint();
         });
         button(cs::afterBars, control(s::clipWidth), [this] {
             view.firstBar = std::min<Frame>(999999, view.firstBar + visibleBars());
-            view.save(projectDir);
+            saveView();
             repaint();
         });
         button(cs::zoomIn, control(s::button), [this] { editKey(KeyPress('+')); }, plain, {}, Icon::plus, " ");
         button(cs::zoomOut, control(s::button), [this] { editKey(KeyPress('-')); }, plain, {}, Icon::minus, " ");
     }
+    if ((view.editing || view.mixing || soundDeckOpen) &&
+        isPositiveAndBelow(view.selected, int(song.tracks.size())) && song.tracks[view.selected].kind == "kytara")
+        button(cs::monitorHelp, control(s::nameWidth), [this] {
+            monitorHelpOpen = !monitorHelpOpen;
+            triggerAsyncUpdate();
+        });
     const bool mismatched = link.online && link.current.rate != song.grid.rate;
     if (mismatched && !performance) {
         auto rateRow = row(area);
@@ -716,6 +783,8 @@ void Studio::projectPage(Rect area) {
         text(cs::rateMismatch(song.grid.rate, link.current.rate), rateRow, s::body, s::warning);
     }
     area.removeFromTop(s::grid);
+    if (monitorHelpOpen)
+        monitorHelp(area);
     if (view.mixing) {
         if (exporting)
             exportPage(area);
@@ -724,6 +793,7 @@ void Studio::projectPage(Rect area) {
         return;
     }
     auto notice = area.removeFromBottom(s::button).reduced(s::inset, 0);
+    takeActions(notice);
     if (browsingVersions || soundDeckOpen) {
         auto foot = area.removeFromBottom(soundDeckOpen ? s::soundDeck : s::songDeck);
         panels.push_back(foot);
@@ -748,12 +818,22 @@ void Studio::projectPage(Rect area) {
              String(projectDir.getBytesFreeOnVolume() / (3600. * 4 * channels * song.grid.rate), 1) +
              " h",
          disk, s::caption, s::muted, true, false, true);
-    if (!mismatched || message != cs::rateMismatch(song.grid.rate, link.current.rate))
-        text(message, notice, s::caption, s::warning);
+    if (!mismatched || message != cs::rateMismatch(song.grid.rate, link.current.rate)) {
+        const bool confirmed = savedTake && (message == savedTake->confirmation ||
+                                             (message.isEmpty() && !performance));
+        auto label = confirmed ? savedTake->confirmation : message;
+        text(limit(skin.font(s::caption), label, notice.getWidth()), notice, s::caption,
+             confirmed ? s::ready : s::warning);
+    }
     sectionStrip = area.removeFromTop(s::workspaceRuler / 2);
     text(cs::sections, sectionStrip.withWidth(s::trackHead).withTrimmedLeft(s::inset),
          s::caption, s::navigationInk, false, true);
     ruler = area.removeFromTop(s::workspaceRuler / 2);
+    if (pendingModeReveal) {
+        reveal(playPosition());
+        pendingModeReveal = false;
+        saveView();
+    }
     text(cs::bars, ruler.withWidth(s::trackHead).withTrimmedLeft(s::inset), s::caption,
          s::chalk, false, true);
     const int laneHeight = s::workspaceLane;
@@ -798,7 +878,7 @@ void Studio::paintProject(Graphics& g) {
                  : String(beat / song.grid.beats + 1) + "." + String(beat % song.grid.beats + 1);
     if (view.distant) {
         auto r = getLocalBounds().withTrimmedBottom(s::footer + s::inset);
-        const bool saved = !performance && view.savedTakes > 0 && message == cs::savedSong;
+        const bool saved = !performance && savedTake && message.endsWith(cs::savedTakeLabel);
         g.setColour(counting ? s::warning : rec ? s::recording : saved ? s::ready : s::panel);
         g.fillRect(r);
         g.setColour(counting || saved ? s::background : s::chalk);
@@ -812,8 +892,9 @@ void Studio::paintProject(Graphics& g) {
         String track = isPositiveAndBelow(view.selected, (int)song.tracks.size())
                            ? song.tracks[view.selected].name
                            : String{};
-        g.drawText(track + cs::divider + cs::attemptLabel + " " +
-                       String(view.savedTakes + (saved ? 0 : 1)),
+        auto captureLabel = saved ? savedTake->confirmation
+                                  : track + cs::divider + cs::attemptLabel + " " + String(view.savedTakes + 1);
+        g.drawText(captureLabel,
                    note, Justification::centred);
         g.setFont(skin.font(s::distantBar, true));
         String bar = counting ? clock : String(beat / song.grid.beats + 1);
@@ -892,7 +973,7 @@ void Studio::paintProject(Graphics& g) {
             g.fillRect(head);
             g.setColour(ink);
             g.fillRect(head.removeFromLeft(s::grid));
-            if (!quiet && !t.inputs.isEmpty()) {
+            if (!quiet && !t.inputs.isEmpty() && missingPorts(t).isEmpty()) {
                 const auto peak = link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak;
                 auto meter = head.reduced(s::gap, s::grid).removeFromBottom(s::traceHeight);
                 g.setColour(s::raised);
@@ -935,12 +1016,19 @@ void Studio::paintProject(Graphics& g) {
             drawClip(clip, clip.position, clip.position + clip.length, false);
         for (const auto& group : song.groups) {
             int index = previewGroup == group.id && preview >= 0 ? preview : group.active;
-            if (group.track == t.id && index > 0 && index <= (int)group.attempts.size())
+            if (group.track == t.id && index > 0 && index <= (int)group.attempts.size()) {
+                if (group.retakeFamily.isNotEmpty() && group.to > begin && group.from < last) {
+                    auto bounds = lane.withLeft(x(std::max(group.from, begin)))
+                                      .withRight(x(std::min(group.to, last))).reduced(0, s::grid);
+                    g.setColour(s::panel);
+                    g.fillRect(bounds);
+                }
                 for (const auto& pass : group.attempts[index - 1].clips)
                     drawClip(pass, std::max(pass.position, group.from),
                              std::min(pass.position + pass.length, group.to), true);
+            }
         }
-        if (rec && (performance->isPunch() ? song.linkedTrack(t.id, selectedTrack()) : t.armed) &&
+        if (rec && performance->captures(t.id) &&
             pos > begin) {
             auto recorded = lane.withLeft(x(std::max(begin, performance->start)))
                                 .withRight(x(std::min(pos, last)))
@@ -1001,7 +1089,7 @@ void Studio::mouseDown(const MouseEvent& event) {
     Frame begin = song.grid.beat(first * song.grid.beats),
           last = song.grid.beat((first + view.zoom) * song.grid.beats);
     view.cursor = begin + (Frame)((double)(event.x - axis.getX()) * (last - begin) / axis.getWidth());
-    view.save(projectDir);
+    saveView();
     repaint();
 }
 void Studio::startLoadTrial() {

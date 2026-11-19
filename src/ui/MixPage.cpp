@@ -36,6 +36,12 @@ String Studio::soloNames() const {
     return names.joinIntoString(", ");
 }
 void Studio::mixMode(bool panel) {
+    if (!view.mixing) {
+        view.firstBar = firstBar();
+        pendingModeReveal = true;
+        if (view.selected < firstTrack || view.selected >= firstTrack + (int)lanes.size())
+            firstTrack = view.selected;
+    }
     exporting = panel;
     view.mixing = true;
     view.editing = false;
@@ -44,14 +50,14 @@ void Studio::mixMode(bool panel) {
     drag = Drag::none;
     if (!selection().valid())
         selectedRange = false;
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::seekMix(Frame frame) {
     if (performance)
         stopProject();
     view.cursor = std::clamp<Frame>(frame, 0, song.end());
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::toggleMix(int i, bool solo) {
@@ -65,7 +71,7 @@ void Studio::toggleMix(int i, bool solo) {
     if (performance)
         performance->playback.updateMix(song);
     saveSong();
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::mixPage(Rect area) {
@@ -73,6 +79,7 @@ void Studio::mixPage(Rect area) {
     if (!mixInspectorCollapsed)
         inspectorBounds = area.removeFromRight(s::inspectorWidth);
     auto notice = area.removeFromBottom(s::button).reduced(s::inset, 0);
+    takeActions(notice);
     auto trackNavigation = area.removeFromBottom(s::button).reduced(s::inset, 0);
     const int laneWidth = s::mixTrackHead;
     auto axis = [&](Rect r) { return r.withTrimmedLeft(laneWidth - s::trackHead); };
@@ -83,6 +90,11 @@ void Studio::mixPage(Rect area) {
     text(cs::gainLabel, header.removeFromLeft(s::mixGainWidth), s::caption, s::navigationInk);
     text(cs::panLabel, header.removeFromLeft(s::levelWidth), s::caption, s::navigationInk);
     ruler = axis(area.removeFromTop(s::workspaceRuler / 2));
+    if (pendingModeReveal) {
+        reveal(playPosition());
+        pendingModeReveal = false;
+        saveView();
+    }
     lanes.clear();
     trackMeters.clear();
     const int visible = std::max(1, area.getHeight() / s::workspaceLane);
@@ -96,11 +108,7 @@ void Studio::mixPage(Rect area) {
         auto nameArea = row.removeFromLeft(s::mixNameWidth).reduced(s::grid, 0);
         auto label = button(
             limit(skin.font(s::body, false, true), t.name, nameArea.getWidth() - 2 * s::inset), nameArea,
-            [this, i] {
-                view.selected = i;
-                view.save(projectDir);
-                triggerAsyncUpdate();
-            }, view.selected == i ? 1 : 0);
+            [this, i] { selectProjectTrack(i); }, view.selected == i ? 1 : 0);
         label->setTooltip(t.name);
         label->setEnabled(!performance || !performance->recording);
         mixSlider(cs::gainLabel + " " + t.name, row.removeFromLeft(s::mixGainWidth), t.gainDb, false,
@@ -120,7 +128,14 @@ void Studio::mixPage(Rect area) {
         toggle(cs::mute, cs::muteShort, false, t.mute, muteActive);
         toggle(cs::solo, cs::soloShort, true, t.solo, soloActive);
         auto details = head.removeFromTop(s::button);
-        if (t.kind == "kytara")
+        auto missing = missingPorts(t);
+        if (missing.isNotEmpty()) {
+            auto route = details.removeFromLeft(s::mixNameWidth);
+            button(cs::chooseInput + cs::divider + t.name, route,
+                   [this, i] { beginRemap(i); }, plain, {}, Icon::none, cs::chooseInput)->setEnabled(!performance);
+            auto warning = details.removeFromLeft(s::mixGainWidth);
+            text(limit(skin.font(s::caption), missing, warning.getWidth()), warning, s::caption, s::warning);
+        } else if (t.kind == "kytara")
             text(limit(skin.font(s::caption), t.amp.name, s::mixNameWidth - 2 * s::grid),
                  details.removeFromLeft(s::mixNameWidth).reduced(s::grid, 0), s::caption, s::guitar);
         else

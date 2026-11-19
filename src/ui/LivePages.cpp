@@ -469,7 +469,7 @@ void Studio::openTrackSound(int index) {
         projectMonitor = 0;
         view.selected = index;
         configureSongMonitor();
-        view.save(projectDir);
+        saveView();
     }
     soundDeckOpen = true;
     namingPreset = false;

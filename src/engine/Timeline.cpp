@@ -168,6 +168,7 @@ Playback::Playback(const Song& s, const AudioLibrary& lib) {
                 continue;
             auto& overlay = *strip.groups.emplace_back(std::make_unique<Overlay>());
             overlay.id = group.id;
+            overlay.wholeTake = group.retakeFamily.isNotEmpty();
             overlay.from = group.from;
             overlay.to = group.to;
             for (const auto& attempt : group.attempts)
@@ -219,11 +220,10 @@ void Playback::selectAttempt(const String& id, int index) {
             if (group->id == id && index >= 0 && index <= (int)group->variants.size())
                 group->active.store(index);
 }
-void Playback::setPunch(size_t index, Frame from, Frame to, int left, int right, bool clean) {
+void Playback::setPunch(size_t index, Frame from, Frame to, int left, int right) {
     auto& strip = *strips.at(index);
     strip.punchFrom = from;
     strip.punchTo = to;
-    strip.cleanPunch = clean;
     strip.livePorts[0] = left;
     strip.livePorts[1] = right;
 }
@@ -256,7 +256,7 @@ void Playback::Strip::read(const std::vector<PlaybackClip>& material, float (&bl
     }
 }
 void Playback::Strip::process(float* const* out, int outputs, int size, Frame at,
-                              const float* const* input, int inputs, int inputOffset) noexcept {
+                              const float* const* input, int inputs, int inputOffset, int monitor) noexcept {
     if (clips.empty() && groups.empty() && punchTo <= punchFrom)
         return;
     const auto snapshot = command.consume();
@@ -318,7 +318,10 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
                 read(group->variants[variant], take, count, position);
                 for (int i = 0; i < count; ++i) {
                     float blend = i < group->remaining ? oldWeight + i * step : wanted;
-                    float weight = blend * envelope(position + i, group->from, group->to, fade);
+                    const Frame frame = position + i;
+                    const float edge = group->wholeTake ? float(frame >= group->from && frame < group->to)
+                                                        : envelope(frame, group->from, group->to, fade);
+                    float weight = blend * edge;
                     for (int ch = 0; ch < channels; ++ch)
                         block[ch][i] += weight * (take[ch][i] - original[ch][i]);
                 }
@@ -331,7 +334,7 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
                 float weight = envelope(position + i, punchFrom, punchTo, fade);
                 for (int ch = 0; ch < channels; ++ch) {
                     int port = livePorts[ch];
-                    float live = !cleanPunch && input && port >= 0 && port < inputs && input[port] &&
+                    float live = monitor == 2 && input && port >= 0 && port < inputs && input[port] &&
                                          offset + i >= 0
                                      ? input[port][inputOffset + offset + i]
                                      : 0.f;
@@ -347,13 +350,25 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
             for (int ch = 0; ch < channels; ++ch)
                 for (int i = 0; i < count; ++i)
                     block[ch][i] = voices[ch].process(block[ch][i]);
-        if (cleanPunch && input && offset >= 0) {
+        if (monitor == 1 && input && offset >= 0) {
             for (int ch = 0; ch < channels; ++ch) {
                 int port = livePorts[ch];
                 if (port >= 0 && port < inputs && input[port])
                     for (int i = 0; i < count; ++i)
                         block[ch][i] += envelope(at + offset + i, punchFrom, punchTo, fade) *
                                         input[port][inputOffset + offset + i];
+            }
+        }
+        // A room or cabinet can keep sounding after its input is muted.
+        // Fade only this punched strip, leaving the backing and the capture queue untouched.
+        if (punchTo > punchFrom && offset >= 0 && (monitor == 0 || punchLevel < 1.f)) {
+            const float step = 1.f / float(fade);
+            for (int i = 0; i < count; ++i) {
+                const float target = monitor == 0 ? 1.f - envelope(at + offset + i, punchFrom, punchTo, fade)
+                                                  : 1.f;
+                punchLevel += std::clamp(target - punchLevel, -step, step);
+                for (int ch = 0; ch < channels; ++ch)
+                    block[ch][i] *= punchLevel;
             }
         }
         if (heard && offset >= 0)
@@ -376,6 +391,7 @@ void Playback::mix(float* const* out, int outputs, int size, Frame at, const flo
     for (auto& strip : strips)
         strip->blockPeak = 0;
     const float masterGain = master.load();
+    const int monitor = punchMonitor.load(std::memory_order_relaxed);
     float peaks[2]{}, maximum = maxPeak.load();
     Frame maximumAt = loudest.load(), clipped = over.load();
     for (int offset = 0; offset < size;) {
@@ -390,7 +406,7 @@ void Playback::mix(float* const* out, int outputs, int size, Frame at, const flo
         float left[256]{}, right[256]{};
         float* block[]{left, right};
         for (auto& strip : strips)
-            strip->process(block, 2, n, position, input, inputs, inputOffset + offset);
+            strip->process(block, 2, n, position, input, inputs, inputOffset + offset, monitor);
         for (int i = 0; i < n; ++i) {
             float gain =
                 (float)std::min<Frame>({cutFade, position + i - before, after - position - i - 1}) /
@@ -507,7 +523,7 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
                 if (!take.midi->stream)
                     return false;
                 if (isPunch())
-                    playback.setPunch(size_t(&t - s.tracks.data()), punchFrom, punchTo, -1, -1, true);
+                    playback.setPunch(size_t(&t - s.tracks.data()), punchFrom, punchTo, -1, -1);
                 entries.add(object(
                     {{"id", take.asset.id}, {"stopa", t.id}, {"midi", true}, {"posunMidi", midiDelay}}));
                 takes.push_back(std::move(take));
@@ -519,8 +535,8 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
                 return false;
             if (isPunch())
                 playback.setPunch(
-                    size_t(&t - s.tracks.data()), punchFrom, punchTo, monitorPunch ? take.left : -1,
-                    monitorPunch ? (take.right >= 0 ? take.right : take.left) : -1, cleanPunch);
+                    size_t(&t - s.tracks.data()), punchFrom, punchTo, take.left,
+                    take.right >= 0 ? take.right : take.left);
             take.asset.id = Uuid().toString();
             take.asset.path = "Zvuk/" + take.asset.id + ".wav";
             take.asset.channels = t.inputs.size();
@@ -533,6 +549,7 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
         }
     if (takes.empty())
         return false;
+    playback.setPunchMonitor(monitorPunch ? (cleanPunch ? 1 : 2) : 0);
     compensation = std::max(0, delay);
     loopCaptureDelay = compensation;
     if (looped && std::any_of(takes.begin(), takes.end(), [](const auto& take) { return bool(take.midi); }))
@@ -542,6 +559,8 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
     if (!atomicJson(journal, object({{"poloha", start},
                                      {"vyskyt", anchor >= 0 ? s.order[anchor].id : String{}},
                                      {"dil", anchor >= 0 ? s.order[anchor].section : String{}},
+                                     {"serie", retakeFamily},
+                                     {"konecPredchoziho", previousTakeEnd},
                                      {"opravaOd", punchFrom},
                                      {"opravaDo", punchTo},
                                      {"smyckaOd", looped ? looped->from : 0},
@@ -588,6 +607,9 @@ bool Performance::drain() {
         if (t.midi ? !t.midi->drain(grid.rate, false) : !t.queue->drain(*t.writer, looped ? grid.rate / 8 : grid.rate))
             return false;
     return true;
+}
+bool Performance::captures(const String& track) const {
+    return std::any_of(takes.begin(), takes.end(), [&](const Take& take) { return take.track == track; });
 }
 void Performance::storeInputMarks(Song& song) const {
     for (auto& t : takes)
@@ -946,7 +968,14 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
         next.assets.push_back({id, path, length, channels});
         Clip pass{id, track, id, position, offset, length - offset};
         Frame from = record.getProperty("opravaOd", 0), to = record.getProperty("opravaDo", 0);
-        if (to <= from) {
+        auto family = record.getProperty("serie", {}).toString();
+        if (family.isNotEmpty()) {
+            Frame previousEnd = record.getProperty("konecPredchoziho", at);
+            auto end = std::max(previousEnd, position + pass.length);
+            if (!next.addAttempt(pass, at, end, record.getProperty("vznik", 0), false, family,
+                                 journal.getFileNameWithoutExtension()))
+                return false;
+        } else if (to <= from) {
             next.clips.push_back(std::move(pass));
             next.commitClips();
         } else {
