@@ -6,6 +6,8 @@ Balík skladby používá ZIP64 a kontrolní součty SHA-256 jednotlivých soubo
 
 A-10 a A-11 porovnávají obsah zabalené a přenesené skladby v dlouhé cestě s diakritikou. A-13 čte každý uložený vzorek po simulovaném zaplnění disku. A-24 odpojuje běžící zvukovku a přehrává scénář na druhém počítači s odlišnými názvy vstupů. Výsledky skutečného poslechu, měření a ručních zkoušek se zapíší po vydání. [Plán zkoušek](03_ZKOUSKY_NA_WINDOWS.md)
 
+Sloučená E11 prošla automatickými zkouškami. [Výsledky pro Windows a Mac](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081) · [Vydání v1 a ověření stažených souborů](https://github.com/JendaNDT/Rocker-2/actions/runs/44463135386)
+
 ## E10 · elektronické bicí přes MIDI
 
 Stopa MIDI ukládá jednotlivé údery a jejich sílu do standardního souboru. Před přehráním nebo exportem zazní podle vybrané sady. Při společném záznamu vznikne navíc samostatná stereo stopa se zvukem modulu. [Jak zapojit modul](../README.md#jak-nahrát-elektronické-bicí-přes-midi)

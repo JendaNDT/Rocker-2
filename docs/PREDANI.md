@@ -6,6 +6,14 @@ Ve skladbě otevři **Soubor → Zabalit skladbu**. Na druhém počítači použ
 
 [Přiřazení vstupů](zkousky/E11/prirazeni.png) · [Soubor ve skladbě](zkousky/E11/balik.png) · [Diagnostika](zkousky/E11/diagnostika.png)
 
+Automatické zkoušky E11 prošly na všech třech systémech. Na obou typech Windows instalátor spustil aplikaci a odinstalování zachovalo zkušební skladbu. [Protokol zkoušek E11](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081) · [Sestavení a kontrola stažení vydání v1](https://github.com/JendaNDT/Rocker-2/actions/runs/44463135386)
+
+| Počítač | Ověřené sestavení E11 | Obrazovky |
+|---|---|---|
+| Windows x64 | [Aplikace](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14500876466) | [Snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501126195) |
+| Windows ARM64 | [Aplikace](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501240454) | [Snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501265486) |
+| Mac s čipem Apple | [Aplikace](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14501315606) | [Snímky](https://github.com/JendaNDT/Rocker-2/actions/runs/44461855081/artifacts/14500761594) |
+
 ## 2. Zbývá
 
 Na prvním skutečném počítači zaznamenat výsledek instalace a přehrát celou písničku od nápadu po hotový mix. Windows aplikace je nepodepsaná. Na Macu je sestavení pro čipy Apple. Kódování MP3 ve Windows závisí na přítomnosti systémového kodéru. WAV lze použít na obou systémech.
