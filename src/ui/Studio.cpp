@@ -270,7 +270,7 @@ Studio::~Studio() {
 }
 void Studio::persist() {
     if (!settings.save(settingsFile))
-        message = cs::writeError;
+        message = cs::settingsError;
 }
 void Studio::refresh(bool notify) {
     stopPreview();
@@ -305,7 +305,7 @@ void Studio::refresh(bool notify) {
     }
     triggerAsyncUpdate();
 }
-void Studio::choose(DeviceChoice d) {
+void Studio::choose(DeviceChoice d, bool refreshCalibration) {
     stopPreview();
     stopIdea();
     const bool ok = link.select(d);
@@ -314,6 +314,8 @@ void Studio::choose(DeviceChoice d) {
     message = ok ? String{} : String(cs::failed);
     if (ok) {
         settings.device = link.current;
+        if (refreshCalibration && link.current.rate == d.rate)
+            settings.latency.erase(Settings::calibrationKey(link.current));
         persist();
     }
     laptop = builtIn(link.current.input) ||
@@ -1123,6 +1125,7 @@ StringArray Studio::layoutErrors() const {
             if (!row->fits())
                 errors.add(cs::input);
     }
+    appendFaderLayoutErrors(errors);
     return errors;
 }
 } // namespace rocker
