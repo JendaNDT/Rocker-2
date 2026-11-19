@@ -26,6 +26,9 @@ with tempfile.TemporaryDirectory(prefix="rocker-e2-") as temp:
     if trial == "A08":
         kill_writer(project, "record", 20.05)
         subprocess.run([binary, "recover", str(project)], check=True)
+    elif trial == "A22":
+        kill_writer(project, "midi", 0)
+        subprocess.run([binary, "recoverMidi", str(project)], check=True)
     elif trial == "A09":
         jitter = random.Random(112)
         for cycle in range(1000):

@@ -23,7 +23,7 @@ void Studio::defaultMonitor() {
     projectMonitor = 0;
     if (isPositiveAndBelow(view.selected, (int)song.tracks.size())) {
         auto& t = song.tracks[view.selected];
-        if (t.kind == "bici" && t.inputs.size() == 2 && !laptop)
+        if ((t.kind == "bici" && t.inputs.size() == 2 && !laptop) || t.kind == "midi")
             projectMonitor = 1;
     }
 }
@@ -55,7 +55,7 @@ void Studio::finishHits() {
     hitMeasured = true;
     triggerAsyncUpdate();
 }
-std::vector<Track> Studio::drumTracks() const {
+std::vector<Track> Studio::audioDrumTracks() const {
     const auto it = settings.drumSetups.find(Settings::inputKey(link.current, 0));
     if (it == settings.drumSetups.end())
         return {};

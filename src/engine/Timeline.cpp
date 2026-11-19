@@ -1,5 +1,6 @@
 #include "storage/AtomicFile.h"
 #include "Timeline.h"
+#include <set>
 #include <cmath>
 #include <numbers>
 namespace rocker {
@@ -49,6 +50,38 @@ bool CaptureQueue::drain(AudioFormatWriter& writer, int rate) {
 bool AudioLibrary::load(const Song& s, const File& dir) {
     bool ok = true;
     for (auto& a : s.assets) {
+        auto source = dir.getChildFile(a.path);
+        if (source.hasFileExtension("mid")) {
+            std::set<int> kits;
+            for (auto& t : s.tracks)
+                if (t.kind == "midi")
+                    kits.insert(t.kit);
+            for (int kit : kits) {
+                const auto key = a.id + "#" + String(kit);
+                if (data.contains(key))
+                    continue;
+                auto wave = std::make_shared<MappedWave>();
+                wave->preview = std::make_unique<TemporaryFile>(".wav");
+                if (!renderMidi(source, wave->preview->getFile(), kit, s.grid.rate, a.length)) {
+                    ok = false;
+                    continue;
+                }
+                wave->reader.reset(WavAudioFormat().createMemoryMappedReader(wave->preview->getFile()));
+                if (!wave->reader || !wave->reader->mapEntireFile()) {
+                    ok = false;
+                    continue;
+                }
+                for (Frame pos = 0; pos < a.length; pos += MappedWave::bin) {
+                    Range<float> peak;
+                    wave->reader->readMaxLevels(pos, std::min<Frame>(MappedWave::bin, a.length - pos),
+                                                &peak, 1);
+                    wave->peaks.push_back(std::max(std::abs(peak.getStart()), std::abs(peak.getEnd())));
+                }
+                data[key] = wave;
+                data[a.id] = wave;
+            }
+            continue;
+        }
         if (data.contains(a.id))
             continue;
         auto wave = std::make_shared<MappedWave>();
@@ -118,7 +151,7 @@ Playback::Playback(const Song& s, const AudioLibrary& lib) {
             for (const auto& clip : clips) {
                 if (track.id != clip.track)
                     continue;
-                auto it = lib.data.find(clip.asset);
+                auto it = lib.waveFor(track, clip.asset);
                 if (it == lib.data.end())
                     continue;
                 output.push_back({it->second, clip.position, clip.offset, clip.length});
@@ -409,8 +442,8 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
     }
 }
 Performance::~Performance() { finishDisk(); }
-bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, int delay,
-                      bool useWorker) {
+bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, int delay, bool useWorker,
+                      int midiDelay) {
     if (dir.getChildFile("Zvuk").createDirectory().failed())
         return false;
     Array<var> entries;
@@ -418,6 +451,23 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
         if (t.armed) {
             Take take;
             take.track = t.id;
+            if (t.kind == "midi") {
+                take.asset.id = Uuid().toString();
+                take.midi = std::make_unique<MidiCapture>();
+                auto rescue = dir.getChildFile("Zachrana");
+                if (rescue.createDirectory().failed())
+                    return false;
+                take.midi->path = rescue.getChildFile(take.asset.id + ".hits");
+                take.midi->stream = take.midi->path.createOutputStream();
+                if (!take.midi->stream)
+                    return false;
+                if (isPunch())
+                    playback.setPunch(size_t(&t - s.tracks.data()), punchFrom, punchTo, -1, -1, true);
+                entries.add(object(
+                    {{"id", take.asset.id}, {"stopa", t.id}, {"midi", true}, {"posunMidi", midiDelay}}));
+                takes.push_back(std::move(take));
+                continue;
+            }
             take.left = t.inputs.isEmpty() ? -1 : ports.indexOf(t.inputs[0]);
             take.right = t.inputs.size() == 2 ? ports.indexOf(t.inputs[1]) : -1;
             if (take.left < 0 || (t.inputs.size() == 2 && take.right < 0))
@@ -469,7 +519,7 @@ bool Performance::arm(const Song& s, const File& dir, const StringArray& ports, 
 }
 bool Performance::drain() {
     for (auto& t : takes)
-        if (!t.queue->drain(*t.writer, grid.rate))
+        if (t.midi ? !t.midi->drain(grid.rate, false) : !t.queue->drain(*t.writer, grid.rate))
             return false;
     return true;
 }
@@ -486,8 +536,48 @@ void Performance::finishDisk() {
         readAhead.join();
     if (worker.joinable())
         worker.join();
-    for (auto& t : takes)
+    for (auto& t : takes) {
+        if (t.midi && t.midi->stream) {
+            if (!t.midi->drain(grid.rate, true))
+                failed = true;
+            t.midi->stream.reset();
+        }
         t.writer.reset();
+    }
+}
+bool MidiCapture::drain(int rate, bool final) {
+    Hit h;
+    while (queue.peek(h)) {
+        auto line = String(h.frame) + " " + String(h.note) + " " + String(h.velocity) + "\n";
+        if (!stream->write(line.toRawUTF8(), line.getNumBytesAsUTF8()))
+            return false;
+        queue.pop();
+    }
+    Frame now = duration.load();
+    if (final || now - flushed >= rate) {
+        auto marker = "end " + String(now) + "\n";
+        if (!stream->write(marker.toRawUTF8(), marker.getNumBytesAsUTF8()))
+            return false;
+        stream->flush();
+        flushed = now;
+    }
+    return stream->getStatus().wasOk();
+}
+void Performance::hits(std::span<const Hit> events, Frame position, bool overflow) noexcept {
+    if (finished.load())
+        return;
+    for (auto& t : takes)
+        if (t.midi) {
+            for (auto h : events) {
+                h.frame += clock - position - start;
+                if (h.frame >= 0 && h.frame < end - start && !t.midi->queue.push(h))
+                    overflow = true;
+            }
+            if (overflow) {
+                drop = std::max(start, clock);
+                finished = true;
+            }
+        }
 }
 void Performance::process(const float* const* in, int ni, float* const* out, int no,
                           int frames) noexcept {
@@ -500,12 +590,16 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
                          no > 1 && out[1] ? out[1] + skip : nullptr};
         playback.mix(outputs, std::min(2, no), n - skip, clock + skip, in, ni, skip);
         for (auto& t : takes)
-            if (!t.queue->hasRoom(n - skip)) {
+            if (!t.midi && !t.queue->hasRoom(n - skip)) {
                 drop = clock + skip;
                 finished = true;
                 return;
             }
         for (auto& t : takes) {
+            if (t.midi) {
+                t.midi->duration = clock + n - start;
+                continue;
+            }
             auto channel = [&](int c) { return c >= 0 && c < ni && in[c] ? in[c] + skip : nullptr; };
             if (t.inputOver < 0) {
                 auto left = channel(t.left), right = channel(t.right);
@@ -563,10 +657,13 @@ void Timeline::detach() noexcept {
     while (reading.load())
         std::this_thread::yield();
 }
-void Timeline::process(const float* const* in, int ni, float* const* out, int no, int frames) noexcept {
+void Timeline::process(const float* const* in, int ni, float* const* out, int no, int frames,
+                       std::span<const Hit> events, Frame position, bool overflow) noexcept {
     reading.store(true);
-    if (auto* p = active.load())
+    if (auto* p = active.load()) {
+        p->hits(events, position, overflow);
         p->process(in, ni, out, no, frames);
+    }
     reading.store(false);
 }
 std::optional<std::pair<int, int>> syncOffsets(AudioFormatReader& reader, const BeatGrid& grid,
@@ -614,6 +711,7 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
             song.order[index].section != record.getProperty("dil", {}).toString())
             return false;
     }
+    Array<File> journals;
     auto next = song;
     for (auto& e : *entries.getArray()) {
         auto id = e.getProperty("id", {}).toString(), track = e.getProperty("stopa", {}).toString();
@@ -621,17 +719,53 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
             return false;
         if (std::none_of(next.tracks.begin(), next.tracks.end(), [&](auto& t) { return t.id == track; }))
             return false;
-        if (std::any_of(next.assets.begin(), next.assets.end(), [&](auto& a) { return a.id == id; }))
+        if (std::any_of(next.assets.begin(), next.assets.end(), [&](auto& a) { return a.id == id; })) {
+            if (bool(e.getProperty("midi", false)))
+                journals.add(journal.getSiblingFile(id + ".hits"));
             continue;
+        }
         auto path = "Zvuk/" + id + ".wav";
-        auto reader = waveReader(dir.getChildFile(path));
-        if (!reader || reader->sampleRate != song.grid.rate)
-            return false;
-        auto length = reader->lengthInSamples;
-        if (length <= delay)
+        Frame length = 0, offset = delay, position = at;
+        int channels = 1;
+        if (bool(e.getProperty("midi", false))) {
+            const int correction =
+                std::clamp((int)e.getProperty("posunMidi", 0), -song.grid.rate, song.grid.rate * 2);
+            offset = std::max(0, correction);
+            position += std::max(0, -correction);
+            auto log = journal.getSiblingFile(id + ".hits");
+            FileInputStream in(log);
+            if (!in.openedOk())
+                return false;
+            std::vector<Hit> hits;
+            while (!in.isExhausted()) {
+                auto words = StringArray::fromTokens(in.readNextLine(), " ", {});
+                if (words.size() == 2 && words[0] == "end") {
+                    length = std::max(length, words[1].getLargeIntValue());
+                    continue;
+                }
+                if (words.size() != 3)
+                    continue;
+                Hit h{words[0].getLargeIntValue(), words[1].getIntValue(), words[2].getIntValue()};
+                if (h.frame < 0 || h.note < 0 || h.note > 127 || h.velocity < 1 || h.velocity > 127)
+                    continue;
+                hits.push_back(h);
+                length = std::max(length, h.frame + 1);
+            }
+            path = "Zvuk/" + id + ".mid";
+            if (!saveMidi(dir.getChildFile(path), song.grid.rate, length, hits))
+                return false;
+            journals.add(log);
+        } else {
+            auto reader = waveReader(dir.getChildFile(path));
+            if (!reader || reader->sampleRate != song.grid.rate)
+                return false;
+            length = reader->lengthInSamples;
+            channels = int(reader->numChannels);
+        }
+        if (length <= offset)
             continue;
-        next.assets.push_back({id, path, length, (int)reader->numChannels});
-        Clip pass{id, track, id, at, delay, length - delay};
+        next.assets.push_back({id, path, length, channels});
+        Clip pass{id, track, id, position, offset, length - offset};
         Frame from = record.getProperty("opravaOd", 0), to = record.getProperty("opravaDo", 0);
         if (to <= from) {
             next.clips.push_back(std::move(pass));
@@ -650,6 +784,10 @@ bool recoverTake(Song& song, const File& dir, const File& journal) {
     if (!next.save(dir))
         return false;
     song = std::move(next);
-    return journal.deleteFile();
+    if (!journal.deleteFile())
+        return false;
+    for (auto& log : journals)
+        log.deleteFile();
+    return true;
 }
 } // namespace rocker

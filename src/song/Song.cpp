@@ -39,7 +39,8 @@ var clipJson(const Clip& c) {
 }
 bool safeWave(const String& p) {
     return p.startsWith("Zvuk/") && p.substring(5).isNotEmpty() &&
-           !p.substring(5).containsAnyOf("/\\:") && p.endsWithIgnoreCase(".wav");
+           !p.substring(5).containsAnyOf("/\\:") &&
+           (p.endsWithIgnoreCase(".wav") || p.endsWithIgnoreCase(".mid"));
 }
 } // namespace
 int TakeGroup::cycle() const {
@@ -135,6 +136,7 @@ var Song::json() const {
                        {"nahravat", t.armed},
                        {"skupina", t.group},
                        {"skupinaDb", t.groupDb},
+                       {"sadaMidi", t.kit},
                        {"amp", t.kind == "kytara" ? t.amp.json() : var()},
                        {"mix", object({{"mute", t.mute},
                                        {"solo", t.solo},
@@ -237,6 +239,7 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
                 x.inputs.add(n.toString());
         x.amp = GuitarSound::read(field(t, "amp"));
         x.armed = field(t, "nahravat");
+        x.kit = jlimit(0, 1, (int)field(t, "sadaMidi", 0));
         x.group = field(t, "skupina").toString();
         x.groupDb = jlimit(-96.f, 6.f, (float)field(t, "skupinaDb", 0));
         x.mute = field(field(t, "mix"), "mute");

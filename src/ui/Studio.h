@@ -22,6 +22,7 @@ enum class Page {
     customTuning,
     ideas,
     drums,
+    midi,
     newProject,
     project,
     trackSettings,
@@ -142,6 +143,15 @@ class Studio final : public juce::Component,
     bool offerDistant = false, wasFullscreen = false;
     int heldTransportKey = 0;
     bool keyStateChanged(bool) override;
+    juce::Array<juce::MidiDeviceInfo> midiPorts;
+    juce::String activeMidi;
+    int learningPad = -1;
+    std::map<int, int> learningMap;
+    void refreshMidi();
+    void midiPage(Rect);
+    void pollMidi();
+    void compareMidi();
+    std::vector<Track> audioDrumTracks() const;
     void resetDrums();
     void finishHits();
     void drumPage(Rect);

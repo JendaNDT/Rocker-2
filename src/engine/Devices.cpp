@@ -9,6 +9,7 @@ juce::String choose(const juce::StringArray& list, const juce::String& wanted, i
     return list[juce::jlimit(0, std::max(0, list.size() - 1), fallback)];
 }
 class Native final : public DeviceSystem,
+                     private juce::MidiInputCallback,
                      private juce::AudioIODeviceCallback,
                      private juce::AudioIODeviceType::Listener,
                      private juce::AsyncUpdater {
@@ -20,6 +21,12 @@ class Native final : public DeviceSystem,
     std::vector<Entry> types;
     std::unique_ptr<juce::AudioIODevice> device;
     Audio* audio = nullptr;
+    std::unique_ptr<juce::MidiInput> midi;
+    juce::MidiDeviceListConnection midiUpdates;
+    void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& msg) override {
+        if (audio && msg.isNoteOn())
+            audio->drums.native(msg.getTimeStamp(), msg.getNoteNumber(), msg.getVelocity());
+    }
     std::atomic<bool> closing{false};
     void add(Driver driver, Type* type) {
         if (type) {
@@ -30,7 +37,26 @@ class Native final : public DeviceSystem,
 
   public:
     int xruns() const override { return device ? device->getXRunCount() : -1; }
+    juce::Array<juce::MidiDeviceInfo> midiDevices() override {
+        return juce::MidiInput::getAvailableDevices();
+    }
+    bool openMidi(const juce::String& id, Audio& target) override {
+        if (midi) {
+            midi->stop();
+            midi.reset();
+        }
+        if (id.isEmpty() || audio != &target)
+            return false;
+        midi = juce::MidiInput::openDevice(id, this);
+        if (midi)
+            midi->start();
+        return midi != nullptr;
+    }
     Native() {
+        midiUpdates = juce::MidiDeviceListConnection::make([this] {
+            if (midiChanged)
+                midiChanged();
+        });
 #if JUCE_WINDOWS
         add(Driver::asio, Type::createAudioIODeviceType_ASIO());
         add(Driver::exclusive, Type::createAudioIODeviceType_WASAPI(juce::WASAPIDeviceMode::exclusive));
@@ -63,6 +89,10 @@ class Native final : public DeviceSystem,
     }
     void close() override {
         closing = true;
+        if (midi) {
+            midi->stop();
+            midi.reset();
+        }
         if (device) {
             device->stop();
             device->close();

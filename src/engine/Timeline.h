@@ -1,5 +1,5 @@
 #pragma once
-#include "song/Song.h"
+#include "MidiDrums.h"
 #include <atomic>
 #include <thread>
 
@@ -18,12 +18,16 @@ class CaptureQueue {
 };
 struct MappedWave {
     static constexpr int bin = 256;
+    std::unique_ptr<juce::TemporaryFile> preview;
     std::unique_ptr<juce::MemoryMappedAudioFormatReader> reader;
     std::vector<float> peaks;
     float peak(Frame start, int length) const noexcept;
 };
 struct AudioLibrary {
     std::map<juce::String, std::shared_ptr<const MappedWave>> data;
+    auto waveFor(const Track& track, const juce::String& id) const {
+        return data.find(track.kind == "midi" ? id + "#" + juce::String(track.kit) : id);
+    }
     bool load(const Song&, const juce::File&);
 };
 struct PlaybackClip {
@@ -87,7 +91,16 @@ class Playback {
 };
 bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination, Frame begin = 0,
                 Frame end = -1);
+struct MidiCapture {
+    HitQueue queue;
+    juce::File path;
+    std::unique_ptr<juce::FileOutputStream> stream;
+    std::atomic<Frame> duration{0};
+    Frame flushed = 0;
+    bool drain(int rate, bool final);
+};
 struct Take {
+    std::unique_ptr<MidiCapture> midi;
     Asset asset;
     juce::String track;
     int left = -1, right = -1;
@@ -101,8 +114,9 @@ class Performance {
                 int countBeats);
     ~Performance();
     bool arm(const Song&, const juce::File&, const juce::StringArray& ports, int delay,
-             bool useWorker = true);
+             bool useWorker = true, int midiDelay = 0);
     void process(const float* const*, int, float* const*, int, int) noexcept;
+    void hits(std::span<const Hit>, Frame devicePosition, bool overflow) noexcept;
     void finishDisk();
     bool drain();
     void storeInputMarks(Song&) const;
@@ -132,7 +146,8 @@ class Timeline {
   public:
     void attach(Performance& p) noexcept { active.store(&p); }
     void detach() noexcept;
-    void process(const float* const*, int, float* const*, int, int) noexcept;
+    void process(const float* const*, int, float* const*, int, int, std::span<const Hit> hits = {},
+                 Frame position = 0, bool overflow = false) noexcept;
 
   private:
     std::atomic<Performance*> active{nullptr};

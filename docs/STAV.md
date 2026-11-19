@@ -1,5 +1,11 @@
 # Stav Rockeru 2
 
+## E10 · elektronické bicí přes MIDI
+
+Stopa MIDI ukládá jednotlivé údery a jejich sílu do standardního souboru. Před přehráním nebo exportem zazní podle vybrané sady. Při společném záznamu vznikne navíc samostatná stereo stopa se zvukem modulu. [Jak zapojit modul](../README.md#jak-nahrát-elektronické-bicí-přes-midi)
+
+A-22 měří odchylku jednotlivých úderů po dobu deseti minut a obnoví přerušený MIDI záznam po ukončení procesu. A-23 porovnává výsledné WAV před výměnou sady a po návratu. Část A-24 prochází celé zapojení a nahrávání, jak se samotným modulem bez zvukových vstupů, tak se stereo signálem. H-13 a fyzické M-14 čekají na ruční zkoušku po vydání. [Výsledky a snímky](https://github.com/JendaNDT/Rocker-2/pull/11)
+
 ## E9 · bicí od jednoho mikrofonu po celou sadu
 
 Průvodce pracuje se vstupy, na kterých během zkoušky zazněl úder. Akustická sada má společné nahrávání, pokusy, střih a hlasitost. Stereo modul má samostatnou levou a pravou stranu. F11 přepne Pohled zdálky a USB spínači lze přiřadit záznam. [Postup pro muzikanta](../README.md#jak-připravit-bicí)

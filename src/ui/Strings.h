@@ -2,6 +2,20 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String midiDrums = u8"Bicí (MIDI)", midiModule = u8"Modul MIDI",
+                          padLearn = u8"Naučit pady", padPrompt = u8"Udeř do padu",
+                          midiMode = u8"Co nahrávat", midiOnly = u8"Údery MIDI",
+                          midiBoth = u8"Zvuk modulu i MIDI", midiDisabled = u8"Jen zvukový vstup",
+                          kitPreset = u8"Zvuk sady", midiCompare = u8"Porovnat MIDI a zvuk",
+                          compareHelp =
+                              u8"Nahraj společně stereo a MIDI se 16 oddělenými údery do virblu.",
+                          midiOffset = u8"Průměrný posun MIDI", gmMap = u8"Obnovit General MIDI",
+                          openHat = u8"Otevřená hi-hat", closedHat = u8"Zavřená hi-hat",
+                          lowTom = u8"Hluboký tom", highTom = u8"Vysoký tom", crash = u8"Činel crash",
+                          ride = u8"Činel ride", midiNoDevice = u8"Připoj modul USB nebo MIDI.",
+                          midiReady = u8"Údery se ukládají jako MIDI.", midiListen = u8"Poslech MIDI",
+                          moduleListen = u8"Poslech modulu";
+inline const juce::StringArray drumSounds{juce::String(u8"Studiová sada"), juce::String(u8"Krátká sada")};
 inline const juce::String kitPort = u8"Vstup zvukovky", kitStrip = u8"Část soupravy";
 inline const juce::String insertKit = u8"Přidat nastavené bicí";
 inline const juce::String

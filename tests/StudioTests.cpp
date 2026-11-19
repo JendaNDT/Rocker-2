@@ -1030,3 +1030,98 @@ TEST_CASE("A-24 acoustic and electronic drums use only the microphones that resp
         }
     }
 }
+
+TEST_CASE("A-24 MIDI module alone and paired with its stereo audio record through the studio") {
+    ScopedJuceInitialiser_GUI gui;
+    for (bool paired : {false, true}) {
+        CAPTURE(paired);
+        Temp temp;
+        test::FakeDevice fake;
+        fake.channels = paired ? 2 : 0;
+        fake.rate = paired ? 96000 : 44100;
+        fake.midi.add({"Module USB", "module-id"});
+        Studio view(fake, temp.file, temp.dir.getChildFile("songs"));
+        click(view, cs::next);
+        click(view, cs::next);
+        if (paired) {
+            click(view, cs::drumTest);
+            fake.process({{.3f}, {.4f}}, 1);
+            click(view, cs::finishHits);
+            click(view, cs::kitApply);
+        }
+        click(view, cs::midiDrums);
+        REQUIRE(fake.selectedMidi == "module-id");
+        auto* modes = find<ComboBox>(view, cs::midiMode);
+        REQUIRE(modes);
+        CHECK(modes->getNumItems() == (paired ? 3 : 2));
+        if (paired)
+            chooseItem(view, cs::midiMode, 2);
+        click(view, cs::padLearn);
+        for (int k = 0; k < 8; ++k) {
+            fake.active->drums.push({fake.active->drums.position, 70 + k, 90});
+            fake.process({}, 16);
+            for (int attempt = 0;
+                 attempt < 20 && fake.active->drums.mapping[70 + k].load() != DrumPlayer::pads[k];
+                 ++attempt)
+                tick();
+            view.resized();
+            CHECK(fake.active->drums.mapping[70 + k].load() == DrumPlayer::pads[k]);
+            if (k == 1 && paired)
+                for (int px : {1280, 1920})
+                    snapshot(view, "27-naucit-pady", px);
+        }
+        fits(view);
+        click(view, cs::back);
+        click(view, cs::finish);
+        click(view, cs::song);
+        click(view, cs::createSong);
+        auto dir = File(Settings::load(temp.file).lastSong);
+        bool bad = false;
+        auto song = Song::load(dir, bad);
+        REQUIRE(song);
+        const int m = paired ? 1 : 0;
+        REQUIRE(song->tracks[m].kind == "midi");
+        if (paired) {
+            REQUIRE(song->tracks[0].inputs.size() == 2);
+            CHECK(song->linkedTrack(song->tracks[0].id, song->tracks[m].id));
+            click(view, cs::midiListen);
+        }
+        click(view, cs::countIn);
+        click(view, cs::arm);
+        click(view, cs::recordSong);
+        test::FakeDevice::Block signal(fake.channels, std::vector<float>(512, .1f));
+        for (int i = 0; i < 50; ++i) {
+            if (i == 3)
+                fake.active->drums.push({fake.active->drums.position + 50, 71, 112});
+            fake.process(signal, 512);
+        }
+        click(view, cs::stopSong);
+        song = Song::load(dir, bad);
+        REQUIRE(song);
+        CHECK_FALSE(bad);
+        REQUIRE(song->assets.size() == (paired ? 2 : 1));
+        auto asset = std::find_if(song->assets.begin(), song->assets.end(),
+                                  [](auto& a) { return a.path.endsWith(".mid"); });
+        REQUIRE(asset != song->assets.end());
+        auto notes = readMidi(dir.getChildFile(asset->path), fake.rate);
+        REQUIRE(notes);
+        REQUIRE(notes->size() == 1);
+        CHECK(notes->front().note == 38);
+        CHECK(notes->front().frame == 3 * 512 + 50);
+        CHECK(notes->front().velocity == 112);
+        click(view, cs::trackEdit);
+        if (paired)
+            for (int px : {1280, 1920})
+                snapshot(view, "28-sada-midi", px);
+        chooseItem(view, cs::kitPreset, 1);
+        click(view, cs::apply);
+        song = Song::load(dir, bad);
+        REQUIRE(song);
+        CHECK(song->tracks[m].kit == 1);
+        fake.midi.clear();
+        fake.midiChanged();
+        view.resized();
+        click(view, cs::recordSong);
+        CHECK_FALSE(find<Button>(view, cs::stopSong));
+    }
+}

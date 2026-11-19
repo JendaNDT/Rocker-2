@@ -41,6 +41,26 @@ Settings Settings::load(const juce::File& file) {
     const auto visited = data.getProperty("visited", false);
     result.visited = visited.isBool() && static_cast<bool>(visited);
     result.insurance = data.getProperty("pojistka", true);
+    result.midiDevice = string("midiDevice");
+    auto configurations = data.getProperty("midiSetups", {});
+    if (auto* obj = configurations.getDynamicObject())
+        for (auto& entry : obj->getProperties()) {
+            auto& s = result.midiSetups[entry.name.toString()];
+            s.enabled = entry.value.getProperty("enabled", true);
+            s.coupled = entry.value.getProperty("both", false);
+            auto pads = entry.value.getProperty("pads", {});
+            if (auto* list = pads.getArray())
+                for (const auto& pair : *list)
+                    if (pair.isArray() && pair.size() == 2 && pair[0].isInt() && pair[1].isInt() &&
+                        juce::isPositiveAndBelow(int(pair[0]), 128) &&
+                        juce::isPositiveAndBelow(int(pair[1]), 128))
+                        s.pads[int(pair[0])] = int(pair[1]);
+        }
+    auto midiCorrections = data.getProperty("midiCorrections", {});
+    if (auto* obj = midiCorrections.getDynamicObject())
+        for (auto& e : obj->getProperties())
+            if (e.value.isInt())
+                result.midiCorrections[e.name.toString()] = juce::jlimit(-48000, 48000, int(e.value));
     result.pedalKey = integer("pedal", 0, 0, 0x7fffffff);
     auto kits = data.getProperty("bici", {});
     if (auto* obj = kits.getDynamicObject())
@@ -105,6 +125,23 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("output", device.output);
     object->setProperty("buffer", device.buffer);
     object->setProperty("rate", device.rate);
+    object->setProperty("midiDevice", midiDevice);
+    auto* configurations = new juce::DynamicObject;
+    object->setProperty("midiSetups", juce::var(configurations));
+    for (auto& [key, s] : midiSetups) {
+        auto* item = new juce::DynamicObject;
+        configurations->setProperty(key, juce::var(item));
+        item->setProperty("enabled", s.enabled);
+        item->setProperty("both", s.coupled);
+        juce::Array<juce::var> pads;
+        for (auto [from, to] : s.pads)
+            pads.add(juce::var(juce::Array<juce::var>{from, to}));
+        item->setProperty("pads", pads);
+    }
+    auto* corrections = new juce::DynamicObject;
+    object->setProperty("midiCorrections", juce::var(corrections));
+    for (auto& [key, value] : midiCorrections)
+        corrections->setProperty(key, value);
     object->setProperty("pedal", pedalKey);
     auto* kits = new juce::DynamicObject;
     object->setProperty("bici", juce::var(kits));

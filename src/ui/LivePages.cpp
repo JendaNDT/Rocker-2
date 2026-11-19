@@ -755,6 +755,8 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
+    if (activeMidi.isNotEmpty() && !link.caps.inputs.isEmpty())
+        button(cs::midiCompare, row(left).withWidth(s::labelWidth), [this] { compareMidi(); });
     button(cs::checkClick, row(left).withWidth(s::labelWidth), [this] {
         findClick();
     })->setEnabled(!clickCheck.valid());
