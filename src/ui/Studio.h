@@ -58,6 +58,7 @@ class Studio final : public juce::Component,
     void filesDropped(const juce::StringArray&, int, int) override;
     Page currentPage() const { return page; }
     juce::StringArray layoutErrors() const;
+    const juce::String& statusText() const { return message; }
     const Theme& theme() const { return skin; }
 
   private:

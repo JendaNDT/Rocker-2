@@ -7,6 +7,7 @@ class FakeDevice final : public DeviceSystem {
   public:
     using Block = std::vector<std::vector<float>>;
     int channels = 2, outputs = 2, rate = 48000;
+    juce::Array<double> rates;
     bool separate = false;
     bool core = false, asio = true, laptop = false, attached = true;
     juce::Array<juce::MidiDeviceInfo> midi;
@@ -40,12 +41,14 @@ class FakeDevice final : public DeviceSystem {
     bool open(DeviceChoice& d, Capabilities& caps, Audio& audio) override {
         if (!attached)
             return false;
-        caps.rates = {static_cast<double>(rate)};
+        caps.rates = rates.isEmpty() ? juce::Array<double>{static_cast<double>(rate)} : rates;
         caps.buffers = {64, 128, 256};
         caps.outputChannels = outputs;
         caps.separateClocks = separate;
         caps.inputLatency = 121;
         caps.outputLatency = 252;
+        if (caps.rates.contains(double(d.rate)))
+            rate = d.rate;
         d.rate = rate;
         if (!caps.buffers.contains(d.buffer))
             d.buffer = 128;

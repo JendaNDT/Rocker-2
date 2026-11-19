@@ -53,6 +53,30 @@ TEST_CASE("A-03 song, version fallback, invalid clip and view round trip") {
     REQUIRE(backup.existsAsFile());
     REQUIRE(Song::parse(JSON::parse(backup), bad)->title == s.title);
 }
+TEST_CASE("A-26 versions preserve changes and skip unchanged states") {
+    Workspace w;
+    auto s = example();
+    auto versions = w.dir.getChildFile("Verze");
+    auto count = [&] { return versions.findChildFiles(File::findFiles, false, "*.json").size(); };
+    REQUIRE(s.archive(w.dir));
+    REQUIRE(s.archive(w.dir));
+    CHECK(count() == 1);
+    for (int bpm = 100; bpm < 160; ++bpm) {
+        s.grid.bpm = bpm;
+        REQUIRE(s.archive(w.dir));
+        REQUIRE(s.archive(w.dir));
+    }
+    CHECK(count() == 50);
+    auto files = versions.findChildFiles(File::findFiles, false, "*.json");
+    files.sort();
+    bool bad = false;
+    auto first = Song::parse(JSON::parse(files.getFirst()), bad);
+    auto last = Song::parse(JSON::parse(Song::latestVersion(w.dir)), bad);
+    REQUIRE(first);
+    REQUIRE(last);
+    CHECK(first->grid.bpm == 110);
+    CHECK(last->grid.bpm == 159);
+}
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
     auto s = example();
     s.bars = 400;
