@@ -1,5 +1,14 @@
 # Stav Rockeru 2
 
+## E7 · mix a export
+
+Režim **3 Míchej** má v řádku každé stopy hlasitost, polohu, sólo, ztlumení a měřič. Celkem ukazuje špičku a její takt. Záznam uchovává značku přebuzeného vstupu. Přebuzený mix má vlastní značku a při exportu lze celkovou hlasitost opravit. [Sestavení, snímky a zkoušky na třech systémech](https://github.com/JendaNDT/Rocker-2/pull/8)
+
+- **A-05 a A-06** porovnávají výsledný 24bitový WAV s přehráváním ve čtyřech velikostech bloku a hlídají, že klik ani odpočet nevstoupí do souboru. Další zkoušky kontrolují stereo polohu, přebuzení před kvantováním, délku výběru a opakovatelnost 16bitového ditheru.
+- **A-12** ve Windows zjišťuje dostupnost stereo kodéru pro 320 kb/s. Pokud ho systém nabízí, zapíše skutečný MP3, znovu jej dekóduje a porovná délku. Výsledek je v kroku **MP3 encoder result (A-12)**.
+- **A-17** zkouší řádky mixu, výběr rozsahu, upozornění na sólo a soubor vytvořený skutečným tlačítkem. Diagnostika má zkoušku s čistým souborem i se skutečným signálem metronomu. [Mix](zkousky/E7/mix.png) · [Poslat mix](zkousky/E7/export.png)
+- Poslech, M-03 a M-13 **čekají na ruční zkoušku po vydání**. [Postup pro hráče](../README.md#jak-poslat-mix)
+
 ## E6 · sloky, refrény a pořadí
 
 Pás Díly ukazuje jednotlivé výskyty skladby. Umožňuje je přejmenovat, obarvit, rozdělit, zopakovat, přesunout, zkrátit a osamostatnit. Při opravě taktu ve spojeném výskytu hráč vybírá rozsah změny. [Výsledky CI a sestavení](https://github.com/JendaNDT/Rocker-2/pull/7)

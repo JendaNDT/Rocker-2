@@ -4,6 +4,8 @@
 #include "song/Edit.h"
 #include <functional>
 #include <deque>
+#include <future>
+#include "engine/Export.h"
 
 namespace rocker {
 enum class Page {
@@ -142,6 +144,28 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void attemptDeck(TakeGroup&, Rect);
     void stopProject(bool automatic = false);
     void projectTick();
+    static juce::String limit(const juce::Font&, juce::String, int width);
+    void mixMode(bool exportPanel);
+    void mixPage(Rect);
+    void exportPage(Rect);
+    void paintMix(juce::Graphics&);
+    void toggleMix(int index, bool solo);
+    void mixSlider(const juce::String&, Rect, float initial, bool pan, std::function<void(float)>);
+    void seekMix(Frame);
+    void beginExport();
+    void pollExport();
+    void findClick();
+    Rect stereoMeter, mixReadout;
+    std::vector<Rect> trackMeters;
+    Playback::Meter lastMeter;
+    MixFile delivered;
+    juce::File deliveringProject;
+    std::future<MixFile> delivery;
+    std::unique_ptr<juce::FileChooser> clickChooser;
+    std::future<std::optional<bool>> clickCheck;
+    Delivery format = Delivery::wave24;
+    bool exporting = false, selectedRange = false;
+    juce::String soloNames() const;
     void saveSong(juce::String action = {});
     EditHistory history;
     Fragment clipboard;

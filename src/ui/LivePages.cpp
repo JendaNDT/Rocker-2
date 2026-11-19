@@ -31,7 +31,9 @@ class Fader final : public Slider {
         auto value = area.removeFromRight(s::faderReadout);
         g.setColour(s::chalk);
         g.setFont(skin.font(s::body, true));
-        g.drawText(String((int)getValue()) + unit, value, Justification::centredRight, false);
+        g.drawText(textFromValueFunction ? textFromValueFunction(getValue())
+                                         : String((int)getValue()) + unit,
+                   value, Justification::centredRight, false);
         auto bar = area.withSizeKeepingCentre(area.getWidth() - s::inset, s::grid);
         g.setColour(s::line);
         g.fillRect(bar);
@@ -381,6 +383,32 @@ void Studio::fader(const String& title, Rect area, int low, int high, int initia
             link.audio.live.setAmp(sound, false);
     };
 }
+void Studio::mixSlider(const String& title, Rect bounds, float initial, bool pan,
+                       std::function<void(float)> set) {
+    auto* slider = new Fader(skin, title, {});
+    controls.add(slider);
+    addAndMakeVisible(slider);
+    slider->setBounds(bounds);
+    slider->setRange(pan ? -1. : -96., pan ? 1. : 6., pan ? .01 : .1);
+    if (!pan)
+        slider->setSkewFactorFromMidPoint(-12.);
+    slider->setDoubleClickReturnValue(true, 0.);
+    slider->setValue(initial, dontSendNotification);
+    slider->textFromValueFunction = [pan](double v) {
+        if (pan)
+            return std::abs(v) < .005
+                       ? cs::centre
+                       : (v < 0 ? cs::leftShort : cs::rightShort) + String(roundToInt(std::abs(v) * 100));
+        return v <= -96 ? cs::silentGain : decimal(v) + cs::dbUnit;
+    };
+    slider->onValueChange = [this, slider, set] {
+        set(float(slider->getValue()));
+        if (performance)
+            performance->playback.updateMix(song);
+        pendingSoundSave = Time::getMillisecondCounterHiRes() + 400;
+        repaint();
+    };
+}
 void Studio::ampPanel(Rect area) {
     auto top = row(area);
     combo(cs::preset, top.removeFromLeft(top.getWidth() / 2), cs::presetNames, presetIndex,
@@ -725,6 +753,9 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
+    button(cs::checkClick, row(left).withWidth(s::labelWidth), [this] {
+        findClick();
+    })->setEnabled(!clickCheck.valid());
     if (testingLoad || diagnosing) {
         button(cs::stopSong, row(area).withWidth(s::nameWidth), [this] { stopProject(); });
         return;

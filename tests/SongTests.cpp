@@ -1,3 +1,4 @@
+#include "engine/Export.h"
 #include "FakeDevice.h"
 #include "song/Song.h"
 #include <catch2/catch_test_macros.hpp>
@@ -16,6 +17,7 @@ Song example() {
     s.title = String(u8"Noční čtvrť");
     s.tracks = {{"dr", "Drums", "bici", {"In 1"}, false},
                 {"gt", String(u8"Řezavá kytara"), "kytara", {"In 2"}, true}};
+    s.tracks.front().pan = -1; // Unity on the measured left channel for timing and edge tests.
     return s;
 }
 TEST_CASE("A-03 song, version fallback, invalid clip and view round trip") {
@@ -100,12 +102,13 @@ TEST_CASE("A-06 offline mix ignores headphones and count-in settings") {
         view.countIn = click;
         REQUIRE(view.save(w.dir));
         auto file = w.dir.getChildFile(click ? "on.wav" : "off.wav");
-        REQUIRE(renderSong(s, lib, file));
+        REQUIRE(exportMix(s, lib, file, Delivery::wave24).ok);
         auto reader = waveReader(file);
         REQUIRE(reader);
         AudioBuffer<float> rendered(2, 500);
         REQUIRE(reader->read(&rendered, 0, 500, 0, true, true));
-        CHECK(rendered.getSample(1, 329) == 0.75f);
+        CHECK(rendered.getSample(0, 329) == 0.75f);
+        CHECK(rendered.getSample(1, 329) == 0.f);
         MemoryBlock bytes;
         REQUIRE(file.loadFileAsData(bytes));
         if (click)
@@ -399,4 +402,120 @@ TEST_CASE("Recover a capture crossing a section boundary into source-aligned cli
     REQUIRE(journal.replaceWithText(JSON::toString(json)));
     REQUIRE(recoverTake(song, w.dir, journal));
     CHECK(song.clips.size() == 2);
+}
+
+TEST_CASE("Mix export preserves ranges, channel power, overload locations and deterministic dither") {
+    Workspace w;
+    Song s;
+    s.title = "Mix";
+    s.grid = {96000, 4, 4, 120};
+    s.bars = 2;
+    s.tracks = {{"a", "Guitar", "jine"}};
+    auto file = w.dir.getChildFile("Zvuk/input.wav");
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(file, 96000, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> signal(1, 1920);
+    for (int i = 0; i < 1920; ++i)
+        signal.setSample(0, i, .9f);
+    REQUIRE(writer->writeFromAudioSampleBuffer(signal, 0, 1920));
+    writer.reset();
+    auto start = s.barFrame(1);
+    s.assets = {{"w", "Zvuk/input.wav", 1920, 1}};
+    s.clips = {{"c", "a", "w", start, 0, 1920}};
+    AudioLibrary library;
+    REQUIRE(library.load(s, w.dir));
+    Playback live(s, library);
+    AudioBuffer<float> block(2, 512);
+    block.clear();
+    live.mix(block.getArrayOfWritePointers(), 2, 512, start + 500);
+    auto peak = live.meter();
+    CHECK(std::abs(peak.left - .9 / std::sqrt(2.)) < 1e-6);
+    CHECK(peak.left == peak.right);
+    s.tracks[0].pan = -1;
+    s.masterDb = 6;
+    live.updateMix(s);
+    block.clear();
+    live.mix(block.getArrayOfWritePointers(), 2, 512, start + 1100);
+    CHECK(live.meter().right == 0);
+    CHECK(live.meter().over == start + 1100);
+    for (auto format : {Delivery::wave24, Delivery::wave16}) {
+        auto dest = w.dir.getChildFile("range.wav");
+        auto rendered = exportMix(s, library, dest, format, start, start + 9600);
+        REQUIRE(rendered.ok);
+        CHECK(rendered.meter.maximum > 1.5f);
+        REQUIRE(rendered.meter.over >= start);
+        CHECK(rendered.meter.over < start + 1920);
+        auto r = waveReader(dest);
+        REQUIRE(r);
+        CHECK(r->lengthInSamples == (format == Delivery::wave24 ? 4800 : 4410));
+        CHECK(r->bitsPerSample == (format == Delivery::wave24 ? 24 : 16));
+        CHECK_FALSE(r->usesFloatingPointData);
+        AudioBuffer<float> tail(2, 256);
+        REQUIRE(r->read(&tail, 0, 256, 3200, true, true));
+        if (format == Delivery::wave16) {
+            CHECK(tail.getMagnitude(0, 256) > 0);
+            CHECK(tail.getMagnitude(0, 256) <= 1.f / 32768);
+        } else
+            CHECK(tail.getMagnitude(0, 256) == 0);
+        r.reset();
+        MemoryBlock a, b;
+        REQUIRE(dest.loadFileAsData(a));
+        REQUIRE(exportMix(s, library, dest, format, start, start + 9600).ok);
+        REQUIRE(dest.loadFileAsData(b));
+        CHECK(a == b);
+    }
+}
+TEST_CASE("M-03 detector recognizes the monitor metronome and rejects the delivered song") {
+    Workspace w;
+    Song s;
+    s.title = "Click";
+    s.grid = {48000, 4, 4, 160};
+    s.bars = 1;
+    auto file = w.dir.getChildFile("test.wav");
+    REQUIRE(exportMix(s, {}, file, Delivery::wave24).ok);
+    REQUIRE(containsClick(file, s.grid) == false);
+    Performance p(s, {}, 0, false, true, 0);
+    AudioBuffer<float> capture(2, (int)p.end);
+    capture.clear();
+    p.process(nullptr, 0, capture.getArrayOfWritePointers(), 2, capture.getNumSamples());
+    auto injected = w.dir.getChildFile("headphones.wav");
+    auto writer = waveWriter(injected, 48000, 2);
+    REQUIRE(writer);
+    REQUIRE(writer->writeFromAudioSampleBuffer(capture, 0, capture.getNumSamples()));
+    writer.reset();
+    REQUIRE(containsClick(injected, s.grid) == true);
+}
+TEST_CASE("Legacy mono material keeps its pre-pan level and capture marks the input before mixing") {
+    Workspace w;
+    Song s = example();
+    s.bars = 1;
+    s.tracks[0].pan = 0;
+    s.assets = {{"a", "Zvuk/sample.wav", 1024, 1}};
+    s.clips = {{"c", "dr", "a", 0, 0, 1024}};
+    auto legacy = s.json();
+    for (auto& track : *legacy.getDynamicObject()->getProperty("stopy").getArray())
+        track.getProperty("mix", {}).getDynamicObject()->removeProperty("gainDb");
+    bool bad = false;
+    auto read = Song::parse(legacy, bad);
+    REQUIRE(read);
+    CHECK_FALSE(bad);
+    CHECK(std::abs(read->tracks.front().gainDb - 3.0103f) < .00001f);
+    CHECK(read->tracks.back().gainDb == 0.f);
+    s.tracks[1].gainDb = -96.f;
+    Performance p(s, {}, 1024, true, false, 0);
+    REQUIRE(p.arm(s, w.dir, {"In 1", "In 2"}, 12, false));
+    std::array<float, 64> input{}, left{}, right{};
+    input[27] = .988f;
+    input[28] = .989f;
+    const float* in[]{nullptr, input.data()};
+    float* out[]{left.data(), right.data()};
+    p.process(in, 2, out, 2, 64);
+    p.finishDisk();
+    p.storeInputMarks(s);
+    CHECK(s.tracks[0].inputOver == -1);
+    CHECK(s.tracks[1].inputOver == 1024 + 28 - 12);
+    auto reloaded = Song::parse(s.json(), bad);
+    REQUIRE(reloaded);
+    CHECK(reloaded->tracks == s.tracks);
 }

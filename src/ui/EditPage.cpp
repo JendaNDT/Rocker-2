@@ -61,10 +61,11 @@ void Studio::reveal(Frame pos) {
         view.firstBar = bar / visibleBars() * visibleBars();
 }
 void Studio::editMode(bool edit) {
-    if (view.editing == edit && !browsingVersions)
+    if (view.editing == edit && !view.mixing && !browsingVersions)
         return;
     selectedOccurrence = -1;
     askingRepair = false;
+    exporting = view.mixing = false;
     view.editing = edit;
     browsingVersions = soundDeckOpen = namingPreset = false;
     drag = Drag::none;
@@ -403,6 +404,10 @@ bool Studio::editKey(const KeyPress& key) {
     auto code = key.getKeyCode();
     auto mods = key.getModifiers();
     if (mods.isCtrlDown() || mods.isCommandDown()) {
+        if (code == 'E') {
+            mixMode(true);
+            return true;
+        }
         if (code == 'Z' || code == 'Y') {
             undo(code == 'Y' || mods.isShiftDown());
             return true;
@@ -421,6 +426,18 @@ bool Studio::editKey(const KeyPress& key) {
     }
     if (view.distant)
         return false;
+    if (code == '3') {
+        mixMode(false);
+        return true;
+    }
+    if (view.mixing && (code == 'S' || code == 'M')) {
+        toggleMix(view.selected, code == 'S');
+        return true;
+    }
+    if (exporting && code == KeyPress::escapeKey) {
+        mixMode(false);
+        return true;
+    }
     if (code == '1' || code == '2') {
         editMode(code == '2');
         return true;

@@ -1,3 +1,4 @@
+#include "engine/Export.h"
 #include "engine/Audio.h"
 #include "engine/LoadTrial.h"
 #include <catch2/catch_test_macros.hpp>
@@ -82,9 +83,12 @@ TEST_CASE("A-05 two independent stereo guitar amps and drums match the offline W
     Session s;
     auto file = s.dir.getChildFile("mix.wav");
     MemoryBlock first;
-    REQUIRE(renderSong(s.song, s.library, file));
+    s.song.tracks[1].pan = .37f;
+    s.song.tracks[2].gainDb = -2.f;
+    s.song.masterDb = -1.f;
+    REQUIRE(exportMix(s.song, s.library, file, Delivery::wave24).ok);
     REQUIRE(file.loadFileAsData(first));
-    REQUIRE(renderSong(s.song, s.library, file));
+    REQUIRE(exportMix(s.song, s.library, file, Delivery::wave24).ok);
     MemoryBlock second;
     REQUIRE(file.loadFileAsData(second));
     REQUIRE(first == second);
