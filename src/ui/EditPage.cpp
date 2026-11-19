@@ -240,7 +240,7 @@ void Studio::versionsDeck(Rect area) {
         names.add(file.getLastModificationTime().formatted("%d.%m.%Y   %H:%M:%S"));
     combo(cs::versionTime, row, names, versionIndex, [this](int i) { versionIndex = i; });
 }
-void Studio::startRepair() {
+void Studio::startRepair(bool looping) {
     if (comparing)
         stopProject();
     if (performance)
@@ -249,6 +249,7 @@ void Studio::startRepair() {
         status(cs::pickRepair);
         return;
     }
+    askingLoop = looping;
     for (int i = 0; i < (int)song.order.size(); ++i) {
         int start = song.startBar(i);
         if (selection().from < song.barFrame(start + song.order[i].length) &&
@@ -258,7 +259,8 @@ void Studio::startRepair() {
             return;
         }
     }
-    startProject(true, true);
+    startProject(true, true, nullptr, looping);
+    askingLoop = false;
 }
 void Studio::selectKitAttempt(Playback& playback, const TakeGroup& group, int index) {
     for (auto& g : song.groups)
@@ -330,6 +332,7 @@ void Studio::attemptDeck(TakeGroup& g, Rect area) {
         return b;
     };
     add(cs::repair, [this] { startRepair(); });
+    add(cs::recordLoop, [this] { startRepair(true); })->setEnabled(!performance || comparing);
     add(cs::nextAttempt, [this] { chooseAttempt(false); });
     add(cs::keepAttempt, [this] { chooseAttempt(true); });
     add(cs::discardAttempt, [this] { discardAttempt(); })->setEnabled(index != 0);
@@ -406,7 +409,9 @@ void Studio::editDeck(Rect area) {
         view.tailBars = n;
         view.save(projectDir);
     });
-    text(cs::editHint, settingsRow.withTrimmedLeft(s::gap), s::caption, s::muted);
+    button(cs::recordLoop, settingsRow.removeFromRight(s::clipWidth), [this] { startRepair(true); })
+        ->setEnabled(selected && !performance);
+    text(cs::editHint, settingsRow.reduced(s::gap, 0), s::caption, s::muted);
 }
 bool Studio::editKey(const KeyPress& key) {
     auto code = key.getKeyCode();

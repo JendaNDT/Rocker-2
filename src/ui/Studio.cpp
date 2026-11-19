@@ -959,7 +959,7 @@ bool Studio::keyPressed(const KeyPress& key) {
             heldTransportKey = code;
             if (page == Page::project) {
                 if (performance)
-                    stopProject();
+                    stopFromTransport();
                 else
                     startProject(projectRecord);
             } else if (ideaRecording)
@@ -1040,7 +1040,7 @@ bool Studio::keyPressed(const KeyPress& key) {
         }
         if (key == KeyPress::spaceKey || key.getKeyCode() == 'R') {
             if (performance)
-                stopProject();
+                stopFromTransport();
             else
                 startProject(key != KeyPress::spaceKey);
             return true;

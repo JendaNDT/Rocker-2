@@ -1401,3 +1401,54 @@ TEST_CASE("A-17 E16 guide cycles between click, rhythm and silence and remembers
     CHECK(ViewState::load(dir).click);
     CHECK_FALSE(ViewState::load(dir).rhythm);
 }
+
+TEST_CASE("A-17 A-33 loop recording keeps passes and Tab compares them from the editing view") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    const auto dir = temp.dir.getChildFile("Skladby/Loop");
+    Song song;
+    song.title = "Loop";
+    song.grid.bpm = 300;
+    song.bars = 1;
+    song.tracks = {{"t", "Loop guitar", "kytara", {"In 1"}}};
+    REQUIRE(song.save(dir));
+    ViewState view;
+    view.editing = true;
+    view.click = view.countIn = false;
+    view.leadBars = 0;
+    view.tailBars = 0;
+    view.selectionStart = 0;
+    view.selectionEnd = song.barFrame(1);
+    REQUIRE(view.save(dir));
+    Settings config;
+    config.visited = true;
+    config.lastSong = dir.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Studio studio(fake, temp.file);
+    click(studio, cs::resume);
+    click(studio, cs::recordLoop);
+    REQUIRE(find<Button>(studio, cs::stopSong));
+    const Frame expected = 3 * song.barFrame(1);
+    test::FakeDevice::Block input{std::vector<float>(512, .27f)};
+    for (Frame at = 0; at < expected; at += 512)
+        fake.process(input, int(std::min<Frame>(512, expected - at)));
+    studio.resized();
+    fits(studio);
+    for (int pixels : {1280, 1920})
+        snapshot(studio, "36-nahravam-dokola", pixels);
+    click(studio, cs::stopSong);
+    fake.process(input, 121 + 252);
+    tick();
+    studio.resized();
+    bool damaged = false;
+    auto saved = Song::load(dir, damaged);
+    REQUIRE(saved);
+    CHECK_FALSE(damaged);
+    REQUIRE(saved->groups.size() == 1);
+    REQUIRE(saved->groups[0].attempts.size() == 3);
+    CHECK(saved->groups[0].active == 3);
+    REQUIRE(studio.keyPressed(KeyPress(KeyPress::tabKey)));
+    studio.resized();
+    CHECK(find<Button>(studio, cs::stopSong));
+}

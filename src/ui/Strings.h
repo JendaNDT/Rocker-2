@@ -119,6 +119,7 @@ inline const juce::String sections = u8"Díly", sectionSplit = u8"Rozdělit díl
                           repairAll = u8"Opravit všechny", totalBars = u8"taktů", outOf = u8" z ",
                           sectionCancel = u8"Zrušit";
 
+inline const juce::String recordLoop = u8"Nahrávat dokola", loopRecording = u8"NAHRÁVÁM DOKOLA";
 inline const juce::String repair = u8"P · Oprav takt", repairState = u8"OPRAVA", attemptLabel = u8"Pokus",
                           takeGroup = u8"Pokusy", keepAttempt = u8"Ponechat tenhle",
                           discardAttempt = u8"Zahodit pokus", nextAttempt = u8"Další pokus",
