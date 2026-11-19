@@ -1,3 +1,4 @@
+#include "engine/Export.h"
 #include "FakeDevice.h"
 #include "song/Song.h"
 #include <catch2/catch_test_macros.hpp>
@@ -101,7 +102,7 @@ TEST_CASE("A-06 offline mix ignores headphones and count-in settings") {
         view.countIn = click;
         REQUIRE(view.save(w.dir));
         auto file = w.dir.getChildFile(click ? "on.wav" : "off.wav");
-        REQUIRE(renderSong(s, lib, file));
+        REQUIRE(exportMix(s, lib, file, Delivery::wave24).ok);
         auto reader = waveReader(file);
         REQUIRE(reader);
         AudioBuffer<float> rendered(2, 500);
