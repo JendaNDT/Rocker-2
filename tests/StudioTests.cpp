@@ -992,6 +992,7 @@ TEST_CASE("A-24 acoustic and electronic drums use only the microphones that resp
             click(view,cs::mixMode);
             auto* gain=find<Slider>(view,cs::kitGain);
             REQUIRE(gain);gain->setValue(-6,sendNotificationSync);
+            for(int poll=0;poll<10;++poll) tick();
             click(view,cs::playMode);
             song=Song::load(dir,bad);
             REQUIRE(song);
