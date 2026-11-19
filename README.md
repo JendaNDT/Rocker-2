@@ -10,6 +10,14 @@ Pro společné zkoušky si stáhni balík pro svůj počítač. Přihlas se na G
 
 [Postup společných ručních zkoušek](docs/PREDANI.md#3-ruční-zkoušky)
 
+## Rozložení 1b
+
+Na levé liště jsou **Úvod**, **Nápady**, režimy **Hraj / Stříhej / Míchej**, **Metronom**, **Ladička** a **Zapojení**. Ve skladbě jsou přehrávání a nahrávání dole. U každé stopy ji můžeš připravit, ztlumit nebo pustit sólo. Pravý panel se mění podle režimu. V Míchej ho můžeš sbalit tlačítkem v záhlaví, aby časová osa měla víc místa. [Plán redesignu](docs/07_PLAN_REDESIGNU_1B.md)
+
+V transportu klikni na **Klik**, **Rytmus** nebo **Bez kliku**, pokud chceš vodítko jedním stiskem zapnout nebo vypnout. Chceš-li změnit jeho druh, hlasitost nebo zvuk, otevři **Metronom** z lišty nebo klikni na BPM ve skladbě. Tempo můžeš naťukat osmi stisky mezerníku a vyzkoušet tlačítkem **Přehrát**. Volba **Použít ve skladbě** uloží nastavení a vrátí tě na stejný takt. Odpočet se nastavuje zvlášť.
+
+**Smyčka** v transportu přehrává označené takty opakovaně. Pokud chceš uložit každý průchod jako nový pokus, použij **Stříhej → Nahrávat dokola**. Pro přepínání pokusů zmáčkni **Tab**, volbu potvrď **Enterem**.
+
 ## Stažení v1.0.0 a spuštění
 
 | Počítač | Co stáhnout |
@@ -41,7 +49,7 @@ V Míchej otevři **Poslat mix… → Stopy zvlášť → Uložit stopy**. V `Ex
 
 Stopu typu **Jiná** můžeš použít pro zpěv nebo baskytaru. Ve skladbě klikni u stopy na **Zvuk stopy** a vyber **Zpěv**, **Baskytara** nebo **Bez úprav**. Basy, středy, výšky, komprese a dozvuk se projeví při přehrávání a exportu. Zdrojovou nahrávku můžeš později použít i s jiným nastavením.
 
-V režimu Hraj stiskni tlačítko **Klik** pro přechod na **Rytmus**. Další stisk zvolí **Bez kliku** a pak zase Klik. Rocker si nastavení pamatuje pro každou skladbu. Odpočet používá klik. Rytmus slyšíš během hraní ve sluchátkách, záznam vstupů a soubory exportu zůstávají čisté.
+Rocker si druh vodítka pamatuje pro každou skladbu. Odpočet používá klik. Rytmus slyšíš během hraní ve sluchátkách, záznam vstupů a soubory exportu zůstávají čisté.
 
 Pro rychlé sdílení do telefonu zvol **Poslat mix… → Hlasitější (pro telefon)**. Rocker změří výsledek, přiblíží hlasitost k −14 LUFS a ohlídá skutečnou špičku. Název má příponu `hlasitejsi`. Hlasitost posledního exportu uvidíš v Míchej. Pro soubor s vlastní dynamikou zvol **Běžná hlasitost**.
 

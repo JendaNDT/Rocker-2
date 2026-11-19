@@ -343,6 +343,8 @@ Celý průběh je popsán ve 2.2, krok 3. Doplňující pravidla:
 
 ## 5. Vzhled a rozložení Rockeru 2 (nový návrh)
 
+Redesign 1b mění rozmístění a vzhled popsané v této kapitole. Ovládání, zkratky a pravidla přístupnosti platí podle nového návrhu a plánu. [Rozložení 1b](07_PLAN_REDESIGNU_1B.md)
+
 ### 5.1 Zásady odvozené z práce muzikanta
 
 1. **Stav nahrávání je vidět periferním viděním.** Bubeník se dívá na činely, ne na notebook. Proto se při záznamu barví *celé okno*: červený stavový pás a 6px červený rám kolem okna. V Pohledu zdálky je červená celá obrazovka. Barevná plocha se čte z 3 m lépe než text.
