@@ -160,6 +160,6 @@ Ve 4/4 hraje kopák na první a třetí dobu, virbl na druhou a čtvrtou a hi-ha
 
 ## E17 · hlasitost a skutečná špička
 
-Měření integrované hlasitosti a skutečných špiček používá libebur128 1.2.6 pod licencí MIT. Windows sestavení přikládá také licenci BSD pro jeho implementaci fronty. Pro cílové frekvence vývozu používá čtyřnásobný převzorek. Zkouška A-32 samostatně generuje pět signálů z tabulky 1 EBU Tech 3341. Tím lze měření spouštět v CI bez přerozdělování referenčních nahrávek EBU. [EBU Tech 3341](https://tech.ebu.ch/docs/tech/tech3341.pdf) · [Licence libebur128](https://github.com/jiixyj/libebur128/blob/v1.2.6/COPYING)
+Měření integrované hlasitosti a skutečných špiček používá libebur128 1.2.6 pod licencí MIT. Windows sestavení přikládá také licenci BSD pro jeho implementaci fronty. ARM64 používá přenosnou větev filtru. Překladač pro tuto knihovnu zapíná režim C, který podporuje její direktivu #warning. Pro cílové frekvence vývozu používá čtyřnásobný převzorek. Zkouška A-32 samostatně generuje pět signálů z tabulky 1 EBU Tech 3341. Tím lze měření spouštět v CI bez přerozdělování referenčních nahrávek EBU. [EBU Tech 3341](https://tech.ebu.ch/docs/tech/tech3341.pdf) · [Licence libebur128](https://github.com/jiixyj/libebur128/blob/v1.2.6/COPYING)
 
 Volitelný vývoz pro telefon má střídmý omezovač s předstihem. Měření hotového souboru zahrnuje vliv převodu frekvence a kodeku. Když se u velmi krátkého nebo dynamického materiálu liší bezpečná dosažitelná hlasitost, aplikace ukáže skutečně naměřenou hodnotu. Pouhé zesílení by mohlo překročit mez špičky.
