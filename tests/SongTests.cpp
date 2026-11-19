@@ -319,3 +319,44 @@ TEST_CASE("A-21 sample continuity through both edges of opposite-phase takes", "
     REQUIRE(Song::load(w.dir, bad) == s);
     REQUIRE_FALSE(bad);
 }
+
+TEST_CASE("A-02 cropped occurrence fades and moves the following WAV without changing its bytes") {
+    Workspace w;
+    auto s=example();
+    s.bars=20;
+    s.grid.bpm=240;
+    Frame length=s.barFrame(20);
+    auto file=w.dir.getChildFile("Zvuk/source.wav");
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer=waveWriter(file,s.grid.rate,1);
+    REQUIRE(writer);
+    AudioBuffer<float> bar(1,(int)s.barFrame(1));
+    for(int n=0;n<20;++n) {
+        std::fill_n(bar.getWritePointer(0),bar.getNumSamples(),float(n+1)/32);
+        REQUIRE(writer->writeFromAudioSampleBuffer(bar,0,bar.getNumSamples()));
+    }
+    writer.reset();
+    MemoryBlock before,after;
+    REQUIRE(file.loadFileAsData(before));
+    s.assets={{"a","Zvuk/source.wav",length,1}};
+    s.clips={{"clip","dr","a",0,0,length}};
+    REQUIRE(s.splitSection(8));
+    REQUIRE(s.splitSection(16));
+    REQUIRE(s.repeatSection(1,2));
+    REQUIRE(s.resizeOccurrence(2,6));
+    AudioLibrary lib;
+    REQUIRE(lib.load(s,w.dir));
+    Playback mix(s,lib);
+    std::array<float,1024> samples{};
+    float* channels[]{samples.data()};
+    mix.mix(channels,1,1024,s.barFrame(22)-512);
+    CHECK(samples.front()==14.f/32);
+    CHECK(samples.back()==17.f/32);
+    CHECK(samples[511]==0.f);
+    CHECK(samples[512]==0.f);
+    for(size_t i=1;i<samples.size();++i)
+        if(std::abs(samples[i]-samples[i-1])>.003f)
+            FAIL("Cropped edge discontinuity at " << i);
+    REQUIRE(file.loadFileAsData(after));
+    CHECK(after==before);
+}
