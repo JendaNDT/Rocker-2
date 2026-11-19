@@ -68,7 +68,7 @@ void Studio::startIdea(bool retrospective) {
     ideaRecording = std::make_unique<IdeaRecording>(input, ideas->wave(capturedIdea.id), retrospective);
     if (!ideaRecording->valid()) {
         ideaRecording.reset();
-        status(cs::writeError);
+        status(cs::ideaSaveError);
         return;
     }
     recentInput.clear();
@@ -103,7 +103,7 @@ void Studio::stopIdea() {
     }
     link.audio.live.silence();
     ideaRecording->requestStop();
-    auto folder = libraryRoot.getSiblingFile("Napady");
+    auto folder = ideas->root();
     savingIdea =
         std::async(std::launch::async, [take = std::move(ideaRecording), x = capturedIdea, folder] {
             if (!take->finish())
@@ -144,7 +144,7 @@ void Studio::playIdea(bool tap) {
     if (preparingPreview.valid())
         return;
     acceptPreview = true;
-    auto folder = libraryRoot.getSiblingFile("Napady");
+    auto folder = ideas->root();
     auto original = ideas->wave(x->id);
     preparingPreview = std::async(
         std::launch::async, [item = *x, folder, original, rate = link.current.rate, tap, amp = sound] {
@@ -219,7 +219,7 @@ void Studio::tapIdea() {
     }
     x.bpm = tempo->bpm;
     x.firstBeat = tempo->firstBeat;
-    status(ideas->update(x) ? cs::freeTempo : cs::writeError);
+    status(ideas->update(x) ? cs::freeTempo : cs::ideaSaveError);
 }
 void Studio::makeIdeaSong() {
     auto* x = pickedIdea();
@@ -228,7 +228,7 @@ void Studio::makeIdeaSong() {
     stopPreview();
     auto dest = libraryRoot.getNonexistentChildFile(File::createLegalFileName(title(*x)), "", true);
     if (!ideas->toSong(*x, dest, title(*x), cs::guitar)) {
-        status(cs::writeError);
+        status(cs::songSaveError);
         return;
     }
     openProject(dest);
@@ -252,7 +252,7 @@ void Studio::ideaTick() {
             ideaOffset = 0;
             status(cs::ideaSaved + title(x) + " (" + duration(x.length, x.rate) + ")");
         } else
-            status(cs::writeError);
+            status(cs::ideaSaveError);
     }
     if (ideaPreview && ideaPreview->finished.load()) {
         bool incomplete = tapping;
@@ -401,7 +401,7 @@ void Studio::ideaPage(Rect area) {
                 auto item = *pickedIdea();
                 item.star = !item.star;
                 if (!ideas->update(item))
-                    status(cs::writeError);
+                    status(cs::ideaSaveError);
                 triggerAsyncUpdate();
             },
             x->star ? 1 : 0);
@@ -416,7 +416,7 @@ void Studio::ideaPage(Rect area) {
                     ideaNote = edit->getText();
             item.note = ideaNote;
             if (!ideas->update(item))
-                status(cs::writeError);
+                status(cs::ideaSaveError);
             triggerAsyncUpdate();
         });
         if (tapping)
@@ -510,7 +510,7 @@ void Studio::finishImport() {
     bool damaged = false;
     auto target = here ? std::optional<Song>(song) : Song::load(importProject, damaged);
     if (!target || damaged) {
-        status(cs::writeError);
+        status(cs::importError);
         return;
     }
     Track t;
@@ -523,7 +523,7 @@ void Studio::finishImport() {
     target->clips.push_back({Uuid().toString(), t.id, a->id, importPosition, 0, a->length});
     target->commitClips();
     if (!target->save(importProject)) {
-        status(cs::writeError);
+        status(cs::importError);
         return;
     }
     if (here) {

@@ -404,12 +404,23 @@ File Song::latestVersion(const File& dir) {
 }
 bool Song::archive(const File& dir) const {
     auto versions = dir.getChildFile("Verze");
-    auto name = String(Time::currentTimeMillis()) + "-" + Uuid().toString() + ".json";
-    if (!atomicJson(versions.getChildFile(name), json()))
-        return false;
     auto files = versions.findChildFiles(File::findFiles, false, "*.json");
     files.sort();
-    for (int i = 0; i < files.size() - 50; ++i)
+    auto timestamp = Time::currentTimeMillis();
+    if (!files.isEmpty()) {
+        const auto newest = files.getLast();
+        bool damaged = false;
+        if (auto previous = parse(JSON::parse(newest), damaged); previous && !damaged && *previous == *this)
+            return true;
+        // Multiple edits can be archived within the same millisecond.
+        const auto previousTimestamp = newest.getFileName().getLargeIntValue();
+        if (previousTimestamp >= timestamp && previousTimestamp < std::numeric_limits<int64>::max())
+            timestamp = previousTimestamp + 1;
+    }
+    auto name = String(timestamp) + "-" + Uuid().toString() + ".json";
+    if (!atomicJson(versions.getChildFile(name), json()))
+        return false;
+    for (int i = 0; i < files.size() + 1 - 50; ++i)
         files[i].deleteFile();
     return true;
 }

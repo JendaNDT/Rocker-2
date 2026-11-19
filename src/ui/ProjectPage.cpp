@@ -67,7 +67,7 @@ void Studio::saveSong(String action) {
         history.remember(song, action.isEmpty() ? cs::edited : action);
     pendingSoundSave = 0;
     if (projectDir != File{} && !song.save(projectDir))
-        status(cs::writeError);
+        status(cs::songSaveError);
 }
 void Studio::finishProject() {
     if (pendingSoundSave)
@@ -77,7 +77,7 @@ void Studio::finishProject() {
         stopProject();
     if (projectDir != File{} && song.title.isNotEmpty()) {
         if (!view.save(projectDir) || !song.archive(projectDir))
-            status(cs::writeError);
+            status(cs::songSaveError);
     }
 }
 void Studio::openProject(File dir) {
@@ -142,6 +142,8 @@ void Studio::openProject(File dir) {
         status(cs::syncPath);
     if (damaged || !complete)
         status(cs::partialProject);
+    else if (link.online && link.current.rate != song.grid.rate)
+        status(cs::rateMismatch(song.grid.rate, link.current.rate));
 }
 void Studio::field(const String& label, Rect r, String& value) {
     text(label, r.removeFromLeft(s::labelWidth), s::body, s::muted);
@@ -234,7 +236,7 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
         return;
     }
     if (link.current.rate != song.grid.rate) {
-        status(cs::rateMismatch);
+        status(cs::rateMismatch(song.grid.rate, link.current.rate));
         return;
     }
     if (!library.load(song, projectDir)) {
@@ -286,7 +288,7 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
         if (!p->arm(capture, projectDir, link.caps.inputs, latency, true,
                     link.caps.outputLatency +
                         settings.midiCorrections[Settings::calibrationKey(link.current) + activeMidi])) {
-            status(p->diskStop ? cs::diskFull : cs::writeError);
+            status(p->diskStop ? cs::diskFull : cs::armError);
             return;
         }
         if (repair) {
@@ -342,7 +344,7 @@ void Studio::stopProject(bool automatic) {
         p->storeInputMarks(song);
         if (!recoverTake(song, projectDir, p->journal) || !library.load(song, projectDir) ||
             p->failed.load())
-            status(cs::writeError);
+            status(p->journal.existsAsFile() ? cs::takeNeedsRecovery : cs::takeSaveError);
         else {
             if (p->drop < 0 && song.assets.size() > before)
                 ++view.savedTakes;
@@ -366,7 +368,7 @@ void Studio::stopProject(bool automatic) {
         }
     }
     if (!view.save(projectDir))
-        status(cs::writeError);
+        status(cs::songSaveError);
     triggerAsyncUpdate();
 }
 void Studio::projectTick() {
@@ -403,7 +405,7 @@ void Studio::projectTick() {
         saveSong();
     if (page == Page::project && now - lastArchive > 300000) {
         if (!song.archive(projectDir))
-            status(cs::writeError);
+            status(cs::songSaveError);
         lastArchive = now;
     }
 }
@@ -428,7 +430,7 @@ void Studio::projectPage(Rect area) {
                     for (auto& f : projectDir.getChildFile("Zachrana")
                                        .findChildFiles(File::findFiles, false, "*.json"))
                         if (!recoverTake(song, projectDir, f)) {
-                            status(cs::writeError);
+                            status(cs::takeNeedsRecovery);
                             return;
                         }
                 openProject(projectDir);
@@ -538,7 +540,7 @@ void Studio::projectPage(Rect area) {
                             fresh.tracks.push_back(t);
                         }
                         if (!fresh.save(folder) || !fresh.archive(folder)) {
-                            status(cs::writeError);
+                            status(cs::songSaveError);
                             return;
                         }
                         openProject(folder);
@@ -640,6 +642,32 @@ void Studio::projectPage(Rect area) {
         auto room = top.withTrimmedRight(s::fieldWidth);
         text(limit(skin.font(s::caption), cs::soloStatus + soloNames(), room.getWidth()), room,
              s::caption, s::warning);
+    }
+    const bool mismatched = link.online && link.current.rate != song.grid.rate;
+    if (mismatched && !performance) {
+        auto rateRow = row(area);
+        if (link.caps.rates.contains(double(song.grid.rate))) {
+            button(cs::switchRate(song.grid.rate), rateRow.removeFromRight(s::fieldWidth), [this] {
+                const auto previous = link.current;
+                auto choice = previous;
+                choice.rate = song.grid.rate;
+                choose(choice, true);
+                if (!link.online) {
+                    choose(previous);
+                    status(cs::failed);
+                    return;
+                }
+                if (link.current.rate != choice.rate) {
+                    status(cs::rateMismatch(choice.rate, link.current.rate));
+                    return;
+                }
+                configureSongMonitor();
+            });
+        } else {
+            text(cs::rateUnavailable(song.grid.rate), rateRow.removeFromRight(s::fieldWidth), s::body,
+                 s::warning);
+        }
+        text(cs::rateMismatch(song.grid.rate, link.current.rate), rateRow, s::body, s::warning);
     }
     auto modes = row(area);
     button(
@@ -819,7 +847,8 @@ void Studio::projectPage(Rect area) {
              String(projectDir.getBytesFreeOnVolume() / (3600. * 4 * channels * song.grid.rate), 1) +
              " h",
          disk, s::caption, s::muted, true, false, true);
-    text(message, notice, s::caption, s::warning);
+    if (!mismatched || message != cs::rateMismatch(song.grid.rate, link.current.rate))
+        text(message, notice, s::caption, s::warning);
     sectionStrip = row(area);
     text(cs::sections, sectionStrip.withWidth(s::trackHead), s::body, s::muted);
     ruler = row(area);
@@ -1137,7 +1166,7 @@ void Studio::startLoadTrial() {
         !sources.load(diagnosticSong, diagnosticDir)) {
         sources.data.clear();
         diagnosticDir.deleteRecursively();
-        status(cs::writeError);
+        status(cs::diagnosticError);
         return;
     }
     link.audio.live.silence();
@@ -1175,7 +1204,7 @@ void Studio::syncTest() {
     auto p = std::make_unique<Performance>(diagnosticSong, AudioLibrary{}, 0, true, false, 0);
     int delay = std::max(0, listeningDelaySamples());
     if (!p->arm(diagnosticSong, diagnosticDir, link.caps.inputs, delay)) {
-        status(cs::writeError);
+        status(cs::diagnosticError);
         diagnosticDir.deleteRecursively();
         return;
     }

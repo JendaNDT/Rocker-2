@@ -144,7 +144,15 @@ inline const juce::String
     disconnected = u8"Bez připojení", connect = u8"Připoj zvukovku nebo vyber mikrofon notebooku.",
     unplugged = u8"Zapojení se změnilo. Zkontroluj zařízení a vstupy.",
     failed = u8"Zařízení se nepodařilo otevřít. Zkus jiný ovladač nebo zařízení.",
-    writeError = u8"Nastavení se nepodařilo uložit. Zkontroluj volné místo.", skip = u8"Přeskočit",
+    settingsError = u8"Nastavení se nepodařilo uložit. Zkontroluj volné místo.",
+    songSaveError = u8"Skladbu se nepodařilo uložit. Zkontroluj volné místo a přístup ke složce.",
+    takeSaveError = u8"Nahrávku se nepodařilo dokončit. Zkontroluj složku skladby.",
+    takeNeedsRecovery = u8"Nahrávka čeká na obnovu při dalším otevření skladby.",
+    armError = u8"Nahrávání se nepodařilo spustit. Zkontroluj místo a složku skladby.",
+    ideaSaveError = u8"Nápad se nepodařilo uložit.",
+    importError = u8"Podklad se nepodařilo přidat do skladby.",
+    cleanupError = u8"Úklid se nepodařilo dokončit. Přesunuté soubory najdeš v koši.",
+    diagnosticError = u8"Zkoušku se nepodařilo připravit.", skip = u8"Přeskočit",
     back = u8"Zpět", next = u8"Další krok", finish = u8"Dokončit zapojení",
     refresh = u8"Vyhledat zařízení", driver = u8"Ovladač", inputPort = u8"Vstupní zařízení",
     outputPort = u8"Výstupní zařízení", bothPort = u8"Zařízení", rate = u8"Vzorkovací frekvence",
@@ -196,6 +204,16 @@ inline juce::String coming(int stage) {
 inline juce::String bufferSize(int n) { return juce::String(n) + juce::String(u8" vzorků"); }
 inline juce::String frequency(double hz) {
     return juce::String(hz / 1000, std::fmod(hz, 1000) == 0 ? 0 : 1).replaceCharacter('.', ',') + " kHz";
+}
+inline juce::String rateMismatch(int song, int device) {
+    return juce::String(u8"Skladba je ve formátu ") + frequency(song) +
+           juce::String(u8", zvukovka běží na ") + frequency(device) + ".";
+}
+inline juce::String switchRate(int rate) {
+    return juce::String(u8"Přepnout zvukovku na ") + frequency(rate);
+}
+inline juce::String rateUnavailable(int rate) {
+    return juce::String(u8"Tvoje zvukovka ") + frequency(rate) + juce::String(u8" nenabízí.");
 }
 inline juce::String channel(int n) { return juce::String(input) + " " + juce::String(n + 1); }
 inline const juce::StringArray tuningNames = {"Standard",   "Drop D", "Drop C", "Drop B", "Eb standard",
@@ -251,7 +269,7 @@ inline const juce::String
     needIO = u8"Vyber vstup i výstup v Zapojení.",
     notMeasured = u8"Pro toto zapojení zatím chybí měření.", io = u8"Vstupy / výstupy",
     directOption = u8"Při rušivém zpoždění vypni odposlech zde a použij DIRECT na zvukovce.",
-    dbUnit = " dBFS", latencyUnit = " ms", percentUnit = " %", centUnit = u8" centů",
+    gainUnit = " dB", dbUnit = " dBFS", latencyUnit = " ms", percentUnit = " %", centUnit = u8" centů",
     customSaved = u8"Ladění je uložené.", soundOn = u8"Zapnout odposlech",
     soundOff = u8"Vypnout odposlech", ampDelay = u8"včetně aparátu", userNotes = u8"Tóny strun",
     openSetup = u8"Zařízení", listeningTo = u8"Poslechový vstup";
@@ -269,7 +287,7 @@ inline const juce::String
     arm = u8"Připravit", disarm = u8"Připraveno", mute = u8"Ztlumit", solo = u8"Sólo",
     songClick = u8"Klik", countIn = u8"Odpočet", enabled = u8"Zapnuto", disabled = u8"Vypnuto",
     missingInputs = u8"Vyber vstup u každé připravené stopy.",
-    rateMismatch = u8"V Zapojení nastav frekvenci skladby.", stateStop = u8"Zastaveno",
+    stateStop = u8"Zastaveno",
     statePlay = u8"Přehrávání", stateRecord = u8"NAHRÁVÁNÍ", bar = u8"Takt", toRecord = u8"Co nahrávám",
     noneArmed = u8"Žádná připravená stopa", projectSetup = u8"Tempo a metrum", savedSong = u8"Uloženo",
     badTempo = u8"Zadej tempo od 30 do 300 BPM a název skladby.", restore = u8"Obnovit",

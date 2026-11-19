@@ -26,14 +26,25 @@ class Fader final : public Slider {
         setTextBoxStyle(NoTextBox, false, 0, 0);
         setWantsKeyboardFocus(true);
     }
+    String readoutText(double value) const {
+        return textFromValueFunction ? textFromValueFunction(value) : String(int(value)) + unit;
+    }
+    void reserveReadout(std::initializer_list<double> values) {
+        const auto font = skin.font(s::body, true);
+        for (auto value : values)
+            readout = std::max(readout, int(std::ceil(GlyphArrangement::getStringWidth(font, readoutText(value)))));
+    }
+    int readoutWidth() const { return readout + s::gap; }
+    bool fits() const {
+        return getWidth() >= readoutWidth() + 3 * s::gap + s::inset &&
+               getHeight() >= skin.font(s::body, true).getHeight();
+    }
     void paint(Graphics& g) override {
         auto area = getLocalBounds().reduced(s::gap, 0);
-        auto value = area.removeFromRight(s::faderReadout);
+        auto value = area.removeFromRight(readoutWidth());
         g.setColour(s::chalk);
         g.setFont(skin.font(s::body, true));
-        g.drawText(textFromValueFunction ? textFromValueFunction(getValue())
-                                         : String((int)getValue()) + unit,
-                   value, Justification::centredRight, false);
+        g.drawText(readoutText(getValue()), value, Justification::centredRight, false);
         auto bar = area.withSizeKeepingCentre(area.getWidth() - s::inset, s::grid);
         g.setColour(s::line);
         g.fillRect(bar);
@@ -63,10 +74,11 @@ class Fader final : public Slider {
   private:
     Theme& skin;
     String unit;
+    int readout = 0;
     void setFromX(int x) {
         auto area = getLocalBounds()
                         .reduced(s::gap, 0)
-                        .withTrimmedRight(s::faderReadout)
+                        .withTrimmedRight(readoutWidth())
                         .reduced(s::inset / 2, 0);
         setValue(proportionOfLengthToValue(
                      jlimit(0., 1., double(x - area.getX()) / std::max(1, area.getWidth()))),
@@ -74,6 +86,12 @@ class Fader final : public Slider {
     }
 };
 } // namespace
+void Studio::appendFaderLayoutErrors(StringArray& errors) const {
+    for (auto* control : controls)
+        if (auto* fader = dynamic_cast<Fader*>(control))
+            if (!fader->fits() || !getLocalBounds().contains(fader->getBounds()))
+                errors.add(fader->getName());
+}
 void Studio::resetRoute() {
     measurementInput = 0;
     guitarSource = 0;
@@ -378,6 +396,7 @@ void Studio::fader(const String& title, Rect area, int low, int high, int initia
     addAndMakeVisible(slider);
     slider->setBounds(area);
     slider->setRange(low, high, 1);
+    slider->reserveReadout({double(low), double(high)});
     slider->setValue(initial, dontSendNotification);
     slider->onValueChange = [this, slider, apply] {
         apply(roundToInt(slider->getValue()));
@@ -400,9 +419,14 @@ void Studio::mixSlider(const String& title, Rect bounds, float initial, bool pan
         if (pan)
             return std::abs(v) < .005
                        ? cs::centre
-                       : (v < 0 ? cs::leftShort : cs::rightShort) + String(roundToInt(std::abs(v) * 100));
-        return v <= -96 ? cs::silentGain : decimal(v) + cs::dbUnit;
+                       : (v < 0 ? cs::leftShort : cs::rightShort) + " " +
+                             String(roundToInt(std::abs(v) * 100));
+        return v <= -96 ? cs::silentGain : decimal(v) + cs::gainUnit;
     };
+    if (pan)
+        slider->reserveReadout({-1., 0., 1.});
+    else
+        slider->reserveReadout({-96., -95.9, 6.});
     slider->onValueChange = [this, slider, set] {
         set(float(slider->getValue()));
         if (performance)
@@ -517,7 +541,7 @@ void Studio::trackSoundDeck(Rect area) {
             settings.guitarPresets.push_back(preset);
             if (!settings.save(settingsFile)) {
                 settings.guitarPresets.pop_back();
-                status(cs::writeError);
+                status(cs::settingsError);
                 return;
             }
             song.tracks[view.selected].amp = preset;

@@ -752,6 +752,16 @@ TEST_CASE("A-02 A-17 section strip splits, repeats, trims and asks before a shar
     key('3');
     auto slider = find<Slider>(view, cs::gainLabel + " " + cs::guitar);
     REQUIRE(slider);
+    auto* pan = find<Slider>(view, cs::panLabel + " " + cs::guitar);
+    REQUIRE(pan);
+    pan->setValue(-1., sendNotificationSync);
+    CHECK(pan->getTextFromValue(-1.).contains("100"));
+    for (auto db : {-3., -12.5, -95.9}) {
+        slider->setValue(db, sendNotificationSync);
+        CHECK(slider->getTextFromValue(db).endsWith(" dB"));
+        fits(view);
+    }
+    pan->setValue(0., sendNotificationSync);
     slider->setValue(-3., sendNotificationSync);
     key('S', ModifierKeys::ctrlModifier);
     CHECK(read().tracks.at(0).gainDb == -3.f);
@@ -1191,4 +1201,98 @@ TEST_CASE("A-24 separate clocks, unplugged recording and package remapping throu
     fits(studio);
     for (int px : {1280, 1920})
         snapshot(studio, "30-baleni-skladby", px);
+}
+
+TEST_CASE("A-25 ideas record, preview and become songs with a custom song folder") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    Settings config;
+    config.visited = true;
+    const auto songs = temp.dir.getChildFile("Hudba/Moje skladby");
+    config.libraryPath = songs.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    auto key = [&](int code) {
+        REQUIRE(view.keyPressed(KeyPress(code)));
+        view.resized();
+    };
+    test::FakeDevice::Block signal(1, std::vector<float>(512));
+    for (size_t i = 0; i < signal.front().size(); ++i)
+        signal.front()[i] = float(.25 * std::sin(i * .1));
+    auto play = [&](int blocks) {
+        for (int i = 0; i < blocks; ++i)
+            fake.process(signal, 512);
+    };
+    play(94);
+    key('R');
+    for (int i = 0; i < 15; ++i) {
+        play(12);
+        tick();
+    }
+    key(KeyPress::spaceKey);
+    for (int i = 0; i < 65 && !find<Button>(view, cs::ideaStar); ++i) {
+        tick();
+        view.resized();
+    }
+    REQUIRE(find<Button>(view, cs::ideaStar));
+    Ideas catalog(temp.dir.getChildFile("Napady"));
+    REQUIRE(catalog.all().size() == 1);
+    REQUIRE(catalog.all().front().tuning.isNotEmpty());
+    key(KeyPress::spaceKey);
+    for (int i = 0; i < 65 && !find<Button>(view, cs::stopSong); ++i) {
+        tick();
+        view.resized();
+    }
+    REQUIRE(find<Button>(view, cs::stopSong));
+    key(KeyPress::spaceKey);
+    click(view, cs::useIdea);
+    REQUIRE(view.currentPage() == Page::project);
+    CHECK(File(Settings::load(temp.file).lastSong).isAChildOf(songs));
+    temp.dir.getChildFile("Napady").deleteRecursively();
+    REQUIRE(temp.dir.getChildFile("Napady").replaceWithText("blocked"));
+    click(view, cs::home);
+    key('R');
+    CHECK(view.statusText() == String(u8"Nápad se nepodařilo uložit."));
+    fits(view);
+}
+
+TEST_CASE("A-24 changing to a song rate retains unrelated device calibrations") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    fake.rate = 44100;
+    fake.rates = {44100., 48000.};
+    Settings config;
+    config.visited = true;
+    config.device = {Driver::asio, "Studio USB", "Studio USB", 44100, 128};
+    const auto oldKey = Settings::calibrationKey(config.device);
+    auto newChoice = config.device;
+    newChoice.rate = 48000;
+    const auto newKey = Settings::calibrationKey(newChoice);
+    config.latency[oldKey] = {500, 373};
+    config.latency[newKey] = {501, 373};
+    const auto dir = temp.dir.getChildFile("Skladby/Přenos");
+    config.lastSong = dir.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Song song;
+    song.title = "Test";
+    song.bars = 1;
+    REQUIRE(song.save(dir));
+    Studio view(fake, temp.file);
+    REQUIRE(view.keyPressed(KeyPress(KeyPress::returnKey)));
+    view.resized();
+    REQUIRE(view.currentPage() == Page::project);
+    CHECK(view.statusText().contains("48 kHz"));
+    CHECK(view.statusText().contains("44,1 kHz"));
+    click(view, String(u8"Přepnout zvukovku na 48 kHz"));
+    CHECK(fake.rate == 48000);
+    const auto saved = Settings::load(temp.file);
+    CHECK(saved.device.rate == 48000);
+    CHECK(saved.latency.contains(oldKey));
+    CHECK_FALSE(saved.latency.contains(newKey));
+    REQUIRE(view.keyPressed(KeyPress(KeyPress::spaceKey)));
+    view.resized();
+    CHECK(find<Button>(view, cs::stopSong));
+    fits(view);
 }
