@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## E18 · nahrávání dokola
+
+Ve vybraných taktech lze nahrát několik průchodů. Rozpracovaný průchod jde po pádu do koše pokusů. A-33 ověřuje jejich přesnou polohu, výběr přes Tab a obnovu po skutečném ukončení procesu. Poslech na zvukovce a zkouška hraní H-14 čekají po E18. [Zkoušky a závěrečná sestavení](https://github.com/JendaNDT/Rocker-2/pull/21)
+
 ## E17 · hlasitější poslech v telefonu
 
 Volitelný export cílí na −14 LUFS a chrání skutečné špičky pod −1 dBTP. A-32 ověřuje pět případů EBU a výsledné WAV při 44,1 a 48 kHz. Míchej ukazuje naměřenou hodnotu posledního exportu. Poslech čeká po E18. [Zkoušky a sestavení](https://github.com/JendaNDT/Rocker-2/pull/20)

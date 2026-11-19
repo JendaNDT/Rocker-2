@@ -39,6 +39,8 @@ V režimu Hraj stiskni tlačítko **Klik** pro přechod na **Rytmus**. Další s
 
 Pro rychlé sdílení do telefonu zvol **Poslat mix… → Hlasitější (pro telefon)**. Rocker změří výsledek, přiblíží hlasitost k −14 LUFS a ohlídá skutečnou špičku. Název má příponu `hlasitejsi`. Hlasitost posledního exportu uvidíš v Míchej. Pro soubor s vlastní dynamikou zvol **Běžná hlasitost**.
 
+Chceš-li zahrát stejný riff několikrát, přepni na **Stříhej**, vyber stopu a takty a klikni na **Nahrávat dokola**. Rocker se vrací na začátek výběru a čísluje pokusy. Po stisku Zastavit může ještě doznít nastavená dohra. Pak procházej pokusy pomocí **Tab** a ponech ten, který se povedl.
+
 ## Co vyzkoušet po vydání
 
 - **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.

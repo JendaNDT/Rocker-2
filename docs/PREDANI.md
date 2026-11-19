@@ -1,21 +1,25 @@
-# Předání Rockeru 2 po E17
+# Předání Rockeru 2 po E18
 
 ## 1. Hotovo
 
-V Míchej otevři **Poslat mix…** a vyber **Hlasitější (pro telefon)**. Aplikace zobrazí skutečnou špičku a naměřenou hlasitost exportu. [Zkoušky E17, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/20)
+Etapy E12 až E18 přidaly opravy knihovny nápadů, M4A na Macu, samostatné stopy, úpravy zvuku zpěvu a baskytary, vodicí rytmus, export pro telefon a nahrávání dokola. Závěrečný PR obsahuje výsledky a ověřená sestavení i snímky. [Závěrečné sestavení](https://github.com/JendaNDT/Rocker-2/pull/21)
 
 ## 2. Zbývá
 
-E18 přidá nahrávání několika pokusů dokola do jednoho výběru. [Plán](06_PLAN_OPRAV_A_VYLEPSENI.md)
+Vyzkoušet skutečnou zvukovku, celou píseň, poslech exportu a znovuotevření skladby. Pokud máš Mac s Intelem, vyzkoušej na něm instalaci z nového balíku.
 
 ## 3. Ruční zkoušky
 
-Po E18 vyexportuj celou skladbu běžně i pro telefon. Poslech, celá písnička a měření čekají na ruční zkoušku po E18.
+1. Stáhni závěrečný balík z PR. Otevři Zapojení a vyber skutečnou zvukovku. Poslechni zkušební tón a zkus měřič kytary.
+2. Změň složku skladeb a nahraj riff do Nápadů. Přehraj jej a založ z něj píseň. Zapni Rytmus ve sluchátkách.
+3. V režimu Stříhej označ takty. Zkus je nahrát dokola pětkrát a vyber pokus pomocí Tab. Poznamenej, jak zní návrat na začátek smyčky.
+4. Přidej bicí, podle potřeby baskytaru nebo zpěv. Zkus přehození předvoleb a dokonči celou píseň. Přehraj vývoz pro telefon a souběžně zkus vložit samostatné stopy do jiného studia.
+5. Další den stejnou píseň otevři a zkontroluj návrat k posledním změnám. Uveď sestavu a případné rozdíly mezi Windows a Macem. [Základní návod](../README.md#co-vyzkoušet-po-vydání)
 
 ## 4. Rozhodnutí
 
-Měření používá libebur128 a samostatně vytvořené zkušební tóny podle EBU. Výsledek se hodnotí z hotového souboru. [Rozhodnutí E17](ROZHODNUTI.md#e17--hlasitost-a-skutečná-špička)
+Ruční zkoušky odložené na konec zbývají na skutečné sestavě. Smyčka používá souvislý záznam a oddělené pokusy ve výběru. [Rozhodnutí E18](ROZHODNUTI.md#e18--nahrávání-dokola)
 
-## 5. Prompt pro E18
+## 5. Další relace
 
-Přečti dokumenty 01 až 06 a toto předání. Proveď E18 ve větvi `etapa-18` po malých commitech. Vzhled a rozložení tvoř od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5. Napiš A-33 včetně ukončení procesu a obnovy pokusů. Ověř přesné převody polohy, výběr pokusu klávesou Tab a pravidla zvukového vlákna. Ověř Windows x64, Windows ARM64 a Mac, přilož snímky, český PR, balíky a souhrnný postup pro ruční zkoušky. Po ověření závěrečné etapy pozastav automatickou úlohu.
+Po Jendově zkoušce zapiš výsledek ke konkrétnímu sestavení a přilož kroky reprodukce. Jenda může zvolit další rozsah podle nahrané písně.
