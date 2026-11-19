@@ -145,3 +145,9 @@ Balík pro Mac má arm64 a x86_64. Sanitizéry a běžné testy běží v sadě 
 Pro každou stopu, případně jednu společnou sadu bicích, se použije stejný výpočet jako pro celý mix. Výsledkem je stereo WAV v plovoucí čárce a při frekvenci skladby. Vyhneme se přitom zaokrouhlení při převodu na celá čísla. Předání používá společný začátek a délku s dozvukem. Odlišná délka podle posledního klipu stopy by ztížila přenos.
 
 Složka stop se zveřejní jediným přejmenováním po úspěšném zápisu všech WAV. Pokus s již existujícím cílem skončí bez přepisování. Tím zůstávají použitelné i dříve vyexportované stopy.
+
+## E15 · zpěv a baskytara
+
+Stopa používá jednoduchý třípásmový ekvalizér, kompresor a krátké odrazy. Procesor pracuje průběžně od prvního vzorku. Suchá cesta nemá přidané pevné zpoždění, takže kompenzace je nula. Předvolby se přenášejí do zvukového vlákna jako jedno atomické číslo. Paměť odrazů se připravuje před přehráváním. Náročnější konvoluce by zvýšila zpoždění a spotřebu procesoru.
+
+Skladba ukládá volitelné pole `zvuk`. Starší skladby se otevřou s předvolbou Bez úprav. Efekty se přidávají až při přehrávání a exportu, takže je lze kdykoli změnit i u dříve nahraného WAV.

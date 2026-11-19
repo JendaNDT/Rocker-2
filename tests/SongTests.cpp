@@ -141,6 +141,72 @@ TEST_CASE("A-29 exported stems sum to a unity mix, ignore solo and group the dru
     }
     CHECK(error < 1e-6f);
 }
+void voiceBlock(Playback& playback, float* const* out, int count, Frame at)
+#if defined(ROCKER_RT_AUDIT)
+    [[clang::nonblocking]]
+#endif
+{
+    playback.mix(out, 1, count, at);
+}
+TEST_CASE("A-30 voice presets preserve raw audio and render independently of device blocks", "[realtime]") {
+    Workspace w;
+    Song song;
+    song.title = "Voice";
+    song.bars = 1;
+    song.tracks = {{"v", "Vocal", "jine"}};
+    song.tracks[0].pan = -1;
+    const Frame length = 16384;
+    auto file = w.dir.getChildFile("Zvuk/dry.wav");
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(file, song.grid.rate, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> input(1, int(length));
+    for (int i = 0; i < length; ++i)
+        input.setSample(0, i, float(.58 * std::sin(i * .04) + .1 * std::sin(i * .5)));
+    REQUIRE(writer->writeFromAudioSampleBuffer(input, 0, int(length)));
+    writer.reset();
+    MemoryBlock before;
+    REQUIRE(file.loadFileAsData(before));
+    song.assets = {{"wav", "Zvuk/dry.wav", length, 1}};
+    song.clips = {{"c", "v", "wav", 0, 0, length}};
+    AudioLibrary library;
+    REQUIRE(library.load(song, w.dir));
+    auto preview = [&](const Song& selected, int block, bool switchPresets) {
+        Playback playback(selected, library);
+        std::vector<float> result(size_t(length), 0.f);
+        for (int at = 0; at < length; at += block) {
+            if (switchPresets && at == 4096)
+                playback.setVoice(0, {voicePresets[2], 2}, true);
+            if (switchPresets && at == 8192)
+                playback.setVoice(0, {voicePresets[0], 0}, true);
+            float* out[]{result.data() + at};
+            voiceBlock(playback, out, block, at);
+        }
+        return result;
+    };
+    auto dry = preview(song, 64, false);
+    song.tracks[0].voice = {voicePresets[1], 1};
+    auto reference = preview(song, 64, true);
+    for (int block : {128, 512, 1024})
+        CHECK(reference == preview(song, block, true));
+    CHECK_FALSE(std::equal(reference.begin(), reference.begin() + 4096, dry.begin()));
+    CHECK_FALSE(std::equal(reference.begin() + 4096, reference.begin() + 8192, dry.begin() + 4096));
+    CHECK(std::equal(reference.begin() + 8192, reference.end(), dry.begin() + 8192));
+    REQUIRE(song.save(w.dir));
+    bool damaged = false;
+    auto restored = Song::load(w.dir, damaged);
+    REQUIRE(restored);
+    CHECK_FALSE(damaged);
+    CHECK(restored->tracks[0].voice == song.tracks[0].voice);
+    auto legacy = song.json();
+    legacy.getProperty("stopy", {})[0].getDynamicObject()->removeProperty("zvuk");
+    auto old = Song::parse(legacy, damaged);
+    REQUIRE(old);
+    CHECK(old->tracks[0].voice == VoiceSound{});
+    MemoryBlock after;
+    REQUIRE(file.loadFileAsData(after));
+    CHECK(after == before);
+}
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
     auto s = example();
     s.bars = 400;

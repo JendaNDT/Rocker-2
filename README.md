@@ -33,6 +33,8 @@ Pokud se frekvence přenesené skladby liší od nastavení zvukovky, Rocker uk�
 
 V Míchej otevři **Poslat mix… → Stopy zvlášť → Uložit stopy**. V `Exporty` vznikne složka s WAV soubory. V jiném studiu je vlož všechny na začátek projektu. Mají stejnou délku, včetně dozvuku. Bicí ze společné soupravy jsou v jednom stereo souboru. Ztlumené stopy se vynechají. Soubory mají hlasitost a polohu podle jednotlivých stop. Celkovou hlasitost výstupu nastavíš v cílovém studiu.
 
+Stopu typu **Jiná** můžeš použít pro zpěv nebo baskytaru. Ve skladbě klikni u stopy na **Zvuk stopy** a vyber **Zpěv**, **Baskytara** nebo **Bez úprav**. Basy, středy, výšky, komprese a dozvuk se projeví při přehrávání a exportu. Zdrojovou nahrávku můžeš později použít i s jiným nastavením.
+
 ## Co vyzkoušet po vydání
 
 - **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.

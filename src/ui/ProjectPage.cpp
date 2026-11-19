@@ -178,8 +178,10 @@ void Studio::configureSongMonitor() {
         link.audio.drums.kit = t.kit;
         link.audio.drums.monitor = !t.mute && activeMidi.isNotEmpty() && projectMonitor == 1;
     }
-    if (t.kind != "kytara")
-        soundDeckOpen = namingPreset = false;
+    if (t.kind != "kytara") {
+        soundDeckOpen = soundDeckOpen && t.kind == "jine";
+        namingPreset = false;
+    }
     int port = link.caps.inputs.indexOf(t.inputs[0]);
     if (port < 0)
         return;
@@ -835,6 +837,9 @@ void Studio::projectPage(Rect area) {
             if (song.tracks[view.selected].kind == "kytara")
                 button(cs::ampPage, cell(controlsRow, s::clipWidth),
                        [this] { openTrackSound(view.selected); });
+            else if (song.tracks[view.selected].kind == "jine")
+                button(cs::voicePanel, cell(controlsRow, s::clipWidth),
+                       [this] { openTrackSound(view.selected); });
             button(cs::tuner, cell(controlsRow, s::levelWidth), [this] { toggleTuner(); });
         }
     }
@@ -884,6 +889,8 @@ void Studio::projectPage(Rect area) {
                        head, [this, i] { openTrackSound(i); });
             if (i == view.selected)
                 soundBadge = badge;
+        } else if (t.kind == "jine") {
+            button(cs::voicePresets[t.voice.preset], head, [this, i] { openTrackSound(i); });
         } else
             text(limit(skin.font(s::caption),
                        t.kind == "midi" ? cs::drumSounds[t.kit] : t.inputs.joinIntoString(" + "),

@@ -210,6 +210,7 @@ class Studio final : public juce::Component,
     juce::Component::SafePointer<juce::Button> soundBadge;
     double pendingSoundSave = 0;
     void openTrackSound(int index);
+    void voiceSoundDeck(Rect);
     void trackSoundDeck(Rect);
     void applyTrackSound(bool recall);
     void newProject();

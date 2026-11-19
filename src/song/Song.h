@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "GuitarSound.h"
+#include "dsp/Voice.h"
 #include <map>
 #include <optional>
 #include <vector>
@@ -25,6 +26,7 @@ struct Track {
     juce::String group;
     float groupDb = 0;
     int kit = 0;
+    VoiceSound voice;
 };
 struct Clip {
     bool operator==(const Clip&) const = default;

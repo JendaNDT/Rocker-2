@@ -1322,3 +1322,38 @@ TEST_CASE("A-24 changing to a song rate retains unrelated device calibrations") 
     CHECK(find<Button>(view, cs::stopSong));
     fits(view);
 }
+
+TEST_CASE("A-17 E15 voice presets and controls stay available from a song track") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    const auto dir = temp.dir.getChildFile("Skladby/Voice");
+    Song song;
+    song.title = "Voice";
+    song.bars = 1;
+    song.tracks = {{"v", "Vocal", "jine", {"In 1"}}};
+    REQUIRE(song.save(dir));
+    Settings config;
+    config.visited = true;
+    config.lastSong = dir.getFullPathName();
+    REQUIRE(config.save(temp.file));
+    Studio view(fake, temp.file);
+    click(view, cs::resume);
+    click(view, cs::voicePanel);
+    chooseItem(view, cs::presetTitle, 1);
+    auto* compression = find<Slider>(view, cs::voiceCompression);
+    REQUIRE(compression);
+    compression->setValue(62., sendNotificationSync);
+    REQUIRE(view.keyPressed(KeyPress('S', ModifierKeys(ModifierKeys::ctrlModifier), 0)));
+    view.resized();
+    fits(view);
+    bool damaged = false;
+    auto saved = Song::load(dir, damaged);
+    REQUIRE(saved);
+    CHECK_FALSE(damaged);
+    CHECK(saved->tracks[0].voice.values.compression == 62);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "33-zvuk-stopy", pixels);
+    chooseItem(view, cs::presetTitle, 0);
+    CHECK_FALSE(find<Slider>(view, cs::voiceCompression));
+}

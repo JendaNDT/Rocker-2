@@ -41,6 +41,7 @@ class Playback {
     void prefetch(Frame from, Frame to) const;
     bool empty() const { return !hasClips; }
     void setSound(size_t track, const GuitarSound&, bool recall);
+    void setVoice(size_t track, const VoiceSound&, bool recall);
     void selectAttempt(const juce::String& group, int index);
     void setPunch(size_t track, Frame from, Frame to, int left, int right, bool clean);
     void mix(float* const*, int outputs, int size, Frame at, const float* const* input = nullptr,
@@ -73,6 +74,9 @@ class Playback {
         int livePorts[2]{-1, -1}, fade = 1;
         std::vector<PlaybackClip> clips;
         std::vector<Amp> amps;
+        std::vector<Voice> voices;
+        VoiceCommand voiceCommand;
+        std::uint64_t appliedVoice = 0;
         std::atomic<bool> audible{true};
         std::atomic<float> gain[2]{{1}, {1}}, peak{0};
         AmpCommand command;
