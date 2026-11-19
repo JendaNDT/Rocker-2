@@ -115,7 +115,7 @@ struct Take {
 class Performance {
   public:
     Performance(const Song&, const AudioLibrary&, Frame start, bool recording, bool click,
-                int countBeats);
+                int countBeats, bool rhythm = false);
     ~Performance();
     bool arm(const Song&, const juce::File&, const juce::StringArray& ports, int delay,
              bool useWorker = true, int midiDelay = 0);

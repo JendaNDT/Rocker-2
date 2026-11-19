@@ -207,6 +207,60 @@ TEST_CASE("A-30 voice presets preserve raw audio and render independently of dev
     REQUIRE(file.loadFileAsData(after));
     CHECK(after == before);
 }
+TEST_CASE("A-31 guide rhythm follows exact grid samples for ten minutes and stays out of WAV") {
+    Workspace w;
+    Song song;
+    song.title = "Guide";
+    song.grid = {48000, 4, 4, 113.};
+    song.bars = 1000;
+    const Frame duration = Frame(song.grid.rate) * 600;
+    constexpr int block = 1024;
+    Performance rhythm(song, {}, 0, false, true, 0, true);
+    DrumPlayer expected;
+    expected.prepare(song.grid.rate);
+    Frame index = 0;
+    auto time = [&] { return std::llround(index * 30. * song.grid.rate / song.grid.bpm); };
+    std::array<float, block> left{};
+    int events = 0;
+    Frame next = time();
+    for (Frame at = 0; at < duration; at += block) {
+        left.fill(0);
+        float* out[]{left.data()};
+        int count = int(std::min<Frame>(block, duration - at));
+        rhythm.process(nullptr, 0, out, 1, count);
+        for (int i = 0; i < count; ++i) {
+            if (at + i == next) {
+                if (index % 4 == 0)
+                    expected.trigger(0, 36, 92);
+                if (index % 4 == 2)
+                    expected.trigger(0, 38, 84);
+                expected.trigger(0, 42, 57);
+                ++index;
+                ++events;
+                next = time();
+            }
+            float reference = .24f * expected.sample();
+            if (left[i] != reference) {
+                CAPTURE(at, i);
+                REQUIRE(left[i] == reference);
+            }
+        }
+    }
+    CHECK(events > 2200);
+    song.bars = 1;
+    auto dry = w.dir.getChildFile("dry.wav");
+    REQUIRE(renderSong(song, {}, dry, 0, 16384));
+    for (auto guide : {false, true}) {
+        Performance count(song, {}, 0, false, true, 0, guide);
+        left.fill(0);
+        float* out[]{left.data()};
+        count.process(nullptr, 0, out, 1, int(left.size()));
+        CHECK(std::any_of(left.begin(), left.end(), [](float sample) { return sample != 0; }));
+        auto mixed = w.dir.getChildFile(guide ? "rhythm.wav" : "click.wav");
+        REQUIRE(renderSong(song, {}, mixed, 0, 16384));
+        CHECK(dry.hasIdenticalContentTo(mixed));
+    }
+}
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
     auto s = example();
     s.bars = 400;
