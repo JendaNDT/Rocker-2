@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## E14 · export jednotlivých stop
+
+**Poslat mix… → Stopy zvlášť** uloží číslované stereo WAV ve frekvenci skladby do jedné složky. A-29 sečte samostatné soubory a vzorek po vzorku je porovná s mixem s celkovou hlasitostí 0 dB. Bicí ze soupravy tvoří jeden soubor. Hraní a poslech čekají po E18. [Zkoušky, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/17)
+
 ## E13 · koš nápadů, M4A a Mac s Intelem
 
 Nápad lze po potvrzení přesunout do systémového koše. Na Windows a Macu lze přidat M4A nebo AAC jako podklad. Na Macu lze poslat mix ve formátu M4A. Balík pro Mac obsahuje spustitelné části pro Apple Silicon i Intel. Vedle tlačítka Přidat podklad je volba jeho umístění. [Zkoušky a balíky E13](https://github.com/JendaNDT/Rocker-2/pull/16)

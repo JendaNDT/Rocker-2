@@ -183,7 +183,7 @@ void Studio::exportPage(Rect area) {
     text(cs::sendMix, line(area, s::header), s::title);
     auto choices = line(area);
     text(cs::formatLabel, choices.removeFromLeft(s::levelWidth));
-    const String labels[]{cs::wave24, cs::wave16, cs::mp3, cs::m4a};
+    const String labels[]{cs::wave24, cs::wave16, cs::mp3, cs::m4a, cs::stems};
     for (int i = 0; i < int(std::size(labels)); ++i) {
         const auto choice = Delivery(i);
         if (!deliveryAvailable(choice))
@@ -191,47 +191,61 @@ void Studio::exportPage(Rect area) {
         auto b = button(
             labels[i], choices.removeFromLeft(s::nameWidth).reduced(s::grid, 0),
             [this, choice] {
+                if (format != choice)
+                    delivered = {};
                 format = choice;
                 triggerAsyncUpdate();
             },
             format == choice ? 1 : 0);
         b->setEnabled(!delivery.valid());
     }
-    auto scope = line(area);
-    text(cs::rangeLabel, scope.removeFromLeft(s::levelWidth));
-    button(
-        cs::wholeSong, scope.removeFromLeft(s::nameWidth),
-        [this] {
-            selectedRange = false;
-            triggerAsyncUpdate();
-        },
-        selectedRange ? 0 : 1)
-        ->setEnabled(!delivery.valid());
-    button(
-        cs::rangeOnly, scope.removeFromLeft(s::nameWidth),
-        [this] {
-            selectedRange = true;
-            triggerAsyncUpdate();
-        },
-        selectedRange ? 1 : 0)
-        ->setEnabled(!delivery.valid() && selection().valid());
-    if (selection().valid())
-        text(bar(song, selection().from) + cs::rangeDash + bar(song, selection().to - 1), scope, s::body,
-             s::muted);
+    const bool stems = format == Delivery::stems;
+    const bool noStems =
+        stems && std::none_of(song.tracks.begin(), song.tracks.end(), [](const auto& track) { return !track.mute; });
+    if (stems)
+        text(noStems ? cs::allStemsMuted : cs::stemsHelp, line(area), s::body);
+    else {
+        auto scope = line(area);
+        text(cs::rangeLabel, scope.removeFromLeft(s::levelWidth));
+        button(
+            cs::wholeSong, scope.removeFromLeft(s::nameWidth),
+            [this] {
+                selectedRange = false;
+                triggerAsyncUpdate();
+            },
+            selectedRange ? 0 : 1)
+            ->setEnabled(!delivery.valid());
+        button(
+            cs::rangeOnly, scope.removeFromLeft(s::nameWidth),
+            [this] {
+                selectedRange = true;
+                triggerAsyncUpdate();
+            },
+            selectedRange ? 1 : 0)
+            ->setEnabled(!delivery.valid() && selection().valid());
+        if (selection().valid())
+            text(bar(song, selection().from) + cs::rangeDash + bar(song, selection().to - 1), scope, s::body,
+                 s::muted);
+    }
     auto solo = soloNames();
     if (solo.isNotEmpty())
-        text(cs::soloNotice, line(area), s::body, s::warning);
+        text(stems ? cs::stemsSolo : cs::soloNotice, line(area), s::body, s::warning);
     auto actions = line(area);
     button(
         delivery.valid() ? cs::exporting
+        : stems ? cs::makeStems
         : solo.isEmpty() ? cs::makeFile
                          : cs::exportSolo,
         actions.removeFromLeft(s::labelWidth), [this] { beginExport(); }, 1)
-        ->setEnabled(!delivery.valid());
+        ->setEnabled(!delivery.valid() && !noStems);
     button(cs::back, actions.removeFromLeft(s::levelWidth), [this] { mixMode(false); });
     if (delivered.ok) {
         text(limit(skin.font(s::heading), delivered.file.getFileName(), area.getWidth()), line(area),
              s::heading);
+        if (delivered.file.isDirectory()) {
+            button(cs::mixFolder, line(area).withWidth(s::nameWidth), [this] { delivered.file.revealToUser(); });
+            return;
+        }
         auto m = delivered.meter;
         text(cs::mixPeak + " " + db(m.maximum) +
                  (m.loudest >= 0 ? cs::divider + bar(song, m.loudest) : String{}),
@@ -273,9 +287,10 @@ void Studio::beginExport() {
     auto span = selectedRange ? selection() : Span{0, -1};
     auto folder = projectDir.getChildFile("Exporty");
     auto date = Time::getCurrentTime().formatted("%Y-%m-%d");
-    auto file =
-        folder.getNonexistentChildFile(File::createLegalFileName(song.title + cs::mixSuffix + date),
-                                       format == Delivery::mp3 ? ".mp3" : format == Delivery::m4a ? ".m4a" : ".wav", true);
+    const bool stems = format == Delivery::stems;
+    const auto ext = stems ? "" : format == Delivery::mp3 ? ".mp3" : format == Delivery::m4a ? ".m4a" : ".wav";
+    const auto name = File::createLegalFileName(song.title + (stems ? cs::stemsSuffix : cs::mixSuffix) + date);
+    auto file = folder.getNonexistentChildFile(name, ext, true);
     deliveringProject = projectDir;
     delivered = {};
     message.clear();
@@ -283,6 +298,8 @@ void Studio::beginExport() {
         AudioLibrary lib;
         if (!lib.load(copy, dir))
             return MixFile{file};
+        if (type == Delivery::stems)
+            return exportStems(copy, lib, file, cs::trackKinds[0]);
         return exportMix(copy, lib, file, type, span.from, span.to);
     });
     triggerAsyncUpdate();
