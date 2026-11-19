@@ -183,20 +183,20 @@ void Studio::exportPage(Rect area) {
     text(cs::sendMix, line(area, s::header), s::title);
     auto choices = line(area);
     text(cs::formatLabel, choices.removeFromLeft(s::levelWidth));
-    static const bool hasEncoder = mp3Available();
-    const String labels[]{cs::wave24, cs::wave16, cs::mp3};
-    for (int i = 0; i < 3; ++i) {
+    const String labels[]{cs::wave24, cs::wave16, cs::mp3, cs::m4a};
+    for (int i = 0; i < int(std::size(labels)); ++i) {
+        const auto choice = Delivery(i);
+        if (!deliveryAvailable(choice))
+            continue;
         auto b = button(
             labels[i], choices.removeFromLeft(s::nameWidth).reduced(s::grid, 0),
-            [this, i] {
-                format = Delivery(i);
+            [this, choice] {
+                format = choice;
                 triggerAsyncUpdate();
             },
-            int(format) == i ? 1 : 0);
-        b->setEnabled(!delivery.valid() && (i != 2 || hasEncoder));
+            format == choice ? 1 : 0);
+        b->setEnabled(!delivery.valid());
     }
-    if (!hasEncoder)
-        text(cs::missingEncoder, line(area), s::body, s::muted);
     auto scope = line(area);
     text(cs::rangeLabel, scope.removeFromLeft(s::levelWidth));
     button(
@@ -275,7 +275,7 @@ void Studio::beginExport() {
     auto date = Time::getCurrentTime().formatted("%Y-%m-%d");
     auto file =
         folder.getNonexistentChildFile(File::createLegalFileName(song.title + cs::mixSuffix + date),
-                                       format == Delivery::mp3 ? ".mp3" : ".wav", true);
+                                       format == Delivery::mp3 ? ".mp3" : format == Delivery::m4a ? ".m4a" : ".wav", true);
     deliveringProject = projectDir;
     delivered = {};
     message.clear();

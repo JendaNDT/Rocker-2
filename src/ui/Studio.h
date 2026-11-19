@@ -108,6 +108,7 @@ class Studio final : public juce::Component,
     const Idea* pickedIdea() const;
     void ideaPage(Rect);
     void chooseIdea(const Idea&);
+    juce::String pendingIdeaRemoval;
     void ideaHome(Rect);
     void startIdea(bool retrospective);
     void stopIdea();

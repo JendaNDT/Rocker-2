@@ -334,6 +334,7 @@ void Studio::show(Page value) {
     if (value != Page::device)
         pedalLearning = false;
     if (value != Page::ideas) {
+        pendingIdeaRemoval.clear();
         stopPreview();
         stopIdea();
     }

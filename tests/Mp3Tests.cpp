@@ -71,3 +71,63 @@ TEST_CASE("A-12 native MP3 at 320 kbps delivers the song length and both ends of
         CHECK(rms(32, 544, 1) < .001);
     }
 }
+
+#if JUCE_MAC
+TEST_CASE("A-28 native AAC delivers both edges and the exact editorial length") {
+    using namespace juce;
+    using namespace rocker;
+    auto root = File::getSpecialLocation(File::tempDirectory).getChildFile("Rocker2-AAC-" + Uuid().toString());
+    struct Cleanup {
+        File dir;
+        ~Cleanup() { dir.deleteRecursively(); }
+    } cleanup{root};
+    auto wav = root.getChildFile("Zvuk/reference.wav");
+    REQUIRE(wav.getParentDirectory().createDirectory().wasOk());
+    constexpr int rate = 44100;
+    constexpr int length = rate * 2 - 31;
+    auto writer = waveWriter(wav, rate, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> tone(1, length);
+    tone.clear();
+    for (int i = 0; i < length; ++i)
+        if (i < 2048 || i >= length - 2048)
+            tone.setSample(0, i, float(.4 * std::sin(i * MathConstants<double>::twoPi * 440 / rate)));
+    REQUIRE(writer->writeFromAudioSampleBuffer(tone, 0, length));
+    writer.reset();
+    Song song;
+    song.title = "A28";
+    song.grid.rate = rate;
+    song.bars = 1;
+    song.tracks = {{"t", "Tone", "jine"}};
+    song.tracks.front().pan = -1;
+    song.assets = {{"a", "Zvuk/reference.wav", length, 1}};
+    song.clips = {{"c", "t", "a", 0, 0, length}};
+    AudioLibrary sources;
+    REQUIRE(sources.load(song, root));
+    auto file = root.getChildFile("Univerzální poslech.m4a");
+    auto encoded = exportMix(song, sources, file, Delivery::m4a, 0, length);
+    INFO(encoded.detail.toStdString());
+    REQUIRE(encoded.ok);
+    FileInputStream bytes(file);
+    REQUIRE(bytes.openedOk());
+    REQUIRE(bytes.setPosition(4));
+    std::array<char, 4> tag{};
+    REQUIRE(bytes.read(tag.data(), 4) == 4);
+    CHECK(String::fromUTF8(tag.data(), 4) == "ftyp");
+    AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<AudioFormatReader> decoded(formats.createReaderFor(file));
+    REQUIRE(decoded);
+    CHECK(decoded->sampleRate == rate);
+    CHECK(decoded->numChannels == 2);
+    REQUIRE(decoded->lengthInSamples == length);
+    AudioBuffer<float> left(2, 512);
+    for (auto offset : {64, length - 576}) {
+        REQUIRE(decoded->read(&left, 0, 512, offset, true, true));
+        CHECK(left.getRMSLevel(0, 0, 512) > .1);
+        CHECK(left.getRMSLevel(1, 0, 512) < .02);
+    }
+    REQUIRE(decoded->read(&left, 0, 512, length / 2, true, true));
+    CHECK(left.getRMSLevel(0, 0, 512) < .001);
+}
+#endif

@@ -20,6 +20,7 @@ class Ideas {
     juce::File wave(const juce::String& id) const;
     bool append(Idea);
     bool update(const Idea&);
+    bool remove(const juce::String& id, const std::function<bool(const juce::File&)>& trash);
     const std::vector<Idea>& all() const { return entries; }
     std::optional<Song> toSong(const Idea&, const juce::File& dir, const juce::String& title,
                                const juce::String& trackName) const;

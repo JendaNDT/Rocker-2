@@ -91,12 +91,28 @@ bool convert(AudioFormatReader& input, const File& path, int rate, int bits, Fra
     return writer->flush();
 }
 } // namespace
+bool deliveryAvailable(Delivery format) {
+    switch (format) {
+    case Delivery::wave24:
+    case Delivery::wave16:
+        return true;
+    case Delivery::mp3:
+        return mp3Available();
+    case Delivery::m4a:
+#if JUCE_MAC
+        return true;
+#else
+        return false;
+#endif
+    }
+    return false;
+}
 MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, Delivery format,
                   Frame begin, Frame end) {
     MixFile result{dest};
     result.begin = begin;
     if (dest.getParentDirectory().createDirectory().failed() ||
-        (format == Delivery::mp3 && !mp3Available()))
+        !deliveryAvailable(format))
         return result;
     TemporaryFile stage(".wav"), pcm(".wav"), output(dest);
     if (!renderSong(song, lib, stage.getFile(), begin, end))
@@ -104,13 +120,15 @@ MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, D
     auto input = waveReader(stage.getFile());
     if (!input)
         return result;
-    const bool mp3 = format == Delivery::mp3;
-    if (!convert(*input, mp3 ? pcm.getFile() : output.getFile(),
+    const bool compressed = format == Delivery::mp3 || format == Delivery::m4a;
+    if (!convert(*input, compressed ? pcm.getFile() : output.getFile(),
                  format == Delivery::wave24 ? 48000 : 44100, format == Delivery::wave24 ? 24 : 16, begin,
                  result.meter))
         return result;
-    if (mp3 && (!encodeMp3(pcm.getFile(), output.getFile()) ||
+    if (format == Delivery::mp3 && (!encodeMp3(pcm.getFile(), output.getFile()) ||
                 !tagMp3Length(output.getFile(),std::llround(input->lengthInSamples*44100./input->sampleRate))))
+        return result;
+    if (format == Delivery::m4a && !encodeAac(pcm.getFile(), output.getFile(), result.detail))
         return result;
     result.ok = commitTemporary(output);
     return result;

@@ -1,5 +1,11 @@
 # Stav Rockeru 2
 
+## E13 · koš nápadů, M4A a Mac s Intelem
+
+Nápad lze po potvrzení přesunout do systémového koše. Na Windows a Macu lze přidat M4A nebo AAC jako podklad. Na Macu lze poslat mix ve formátu M4A. Balík pro Mac obsahuje spustitelné části pro Apple Silicon i Intel. Vedle tlačítka Přidat podklad je volba jeho umístění. [Zkoušky a balíky E13](https://github.com/JendaNDT/Rocker-2/pull/16)
+
+Skutečný Mac s Intelem, poslech exportu a ostatní hraní čekají na ruční zkoušku po E18.
+
 ## E12 · spolehlivé nápady, historie a frekvence
 
 Knihovna Nápady používá stejnou složku při ukládání i přehrávání náhledu, ať nové skladby ukládáš kamkoli. Zesílení stopy v Míchej se zobrazuje v dB. Hlášky rozlišují nastavení, skladbu, nahrávku, nápad, podklad a úklid. Historie ukládá jen skutečné změny. Při odlišné frekvenci zvukovky uvidíš obě hodnoty a můžeš přepnout na frekvenci skladby, pokud ji zařízení nabízí. [Výsledky a snímky](https://github.com/JendaNDT/Rocker-2/pull/15)

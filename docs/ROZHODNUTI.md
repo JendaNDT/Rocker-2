@@ -131,3 +131,11 @@ U historie porovnáváme načtený obsah nejnovější verze. Skutečné změny 
 Zpráva o očekávané obnově nahrávky se ukáže, jen pokud je k dispozici deník. Při částečném úklidu systém uchová již přesunuté soubory v koši.
 
 Při přepnutí frekvence z nové skladby zrušíme kalibraci pro nově aktivní kombinaci a uchováme ostatní měření. Pokud zvukovka frekvenci skladby nenabízí, Rocker zobrazí požadovanou hodnotu. Alternativou je převod celé skladby včetně historie a MIDI. Takový převod vyžaduje vlastní etapu.
+
+## E13 · koš, M4A a balík pro Mac
+
+Mazání nápadu potvrzuje přesun jeho WAV do systémového koše. Po přesunu katalog vynechá položku i v případě, že se index později nepodaří zapsat. Přímé mazání souboru by znemožnilo jeho vrácení z koše.
+
+M4A pro Mac vzniká systémovým kodérem AAC 256 kb/s. V tomto kroku systémový AAC export ve Windows ponecháváme mezi rozšířeními. Windows nabízí MP3, pokud je kodér k dispozici. Import má syntetický vzorek CC0, který vznikl místně ve FFmpeg ze dvou sinusů 440 a 660 Hz. Délka importu má kvůli rozdílnému vyhodnocení začátku a konce dekodéry toleranci 50 ms. Vlastní export ověřuje přesnou délku na Macu.
+
+Balík pro Mac má arm64 a x86_64. Sanitizéry a běžné testy běží v sadě pro Apple Silicon. Stroj s Intelem čeká na ruční zkoušku po E18.

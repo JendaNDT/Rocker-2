@@ -183,3 +183,56 @@ TEST_CASE("Idea recovery reindexes a readable interrupted WAV exactly once") {
     CHECK(file.existsAsFile());
     CHECK(temp.dir.findChildFiles(File::findFiles, false, "napady-zaloha*.json").size() == 1);
 }
+
+TEST_CASE("A-27 confirmed ideas go to the recycle bin and stay removed after recovery") {
+    Temp temp;
+    Ideas catalog(temp.dir);
+    Idea idea;
+    idea.id = Uuid().toString();
+    auto path = catalog.wave(idea.id);
+    REQUIRE(path.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(path, 48000, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> signal(1, 512);
+    signal.clear();
+    signal.setSample(0, 30, .75);
+    REQUIRE(writer->writeFromAudioSampleBuffer(signal, 0, 512));
+    writer.reset();
+    REQUIRE(catalog.append(idea));
+    CHECK_FALSE(catalog.remove(idea.id, [](const File&) { return false; }));
+    CHECK(path.existsAsFile());
+    REQUIRE(catalog.all().size() == 1);
+    auto bin = temp.dir.getChildFile("recycled.wav");
+    REQUIRE(catalog.remove(idea.id, [&](const File& wav) { return wav.moveFileTo(bin); }));
+    CHECK(catalog.all().empty());
+    CHECK_FALSE(path.existsAsFile());
+    CHECK(bin.existsAsFile());
+    Ideas reopened(temp.dir);
+    reopened.recover();
+    CHECK(reopened.all().empty());
+}
+
+#if JUCE_WINDOWS || JUCE_MAC
+TEST_CASE("A-19 AAC backing uses the system decoder and retains pitch and duration") {
+    Temp temp;
+    auto fixture = File(ROCKER_FIXTURES).getChildFile("a19-tone.m4a");
+    REQUIRE(fixture.existsAsFile());
+    String detail;
+    auto asset = importAudio(fixture, temp.dir, 48000, &detail);
+    INFO(detail.toStdString());
+    REQUIRE(asset);
+    auto input = waveReader(temp.dir.getChildFile(asset->path));
+    REQUIRE(input);
+    CHECK(input->sampleRate == 48000);
+    CHECK(std::abs(input->lengthInSamples - 48000) <= 2400);
+    AudioBuffer<float> signal(2, 24000);
+    REQUIRE(input->read(&signal, 0, 24000, 12000, true, true));
+    for (int ch = 0; ch < 2; ++ch) {
+        int cycles = 0;
+        for (int i = 1; i < 24000; ++i)
+            if (signal.getSample(ch, i) > 0 && signal.getSample(ch, i - 1) <= 0)
+                ++cycles;
+        CHECK(std::abs(cycles * 2 - (ch == 0 ? 440 : 660)) <= 2);
+    }
+}
+#endif
