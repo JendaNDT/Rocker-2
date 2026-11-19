@@ -6,11 +6,31 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-10**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E10](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-10)
-2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
-3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
-4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
-5. Při prvním startu se otevře **Zapojení**. Tlačítko **Úvodní obrazovka** tě vezme na úvod podle náčrtu 01 / 5.7. Odtud se do průvodce kdykoli vrátíš přes **Zapojení a zvukovka**.
+| Počítač | Co stáhnout |
+|---|---|
+| Windows, Intel nebo AMD | [Instalátor x64](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Setup-x64.exe) nebo [přenosný ZIP](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Windows-x64.zip) |
+| Windows, procesor ARM (například Snapdragon) | [Instalátor ARM64](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Setup-ARM64.exe) nebo [přenosný ZIP](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Windows-ARM64.zip) |
+| Mac s čipem Apple | [ZIP s aplikací pro Mac](https://github.com/JendaNDT/Rocker-2/releases/download/v1.0.0/Rocker2-Mac.zip) |
+
+1. Ve Windows najdeš typ procesoru v **Nastavení → Systém → O systému → Typ systému**. Spusť odpovídající instalátor pod svým běžným účtem. Používáš-li ZIP, rozbal jej a otevři **Rocker 2.exe**. U SmartScreenu při spuštění souboru z tohoto vydání otevři **Další informace → Přesto spustit**. Při odinstalování zůstanou tvoje skladby na disku.
+2. Na Macu rozbal ZIP, přesuň **Rocker 2.app** do Aplikací a spusť ji. Povol vstup mikrofonu pro nahrávání a měřiče. Pokud macOS zastaví první spuštění, otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít**.
+3. V **Zapojení** vyber zvukovku a vyzkoušej tón ve sluchátkách. Na úvod se dostaneš tlačítkem **Úvodní obrazovka**. [Vydání, snímky a kontrolní součty](https://github.com/JendaNDT/Rocker-2/releases/tag/v1.0.0)
+4. Vývojová sestavení jsou také na GitHub Actions. Otevři zelený běh **Rocker 2**, dole v **Artifacts** zvol aplikaci nebo snímky pro svůj systém. GitHub při stahování z Actions vyžaduje přihlášení. [Běhy sestavení](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml)
+
+## Přenos skladby a kontrola sestavy
+
+1. Ve skladbě otevři **Soubor → Zabalit skladbu** a ulož jeden soubor s příponou **.rocker2**. Obsahuje skladbu, zobrazení, WAV, MIDI a uložené verze. Na druhém počítači zvol **Otevřít balík** nebo přetáhni soubor na úvod. Rocker zkontroluje obsah a vytvoří novou složku skladby.
+2. Pokud se jména vstupů liší, u každé stopy vyber zásuvku nové zvukovky. Přiřazení můžeš odložit nebo znovu otevřít přes **Soubor → Přiřadit vstupy**.
+3. V **Soubor → Uklidit skladbu** zkontroluj počet nepoužitých souborů. Teprve **Přesunout do koše** pošle soubory do systémového koše. Nahrávky potřebné pro pokusy, díly, Zpět a uložené verze zůstanou.
+4. Pod 30 minut volného místa pro právě připravené vstupy se objeví varování. Pod rezervou 500 MB Rocker záznam zastaví a dokončí zápis. Při odpojení zvukovky otevři Zapojení, připoj ji a zkontroluj vstupy.
+5. V **Hraj → Diagnostika** najdeš **Kontrolu sestavy**. **Uložit zprávu** vytvoří místní textový soubor pro Jendu. **Složka skladeb** vybere místo pro nové skladby, například místní složku mimo OneDrive. Při různých vstupních a výstupních zařízeních Windows Audio nejprve vyber jednu zvukovku pro oba směry.
+
+## Co vyzkoušet po vydání
+
+- **Windows a Mac**. Spusť aplikaci, porovnej úvod se snímkem, v Zapojení vyber ASIO nebo CoreAudio a poslechni tón vlevo, vpravo a v obou sluchátkách. Kytara ve vstupu 1 má rozhýbat pouze jeho měřič. Přebuzení se označí **PŘEBUZENO**.
+- **Celá píseň**. Zachyť nápad, vytvoř skladbu, nahraj bicí a kytaru, oprav jeden takt, zopakuj refrén a pošli výsledný mix. Poznamenej si první místo, kde sis nebyl jistý ovládáním. Na další den si ověř návrat ke stejnému taktu a mixu.
+- **Přenos**. Zabal skladbu a otevři kopii na druhém počítači. Do původní složky můžeš dál nahrávat.
+- **Volitelně**. Zkus notebook bez externí zvukovky. Pokud máš modul MIDI, vyzkoušej naučení padů, stereo odposlech a změnu sady. [Úplný plán ručních zkoušek a měření](docs/03_ZKOUSKY_NA_WINDOWS.md)
 
 ## Jak nahrát elektronické bicí přes MIDI
 

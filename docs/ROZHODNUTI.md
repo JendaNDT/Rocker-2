@@ -109,3 +109,13 @@ JUCE předává oba Enter jako stejnou klávesu. Ve skladbě tedy oba ovládají
 Architektura navrhuje juce::Synthesiser a současně vylučuje zámky ve zvukovém vlákně. Přehrávač proto připraví vlastní jednoúderové vzorky předem a na výstupu používá pevný počet 32 hlasů. Dvě původní sady vznikají syntézou. Na výsledné zvuky se vztahuje přiložená CC0. [Původ zvuků](../assets/drums/README.md)
 
 Zdroj ve skladbě je standardní MIDI s časovými značkami. Pro střih, pokusy, přehrání a export se mimo zvukové vlákno připraví dočasný WAV pro danou sadu. Uzavření skladby dočasné soubory uvolní. Při změně sady zůstávají původní údery a jejich síla uložené. Při souběžném záznamu je zprvu slyšet původní modul, aby oba zvuky nehrály přes sebe.
+
+## E11 · balíky, koš a vydání
+
+Běžná skladba může překročit 4 GB. Pro balíky používáme miniz 3.0.2 s podporou ZIP64 a postupným zápisem a čtením souborů. Každý soubor je v balíku uvedený také s kontrolním součtem SHA-256. Poškozený přenos se nedostane mezi uložené skladby. Přidáváme i uložené verze, aby se dalo pokračovat s historií. [Licence miniz](https://github.com/richgel999/miniz/blob/3.0.2/LICENSE)
+
+Úklid zachovává audio využité kterýmkoli dostupným pokusem, skrytým dílem, stavem Zpět nebo uloženou verzí. Vlastní přesun do systémového koše vyžaduje výslovné potvrzení v aplikaci. Při souběžné obnově se soubory nenabízejí k úklidu.
+
+V režimech Windows Audio porovnáváme identitu zařízení vstupu a výstupu. Když ji Windows neurčí a názvy se liší, nahrávání přes stopy vyžaduje volbu společné zvukovky nebo vědomé povolení dané kombinace. Rozhraní ukáže důvod.
+
+Instalátory jsou určené pro běžný účet, každá architektura se instaluje, spouští a odinstaluje v CI. Vydání se sestavuje z hlavní větve. Balíky se stáhnou zpět a ověří před zveřejněním. Ruční ověření na reálném vybavení se podle Jendova pokynu přesouvá za vydání v1.
