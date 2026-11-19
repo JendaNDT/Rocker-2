@@ -12,6 +12,7 @@ FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.
 FetchContent_MakeAvailable(JUCE)
 FetchContent_Declare(libsamplerate GIT_REPOSITORY https://github.com/libsndfile/libsamplerate.git GIT_TAG 0.2.2 GIT_SHALLOW TRUE)
 function(add_sample_rate_converter)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
     set(BUILD_TESTING OFF)
     FetchContent_MakeAvailable(libsamplerate)
