@@ -99,8 +99,8 @@ jobs:
             -DCMAKE_C_COMPILER="$prefix/bin/clang" -DCMAKE_CXX_COMPILER="$prefix/bin/clang++"
           cmake --build build-universal --config Release --target Rocker2 --parallel 3
           app="build-universal/Rocker2_artefacts/Release/Rocker 2.app/Contents/MacOS/Rocker 2"
-          lipo -verify_arch arm64 x86_64 "$app"
-          lipo -archs "$app"
+          lipo "$app" -verify_arch arm64 x86_64
+          lipo "$app" -archs
       - name: Package macOS
         if: runner.os == 'macOS'
         run: |
