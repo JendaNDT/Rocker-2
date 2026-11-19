@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## E15 · zvuk zpěvu a baskytary
+
+Stopa Jiná nabízí předvolby Bez úprav, Zpěv a Baskytara. Parametry se ukládají se skladbou a lze je měnit během přehrávání. A-30 porovnává zvuk při čtyřech velikostech bloku, znovuotevření a nedotčený WAV. Poslech a zkoušky celé skladby přijdou po E18. [Zkoušky a sestavení](https://github.com/JendaNDT/Rocker-2/pull/18)
+
 ## E14 · export jednotlivých stop
 
 **Poslat mix… → Stopy zvlášť** uloží číslované stereo WAV ve frekvenci skladby do jedné složky. A-29 sečte samostatné soubory a vzorek po vzorku je porovná s mixem s celkovou hlasitostí 0 dB. Bicí ze soupravy tvoří jeden soubor. Hraní a poslech čekají po E18. [Zkoušky, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/17)
