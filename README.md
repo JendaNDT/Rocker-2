@@ -6,11 +6,19 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-8**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E8](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-8)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-9**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E9](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-9)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
 5. Při prvním startu se otevře **Zapojení**. Tlačítko **Úvodní obrazovka** tě vezme na úvod podle náčrtu 01 / 5.7. Odtud se do průvodce kdykoli vrátíš přes **Zapojení a zvukovka**.
+
+## Jak připravit bicí
+
+1. V **Zapojení → Vstupy** zvol **Zahraj na bicí**. Udeř postupně do všech bubnů tak silně, jak budeš hrát. Pak klikni na **Vyhodnotit údery**. U každého vstupu zkontroluj špičku. Při −6 dBFS nebo výš stáhni gain na zvukovce a měření zopakuj.
+2. S jedním mikrofonem začni přibližně 1–1,5 m před soupravou ve výšce hlavy. U stereo modulu zapoj jeho L a R do dvou vstupů a sluchátka do zvukovky. Se dvěma signály můžeš vybrat také dva samostatné mikrofony. U více mikrofonů přiřaď názvy, vstupy a polohy overheadů.
+3. Zvol **Použít pro nové skladby**. V rozpracované skladbě přidáš tutéž sestavu přes přidání stopy a **Přidat nastavené bicí**. Zapnutí záznamu na jednom mikrofonu připraví celou sadu. Společný střih zachová vzájemné načasování. V režimu **Míchej** vyber mikrofon ze sady a použij **Bicí celkem**.
+4. **F11** otevře Pohled zdálky. Před záznamem můžeš nastavit cílový takt. Odpočet je jantarový, záznam červený a úspěšné uložení zelené. **Esc** a **F11** tě vrátí ke stopám i během hraní. Záznam zastaví **R** nebo **Enter**.
+5. Na numerické klávesnici **0** přehrává a zastavuje, **Enter** nahrává a zastavuje, **+** přepíná pokusy ve vybraném úseku a **−** vrací ukazatel o takt. Pro USB spínač zvol v prvním kroku Zapojení **Nožní spínač** a sešlápni jej. Odteď stejným stiskem spustíš a zastavíš záznam.
 
 ## Jak zachytit riff
 

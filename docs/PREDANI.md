@@ -1,39 +1,39 @@
-# Předání E8 · od riffu ke skladbě
+# Předání E9 · bicí a ovládání od soupravy
 
 ## 1. Hotovo
 
-Na úvodu stiskni **R**, zahraj riff a ulož jej mezerníkem. **U** uloží poslední dvě minuty právě hrané kytary. V knihovně označ nápad hvězdou, přidej poznámku, doťukej osm dob a vytvoř z něj skladbu. V režimu Hraj můžeš přetáhnout zvukový podklad. [Běhy a balíky pro E8](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-8) · [Knihovna nápadů](zkousky/E8/napady.png)
+V Zapojení vyber **Zahraj na bicí**, udeř do bubnů a vyhodnoť vstupy. Sestavu použij v nové nebo rozpracované skladbě. V režimu Míchej vyber jednu stopu sady pro společnou hlasitost **Bicí celkem**. Na numerické klávesnici ovládá záznam Enter, od soupravy je čitelný Pohled zdálky. [Postup pro Jendu](../README.md#jak-připravit-bicí) · [Výsledky sestavení a balíky](https://github.com/JendaNDT/Rocker-2/pull/10)
 
 ## 2. Zbývá
 
-Navazuje E9 s akustickými bicími, stereo modulem, skupinou mikrofonů a ovládáním od soupravy. Použitelnost formátu M4A záleží na systémovém kodeku ve Windows.
+Další etapa přidá MIDI bicí, naučení padů, záchranu úderů po pádu a možnost vyměnit sadu ve skladbě.
 
 ## 3. Ruční zkoušky
 
-H-11 a H-12, poslech předstihu a doťukání tempa s nástrojem **čekají na ruční zkoušku po vydání v1**. [Návod pro Jendu](../README.md#jak-zachytit-riff)
+H-05 až H-08 a poslech stereo rozložení **čekají na ruční zkoušku po vydání v1**.
 
 ## 4. Rozhodnutí
 
-Pojistka sleduje zvolený kytarový vstup. Doťukaný riff se umístí na mřížku s celým začátkem. Podklady se při importu uloží do samostatného WAV ve skladbě. [Rozhodnutí E8](ROZHODNUTI.md#e8--nápad-a-jeho-tempo)
+U dvou aktivních vstupů vybírá hráč mezi stereo modulem a mikrofony. Nastavení se vztahuje ke konkrétní zvukovce. Ve skladbě lze k záznamu použít oba Enter. [Rozhodnutí E9](ROZHODNUTI.md#e9--dvě-aktivní-zásuvky-a-klávesy-u-soupravy)
 
-## 5. Prompt pro etapu E9
+## 5. Prompt pro etapu E10
 
 ### Podklady
 
-Jsi hlavní vývojář Rockeru 2. Na GitHubu zkontroluj větve, rozpracované změny, PR, testy, balíky a vydání. Přečti dokumenty 01–05, STAV, ROZHODNUTI a předání na nejnovější ověřené větvi. Rozsah určuje 04 / E9, nastavení bicích 01 / 4.4 a ovládání od soupravy 01 / kap. 5.
+Ověř skutečný stav větví, PR, zkoušek a vydání Rocker-2. Přečti dokumenty 01–05, STAV, ROZHODNUTI a poslední předání na ověřené větvi. Rozsah E10 najdeš v 04. Pole pro MIDI a kompenzaci určuje 02 / kap. 5 a 7.
 
 ### Závazné podmínky
 
-**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Pracuj jen v Rocker-2. C++20, JUCE 9.0.5, vlastní kreslení přes tokeny, české texty pohromadě, kód a komentáře anglicky. Zachovej offline provoz, AGPLv3, OFL a přibalené licence. Ve zvukovém vlákně dodrž 02 / 4.3. Zachovej starší skladby, bezpečné ukládání, původní zvuk, pokusy, díly, export a nápady.
+**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Pracuj jen v Rocker-2. Zachovej češtinu textů rozhraní na jediném místě, tokeny, JUCE 9.0.5, C++20, offline provoz, AGPLv3 a licence přiložených prostředků. Ve zpětném volání platí 02 / 4.3. Zachovej kompatibilitu se staršími skladbami, nápady, původním zvukem a historií.
 
 ### Úkol
 
-Přidej výzvu **Zahraj na bicí**, rozpoznání skutečně použitých vstupů a radu pro sestavu s málo vstupy. Umožni společnou nahrávku, opravu, střih, hlasitost a polohy více mikrofonů v **Sadě bicích**. Podporuj stereo modul, vyzkoušej nejsilnější úder. Dokonči Pohled zdálky s dobami, postupem a potvrzením uložení. Umožni ovládání numerickou klávesnicí a přiřazení nožního spínače.
+Přidej skutečná zařízení MIDI, stopu **Bicí (MIDI)**, naučení padů a výchozí General MIDI. Ulož údery s kompenzací a průběžným deníkem do standardního MIDI. Připrav vlastní nebo CC0 vzorky, možnost změnit sadu a současně zachytit stereo zvuk modulu. Zahrň pokusy, opravy, střih, díly, export a diagnostiku **Porovnat MIDI a zvuk**.
 
 ### Ověření
 
-Spusť část A-24 pro skutečné počty dostupných vstupů a celé předchozí automatické zkoušky. Integraci vyzkoušej na simulovaných sestavách, pořiď snímky a balíky pro Windows x64, Windows ARM64 a Mac. H-05 až H-08 a hraní ze skutečné soupravy čekají na ruční zkoušku po vydání.
+Proveď A-22, A-23, odpovídající A-24 a dosavadní automatické zkoušky. Zkontroluj Windows x64, Windows ARM64 a Mac včetně balíků a snímků. H-13, M-14 a poslech s fyzickou soupravou čekají na ruční zkoušku po vydání.
 
 ### Předání
 
-Každá etapa má vlastní větev etapa-N, malé commity a český PR. Přidej přímé odkazy na ověřený běh, balíky a snímky. Aktualizuj STAV, ROZHODNUTI a PREDANI v dosavadním pořadí včetně promptu pro E10. Pokračuj podle 04 bez čekání na hraní s Jendou.
+Větev etapa-10, malé commity, český PR, snímky, odkazy na běh a balíky. Aktualizuj STAV, ROZHODNUTI a PREDANI v tomto pořadí částí včetně promptu pro E11. Pokračuj samostatně podle 04.

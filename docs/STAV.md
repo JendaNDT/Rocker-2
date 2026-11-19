@@ -1,5 +1,11 @@
 # Stav Rockeru 2
 
+## E9 · bicí od jednoho mikrofonu po celou sadu
+
+Průvodce pracuje se vstupy, na kterých během zkoušky zazněl úder. Akustická sada má společné nahrávání, pokusy, střih a hlasitost. Stereo modul má samostatnou levou a pravou stranu. F11 přepne Pohled zdálky a USB spínači lze přiřadit záznam. [Postup pro muzikanta](../README.md#jak-připravit-bicí)
+
+A-24 zkouší sestavy s 1, 2, 8 a 18 vstupy, včetně tichých vstupů, odpojení, ovládání spínačem a návratu z Pohledu zdálky během nahrávání. H-05 až H-08 čekají na ruční zkoušku po vydání v1. [Sestavení, snímky a výsledky](https://github.com/JendaNDT/Rocker-2/pull/10)
+
 ## E8 · nápady, Pojistka a podklady
 
 Z úvodu se riff nahrává klávesou R, historie vstupu se uloží klávesou U. Knihovna zachová hvězdy, poznámky, ladění a tempo. Podklady se převádějí na frekvenci skladby při importu. [Postup pro Jendu](../README.md#jak-zachytit-riff)

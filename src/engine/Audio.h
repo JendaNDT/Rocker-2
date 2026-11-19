@@ -25,6 +25,8 @@ class Audio {
     Timeline timeline;
     void prepare(int inputs, int sampleRate);
     void setInsurance(bool);
+    void beginHitTest() noexcept { ++hitGeneration; }
+    float hitPeak(int channel) const noexcept;
     void playTone() noexcept { command.store(1); }
     void stopTone() noexcept { command.store(-1); }
     Reading read(int channel) const noexcept;
@@ -37,6 +39,8 @@ class Audio {
     std::atomic<bool> writingIdea{false};
     bool insuranceEnabled = true;
     struct Meter {
+        std::atomic<unsigned> measuredGeneration{0};
+        std::atomic<float> strongest{0};
         float hold = 0;
         int remaining = 0;
         std::atomic<float> peak{0}, held{0};
@@ -44,6 +48,7 @@ class Audio {
         std::atomic<std::uint32_t> activity{0};
     };
     std::unique_ptr<Meter[]> meters;
+    std::atomic<unsigned> hitGeneration{1};
     int count = 0, rate = 48000, position = -1;
     std::atomic<int> command{0};
 };

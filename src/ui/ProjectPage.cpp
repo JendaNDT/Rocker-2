@@ -121,7 +121,7 @@ void Studio::openProject(File dir) {
     view.selected = jlimit(0, std::max(0, (int)song.tracks.size() - 1), view.selected);
     view.cursor = std::min(view.cursor, song.end());
     normalizeSelection();
-    projectMonitor = 0;
+    defaultMonitor();
     settings.lastSong = dir.getFullPathName();
     persist();
     lastArchive = Time::getMillisecondCounterHiRes();
@@ -167,6 +167,8 @@ void Studio::configureSongMonitor() {
     if (port < 0)
         return;
     live.selectInput(port);
+    if (t.kind == "bici" && t.inputs.size() == 2)
+        live.stereoRight = link.caps.inputs.indexOf(t.inputs[1]);
     live.setAmp(t.amp.values);
     if (projectMonitor == 2 && (laptop || t.kind != "kytara"))
         projectMonitor = 0;
@@ -175,6 +177,12 @@ void Studio::configureSongMonitor() {
 }
 Frame Studio::playPosition() const { return performance ? performance->cursor.load() : view.cursor; }
 void Studio::toggleDistant() {
+    if (auto* window = findParentComponentOfClass<ResizableWindow>()) {
+        if (!view.distant)
+            wasFullscreen = window->isFullScreen();
+        window->setFullScreen(!view.distant || wasFullscreen);
+    }
+    offerDistant = false;
     view.distant = !view.distant;
     view.save(projectDir);
     triggerAsyncUpdate();
@@ -230,15 +238,15 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
     }
     if (auditionGroup) {
         p->end = auditionGroup->to + song.grid.beat(song.grid.beats);
-        p->playback.selectAttempt(auditionGroup->id, previewGroup == auditionGroup->id && preview >= 0
-                                                         ? preview
-                                                         : auditionGroup->active);
+        selectKitAttempt(p->playback, *auditionGroup,
+                         previewGroup == auditionGroup->id && preview >= 0 ? preview
+                                                                           : auditionGroup->active);
     }
     if (record) {
         Song capture = song;
         if (repair)
             for (auto& t : capture.tracks)
-                t.armed = t.id == selectedTrack();
+                t.armed = song.linkedTrack(t.id, selectedTrack());
         int latency = link.caps.inputLatency + link.caps.outputLatency;
         auto saved = settings.latency.find(Settings::calibrationKey(link.current));
         if (saved != settings.latency.end())
@@ -261,6 +269,8 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
             p->end = p->punchTo + song.grid.beat(view.tailBars * song.grid.beats) + p->compensation;
             link.audio.live.monitor = Monitor::off;
         }
+        offerDistant = !view.distant && std::any_of(capture.tracks.begin(), capture.tracks.end(),
+                                                    [](auto& t) { return t.armed && t.kind == "bici"; });
         preventSleep(true);
     }
     liveWaves.clear();
@@ -301,12 +311,16 @@ void Studio::stopProject(bool automatic) {
     if (p->drop >= 0)
         song.dropouts.push_back(p->drop.load());
     bool complete = false;
+    offerDistant = false;
     if (p->recording) {
+        const auto before = song.assets.size();
         p->storeInputMarks(song);
         if (!recoverTake(song, projectDir, p->journal) || !library.load(song, projectDir) ||
             p->failed.load())
             status(cs::writeError);
         else {
+            if (p->drop < 0 && song.assets.size() > before)
+                ++view.savedTakes;
             complete = p->finished && !p->failed && p->drop < 0;
             status(p->drop >= 0 ? cs::dropout : cs::savedSong);
         }
@@ -336,7 +350,8 @@ void Studio::projectTick() {
         auto frame = playPosition();
         if (frame >= performance->start)
             for (const auto& t : song.tracks)
-                if ((performance->isPunch() ? t.id == selectedTrack() : t.armed) && !t.inputs.isEmpty()) {
+                if ((performance->isPunch() ? song.linkedTrack(t.id, selectedTrack()) : t.armed) &&
+                    !t.inputs.isEmpty()) {
                     auto& peaks = liveWaves[t.id];
                     if (peaks.empty() || peaks.back().first != frame) {
                         peaks.emplace_back(frame,
@@ -416,6 +431,17 @@ void Studio::projectPage(Rect area) {
             if (editingTempo && !song.clips.empty())
                 text(cs::editTempoWarning, row(area), s::body, s::warning);
         } else {
+            if (view.selected == (int)song.tracks.size() && !drumTracks().empty())
+                button(cs::insertKit, row(area).withWidth(s::labelWidth), [this] {
+                    auto tracks = drumTracks();
+                    if (tracks.empty())
+                        return;
+                    song.tracks.insert(song.tracks.end(), tracks.begin(), tracks.end());
+                    defaultMonitor();
+                    saveSong();
+                    view.save(projectDir);
+                    show(Page::project);
+                });
             combo(cs::trackKind, row(area), cs::trackKinds, draftKind, [this](int i) { draftKind = i; });
             if (!link.caps.inputs.isEmpty()) {
                 combo(cs::input, row(area), inputNames(), draftPort, [this](int i) {
@@ -454,6 +480,13 @@ void Studio::projectPage(Rect area) {
                                       bpm};
                         fresh.tuning = tunings[tuningIndex].name;
                         for (int i = 0; i < 2; ++i) {
+                            if (i == 0) {
+                                auto tracks = drumTracks();
+                                if (!tracks.empty()) {
+                                    fresh.tracks = std::move(tracks);
+                                    continue;
+                                }
+                            }
                             Track t{Uuid().toString(), cs::trackKinds[i], kinds[i]};
                             t.amp.enabled =
                                 t.kind == "kytara" && (guitarSource == 0 || guitarSource == 3);
@@ -517,9 +550,25 @@ void Studio::projectPage(Rect area) {
             else
                 startProject(true);
         });
+        if (!performance) {
+            const int targets[]{0, 4, 8, 16, 32};
+            int selected = 0;
+            for (int i = 0; i < 5; ++i)
+                if (view.targetBars == targets[i])
+                    selected = i;
+            combo(cs::farTarget, cell(footer, s::fieldWidth), {cs::farFree, "4", "8", "16", "32"},
+                  selected, [this](int i) {
+                      const int bars[]{0, 4, 8, 16, 32};
+                      view.targetBars = bars[i];
+                      view.save(projectDir);
+                      repaint();
+                  });
+        }
         text(message, footer, s::body, s::warning);
         return;
     }
+    if (offerDistant)
+        button(cs::farOffer, row(area).withWidth(s::fieldWidth), [this] { toggleDistant(); }, 1);
     auto top = row(area, s::statusStrip);
     text(limit(skin.font(s::heading), song.title, s::nameWidth), cell(top, s::nameWidth), s::heading);
     button(
@@ -719,7 +768,7 @@ void Studio::projectPage(Rect area) {
                 if (!performance) {
                     view.selected = i;
                     view.selectedClip.clear();
-                    projectMonitor = 0;
+                    defaultMonitor();
                     configureSongMonitor();
                     view.save(projectDir);
                     triggerAsyncUpdate();
@@ -744,7 +793,10 @@ void Studio::projectPage(Rect area) {
                 song.tracks[view.selected].armed ? cs::disarm : cs::arm, cell(r, s::levelWidth),
                 [this] {
                     auto& t = song.tracks[view.selected];
-                    t.armed = !t.armed;
+                    const bool enable = !t.armed;
+                    for (auto& member : song.tracks)
+                        if (song.linkedTrack(member.id, t.id))
+                            member.armed = enable;
                     saveSong();
                     triggerAsyncUpdate();
                 },
@@ -778,7 +830,7 @@ void Studio::projectPage(Rect area) {
             combo(cs::audioTracks, cell(r, s::fieldWidth), names, view.selected, [this](int i) {
                 view.selected = i;
                 view.selectedClip.clear();
-                projectMonitor = 0;
+                defaultMonitor();
                 configureSongMonitor();
                 view.save(projectDir);
                 triggerAsyncUpdate();
@@ -801,13 +853,43 @@ void Studio::paintProject(Graphics& g) {
                  : String(beat / song.grid.beats + 1) + "." + String(beat % song.grid.beats + 1);
     if (view.distant) {
         auto r = getLocalBounds().withTrimmedBottom(s::footer + s::inset);
-        g.setColour(rec ? s::recording : s::panel);
+        const bool saved = !performance && view.savedTakes > 0 && message == cs::savedSong;
+        g.setColour(counting ? s::warning : rec ? s::recording : saved ? s::ready : s::panel);
         g.fillRect(r);
-        g.setColour(s::chalk);
+        g.setColour(counting || saved ? s::background : s::chalk);
         g.setFont(skin.font(s::distantRecord, false, true));
-        g.drawText(state, r.removeFromTop(r.getHeight() / 2), Justification::centred);
+        String label = performance ? state : saved ? cs::farSaved : cs::farReady;
+        auto top = r.removeFromTop(r.getHeight() / 3);
+        g.drawText(label, top, Justification::centred);
+        auto line = r.removeFromBottom(s::header + s::gutter).reduced(s::margin, s::inset);
+        auto note = r.removeFromBottom(s::header);
+        g.setFont(skin.font(s::counter, true));
+        String track = isPositiveAndBelow(view.selected, (int)song.tracks.size())
+                           ? song.tracks[view.selected].name
+                           : String{};
+        g.drawText(track + cs::divider + cs::attemptLabel + " " +
+                       String(view.savedTakes + (saved ? 0 : 1)),
+                   note, Justification::centred);
         g.setFont(skin.font(s::distantBar, true));
-        g.drawText(clock, r, Justification::centred);
+        String bar = counting ? clock : String(beat / song.grid.beats + 1);
+        if (!counting && view.targetBars > 0)
+            bar += " / " + String(view.targetBars);
+        g.drawText(bar, r, Justification::centred);
+        auto seconds = std::max<Frame>(0, pos) / song.grid.rate;
+        g.setFont(skin.font(s::counter, true));
+        g.drawText(String(seconds / 60) + ":" + String(seconds % 60).paddedLeft('0', 2) + cs::divider +
+                       String(song.grid.bpm, 0) + " BPM",
+                   line.removeFromRight(s::fieldWidth), Justification::centredRight);
+        const int size = std::min(s::button, line.getWidth() / std::max(1, song.grid.beats) - s::grid);
+        auto step = counting ? song.grid.beatAt(pos - performance->start) : beat;
+        int pulse = (int)((step % song.grid.beats + song.grid.beats) % song.grid.beats);
+        for (int i = 0; i < song.grid.beats; ++i) {
+            auto square = line.removeFromLeft(size + s::grid).withSizeKeepingCentre(size, size);
+            if (performance && i <= pulse)
+                g.fillRect(square);
+            else
+                g.drawRect(square, s::stroke);
+        }
         return;
     }
     if (view.mixing && exporting)
@@ -904,7 +986,8 @@ void Studio::paintProject(Graphics& g) {
                     drawClip(pass, std::max(pass.position, group.from),
                              std::min(pass.position + pass.length, group.to), true);
         }
-        if (rec && (performance->isPunch() ? t.id == selectedTrack() : t.armed) && pos > begin) {
+        if (rec && (performance->isPunch() ? song.linkedTrack(t.id, selectedTrack()) : t.armed) &&
+            pos > begin) {
             auto recorded = lane.withLeft(x(std::max(begin, performance->start)))
                                 .withRight(x(std::min(pos, last)))
                                 .reduced(0, s::grid);

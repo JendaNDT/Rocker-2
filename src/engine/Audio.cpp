@@ -39,6 +39,12 @@ Reading Audio::read(int channel) const noexcept {
     const auto& m = meters[channel];
     return {m.peak.load(), m.held.load(), m.clipped.load(), m.activity.load(std::memory_order_relaxed)};
 }
+float Audio::hitPeak(int channel) const noexcept {
+    if (channel < 0 || channel >= count ||
+        meters[channel].measuredGeneration.load() != hitGeneration.load())
+        return 0;
+    return meters[channel].strongest.load();
+}
 void Audio::clearClip(int channel) noexcept {
     if (channel >= 0 && channel < count)
         meters[channel].clipped = false;
@@ -47,6 +53,7 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
                     int frames) noexcept {
     juce::ScopedNoDenormals denormals;
     const auto start = std::chrono::steady_clock::now();
+    const auto generation = hitGeneration.load();
     for (int c = 0; c < count; ++c) {
         auto& m = meters[c];
         const float* samples = c < inputCount ? inputs[c] : nullptr;
@@ -62,6 +69,12 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
         // Keep short plucks visible to input identification between UI polls (-36 dBFS).
         if (peak >= 0.015848932f)
             m.activity.fetch_add(1, std::memory_order_relaxed);
+        if (m.measuredGeneration.load() != generation) {
+            m.strongest.store(peak);
+            m.measuredGeneration.store(generation);
+        } else if (peak > m.strongest.load()) {
+            m.strongest.store(peak);
+        }
         m.peak.store(peak);
         m.held.store(m.hold);
         if (peak >= 0.9885530947f)

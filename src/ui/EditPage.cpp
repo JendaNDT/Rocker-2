@@ -258,6 +258,12 @@ void Studio::startRepair() {
     }
     startProject(true, true);
 }
+void Studio::selectKitAttempt(Playback& playback, const TakeGroup& group, int index) {
+    for (auto& g : song.groups)
+        if (g.from == group.from && g.to == group.to && song.linkedTrack(g.track, group.track) &&
+            g.attempts.size() == group.attempts.size())
+            playback.selectAttempt(g.id, index);
+}
 void Studio::audition(TakeGroup& group) {
     view.cursor = std::max<Frame>(0, group.from - song.grid.beat(song.grid.beats));
     startProject(false, false, &group);
@@ -283,7 +289,7 @@ void Studio::chooseAttempt(bool keep) {
         preview = (preview + 1) % (1 + (int)g->attempts.size());
     } while (preview && g->attempts[preview - 1].discarded);
     if (performance)
-        performance->playback.selectAttempt(g->id, preview);
+        selectKitAttempt(performance->playback, *g, preview);
     else
         audition(*g);
     triggerAsyncUpdate();
@@ -300,7 +306,7 @@ void Studio::discardAttempt() {
     preview = g->active;
     previewGroup = g->id;
     if (performance)
-        performance->playback.selectAttempt(g->id, preview);
+        selectKitAttempt(performance->playback, *g, preview);
     song.commitGroup(*g);
     history.remember(song, cs::discardAttempt);
     saveSong();
@@ -661,6 +667,7 @@ void Studio::mouseUp(const MouseEvent&) {
         tapeAction(copyingSection ? TapeAction::repeat : TapeAction::move, insertion);
     } else if (dragged && (drag == Drag::takeLeft || drag == Drag::takeRight)) {
         if (auto* group = song.groupAt(selectedTrack(), selection().from, selection().to)) {
+            const auto previousFrom = group->from, previousTo = group->to;
             Frame first = 0, last = std::numeric_limits<Frame>::max();
             for (const auto& attempt : group->attempts)
                 for (const auto& pass : attempt.clips) {
@@ -672,7 +679,7 @@ void Studio::mouseUp(const MouseEvent&) {
             if (drag == Drag::takeRight && last > group->from)
                 group->to = jlimit(group->from + 1, last, dragTarget);
             pick({group->from, group->to});
-            song.commitGroup(*group);
+            song.commitGroup(*group, previousFrom, previousTo);
             history.remember(song, cs::trim);
             saveSong();
         }

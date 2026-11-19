@@ -14,6 +14,7 @@ void Live::prepare(int sampleRate) {
     previousMode = Monitor::off;
     monitor = Monitor::off;
     input = 0;
+    stereoRight = -1;
     phase = Measurement::idle;
     cancel = false;
     noiseLeft = cueLeft = cueCommand = noiseCommand = 0;
@@ -33,6 +34,7 @@ void Live::prepare(int sampleRate) {
     }
 }
 void Live::selectInput(int index) {
+    stereoRight = -1;
     input = index;
     ++generation;
     noiseCommand = -1;
@@ -170,6 +172,7 @@ void Live::render(const float* const* in, int ni, float* const* out, int no, int
         angle = 0;
         step = 2 * std::numbers::pi * std::abs(command) / (1000. * rate);
     }
+    const int right = stereoRight.load();
     const auto channel = input.load();
     const float* source = channel >= 0 && channel < ni ? in[channel] : nullptr;
     float peak = 0;
@@ -211,7 +214,11 @@ void Live::render(const float* const* in, int ni, float* const* out, int no, int
         }
         for (int c = 0; c < std::min(2, no); ++c)
             if (out[c]) {
-                out[c][i] = std::clamp(out[c][i] + y, -1.f, 1.f);
+                out[c][i] = std::clamp(out[c][i] + y +
+                                           (mode == Monitor::clean && c == 1 && right >= 0
+                                                ? (right < ni && in[right] ? in[right][i] : 0.f) - x
+                                                : 0.f),
+                                       -1.f, 1.f);
                 peak = std::max(peak, std::abs(out[c][i]));
             }
     }

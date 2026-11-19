@@ -41,6 +41,26 @@ Settings Settings::load(const juce::File& file) {
     const auto visited = data.getProperty("visited", false);
     result.visited = visited.isBool() && static_cast<bool>(visited);
     result.insurance = data.getProperty("pojistka", true);
+    result.pedalKey = integer("pedal", 0, 0, 0x7fffffff);
+    auto kits = data.getProperty("bici", {});
+    if (auto* obj = kits.getDynamicObject())
+        for (auto& entry : obj->getProperties()) {
+            DrumSetup kit;
+            auto ports = entry.value.getProperty("ports", {}),
+                 names = entry.value.getProperty("names", {});
+            if (!ports.isArray() || !names.isArray() || ports.size() != names.size())
+                continue;
+            for (int i = 0; i < ports.size(); ++i)
+                if (ports[i].isString() && names[i].isString() &&
+                    !kit.ports.contains(ports[i].toString())) {
+                    kit.ports.add(ports[i].toString());
+                    kit.names.add(names[i].toString());
+                }
+            kit.stereo = kit.ports.size() == 2 && bool(entry.value.getProperty("stereo", false));
+            kit.wide = entry.value.getProperty("wide", true);
+            if (!kit.ports.isEmpty())
+                result.drumSetups[entry.name.toString()] = std::move(kit);
+        }
     auto aliases = data.getProperty("aliases", {});
     if (auto* obj = aliases.getDynamicObject())
         for (auto& item : obj->getProperties())
@@ -85,6 +105,17 @@ bool Settings::save(const juce::File& file) const {
     object->setProperty("output", device.output);
     object->setProperty("buffer", device.buffer);
     object->setProperty("rate", device.rate);
+    object->setProperty("pedal", pedalKey);
+    auto* kits = new juce::DynamicObject;
+    object->setProperty("bici", juce::var(kits));
+    for (auto& [key, kit] : drumSetups) {
+        auto* entry = new juce::DynamicObject;
+        kits->setProperty(key, juce::var(entry));
+        entry->setProperty("ports", juce::var(kit.ports));
+        entry->setProperty("names", juce::var(kit.names));
+        entry->setProperty("stereo", kit.stereo);
+        entry->setProperty("wide", kit.wide);
+    }
     auto* names = new juce::DynamicObject;
     object->setProperty("aliases", juce::var(names));
     for (auto& [key, name] : aliases)
