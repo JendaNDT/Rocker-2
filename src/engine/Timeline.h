@@ -134,10 +134,11 @@ class Performance {
     void storeInputMarks(Song&) const;
     bool captures(const juce::String& track) const;
     void configureClick(int level, int sound) noexcept;
+    void setClickEnabled(bool enabled) noexcept { clickEnabled.store(enabled, std::memory_order_relaxed); }
     BeatGrid grid;
     Playback playback;
     Frame start, end, clock;
-    bool recording, click, syncPulse = false;
+    bool recording, syncPulse = false;
     std::atomic<Frame> cursor, drop{-1};
     std::atomic<bool> finished{false}, failed{false};
     juce::File journal;
@@ -165,6 +166,8 @@ class Performance {
     std::thread worker, readAhead;
     std::atomic<bool> stopping{false};
     Frame nextBeat, beatIndex;
+    std::atomic<bool> clickEnabled;
+    bool guideWasEnabled = false;
     std::optional<GuideRhythm> guide;
     Frame position(Frame absolute, Frame stop) const noexcept;
     const std::optional<LoopSpan> looped;

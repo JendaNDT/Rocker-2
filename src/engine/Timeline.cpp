@@ -462,11 +462,11 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
                          bool metronome, int count, bool rhythm, std::optional<LoopSpan> loop)
     : grid(s.grid), playback(s, library), start(from),
       end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()),
-      clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock),
+      clock(from - s.grid.beat(count)), recording(rec), cursor(clock), clickEnabled(metronome),
       looped(loop && loop->from >= from && loop->to > loop->from ? loop : std::nullopt) {
     if (looped)
         end = std::numeric_limits<Frame>::max();
-    if (metronome && rhythm)
+    if (rhythm)
         guide.emplace(grid, from);
     // Anchor count-in to the punch position; normal beats follow the song grid.
     beatIndex = count ? -count : grid.beatAt(from);
@@ -762,6 +762,12 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
             }
         }
     }
+    const bool click = clickEnabled.load(std::memory_order_relaxed);
+    if (click && guide && !guideWasEnabled)
+        guide->seek(std::max(start, position(clock, stop)));
+    guideWasEnabled = click;
+    if (!click && clock >= start)
+        clickAge = -1;
     const auto guideOptions = clickConfiguration.load(std::memory_order_relaxed);
     const auto volume = float(guideOptions & 0xffu) / 100.f;
     struct Pulse {
@@ -797,13 +803,13 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
             } else
                 nextBeat = grid.beat(beatIndex);
         }
-        if (guide && now >= start) {
+        if (click && guide && now >= start) {
             const float beat = volume * guide->sample(now);
             for (int c = 0; c < std::min(2, no); ++c)
                 if (out[c])
                     out[c][i] += beat;
         }
-        if (clickAge >= 0) {
+        if (clickAge >= 0 && (click || now < start)) {
             const auto frequency = accent ? pulse.accent : pulse.beat;
             const float sample = volume * float(.16 * std::exp(-clickAge / (grid.rate * pulse.decay)) *
                          std::cos(2 * std::numbers::pi * frequency * clickAge / grid.rate));

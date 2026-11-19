@@ -357,7 +357,9 @@ void Studio::persist() {
 }
 void Studio::refresh(bool notify) {
     const bool inSong = page == Page::project || (page == Page::remap && singleRemap >= 0);
-    if (inSong && notify && link.online && devices.streamMatches(link.current, link.caps)) {
+    const bool keepStream = inSong || page == Page::metronome || ideaRecording || ideaPreview;
+    if (keepStream && notify && link.online &&
+        devices.streamMatches(link.current, link.caps)) {
         link.ports = devices.scan();
         for (const auto& ports : link.ports)
             if (ports.driver == link.current.driver &&
@@ -1211,6 +1213,10 @@ bool Studio::keyPressed(const KeyPress& key) {
             return true;
         }
         const bool pedal = settings.pedalKey != 0 && code == settings.pedalKey;
+        if (page == Page::project && !pedal && CharacterFunctions::toUpperCase((juce_wchar)code) == 'K') {
+            toggleSongClick();
+            return true;
+        }
         const bool keepAttempt =
             page == Page::project && view.editing && !view.distant &&
             (comparing || song.groupAt(selectedTrack(), selection().from, selection().to));

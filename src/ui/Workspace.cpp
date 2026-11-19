@@ -111,6 +111,14 @@ void Studio::openTempoSettings() {
     show(Page::newProject);
 }
 
+void Studio::toggleSongClick() {
+    view.click = !view.click;
+    if (performance)
+        performance->setClickEnabled(view.click);
+    saveView();
+    triggerAsyncUpdate();
+}
+
 void Studio::projectTransport(Rect bounds) {
     transportBounds = bounds;
     auto row = bounds.reduced(s::inset, 0);
@@ -163,7 +171,6 @@ void Studio::projectTransport(Rect bounds) {
         auto bounds = right.removeFromRight(width + s::grid)
                           .withSizeKeepingCentre(width, s::transportPill);
         auto* b = button(name, bounds, std::move(action), on ? pillOn : pillOff);
-        b->setEnabled(!performance);
         b->setToggleState(on, dontSendNotification);
         return b;
     };
@@ -178,13 +185,9 @@ void Studio::projectTransport(Rect bounds) {
         view.countIn = !view.countIn;
         saveView();
         triggerAsyncUpdate();
-    });
+    })->setEnabled(!performance);
     auto guide = !view.click ? cs::guideOff : view.rhythm ? cs::guideRhythm : cs::songClick;
-    pill(guide, s::levelWidth - s::gutter, view.click, [this] {
-        view.click = !view.click;
-        saveView();
-        triggerAsyncUpdate();
-    });
+    pill(guide, s::levelWidth - s::gutter, view.click, [this] { toggleSongClick(); });
 }
 
 void Studio::paintTransport(Graphics& g) {
