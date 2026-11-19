@@ -1,21 +1,21 @@
-# Předání Rockeru 2 po E16
+# Předání Rockeru 2 po E17
 
 ## 1. Hotovo
 
-V režimu Hraj přepínej tlačítkem Klik mezi klikem, rytmem a tichem. Rytmus uslyšíš jen během hraní. [Zkoušky E16, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/19)
+V Míchej otevři **Poslat mix…** a vyber **Hlasitější (pro telefon)**. Aplikace zobrazí skutečnou špičku a naměřenou hlasitost exportu. [Zkoušky E17, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/20)
 
 ## 2. Zbývá
 
-E17 a E18 podle dokumentu 06. Další etapa přidá export pro poslech na telefonu. [Plán](06_PLAN_OPRAV_A_VYLEPSENI.md)
+E18 přidá nahrávání několika pokusů dokola do jednoho výběru. [Plán](06_PLAN_OPRAV_A_VYLEPSENI.md)
 
 ## 3. Ruční zkoušky
 
-Po E18 si při hraní zkus vybrat vodítko, které ti vyhovuje. Vyexportuj nahrávku a poslechni, že vodicí rytmus zůstává jen ve sluchátkách. Celá písnička, poslech a měření čekají až po E18.
+Po E18 vyexportuj celou skladbu běžně i pro telefon. Poslech, celá písnička a měření čekají na ruční zkoušku po E18.
 
 ## 4. Rozhodnutí
 
-Klik, rytmus a ticho se přepínají jedním tlačítkem. Odpočet používá původní klik. [Rozhodnutí E16](ROZHODNUTI.md#e16--vodicí-rytmus-ve-sluchátkách)
+Měření používá libebur128 a samostatně vytvořené zkušební tóny podle EBU. Výsledek se hodnotí z hotového souboru. [Rozhodnutí E17](ROZHODNUTI.md#e17--hlasitost-a-skutečná-špička)
 
-## 5. Prompt pro E17
+## 5. Prompt pro E18
 
-Přečti dokumenty 01 až 06 a toto předání. Proveď E17 ve větvi `etapa-17` po malých commitech. Vzhled a rozložení tvoř od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5. Napiš A-32, ověř měření podle signálů EBU Tech 3341 a cílovou hlasitost se skutečnou špičkou. Měření a omezení prováděj mimo zvukové vlákno. Ověř Windows x64, Windows ARM64 a Mac, přilož snímky, otevři český PR a aktualizuj dokumentaci. Ruční zkoušky přijdou po E18.
+Přečti dokumenty 01 až 06 a toto předání. Proveď E18 ve větvi `etapa-18` po malých commitech. Vzhled a rozložení tvoř od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5. Napiš A-33 včetně ukončení procesu a obnovy pokusů. Ověř přesné převody polohy, výběr pokusu klávesou Tab a pravidla zvukového vlákna. Ověř Windows x64, Windows ARM64 a Mac, přilož snímky, český PR, balíky a souhrnný postup pro ruční zkoušky. Po ověření závěrečné etapy pozastav automatickou úlohu.
