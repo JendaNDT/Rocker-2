@@ -20,6 +20,32 @@ int main(int argc, char** argv) {
                 std::cout << "READY" << std::endl;
         }
     }
+    if(action=="midi"){
+        s.tracks={{"t","Module","midi",{},true}};
+        if(!s.save(dir))return 11;
+        Performance p(s,{},0,true,false,0);
+        if(!p.arm(s,dir,{},0,true,173))return 12;
+        // Announce only after the first checkpoint, and freeze at the same known frame until killed.
+        constexpr int blocks=1139;
+        for(int k=0;k<blocks;++k){
+            Hit h{480LL*k+173,38,85};
+            p.hits(std::span<const Hit>(&h,1),480LL*k,false);
+            p.process(nullptr,0,nullptr,0,480);
+            if(k%90==0) Thread::sleep(4);
+        }
+        Thread::sleep(40);
+        std::cout<<"READY"<<std::endl;
+        for(;;) Thread::sleep(1000);
+    }
+    if(action=="recoverMidi"){
+        bool bad=false;auto song=Song::load(dir,bad);
+        auto files=dir.getChildFile("Zachrana").findChildFiles(File::findFiles,false,"*.json");
+        if(!song || bad || files.size()!=1 || !recoverTake(*song,dir,files[0]) || song->clips.size()!=1)return 13;
+        auto hits=readMidi(dir.getChildFile(song->assets[0].path),48000);
+        if(!hits || hits->size()<1039 || hits->size()>1139 || song->clips[0].offset!=173)return 14;
+        for(size_t i=0;i<hits->size();++i)if((*hits)[i].frame!=Frame(i)*480+173 || (*hits)[i].note!=38)return 15;
+        return 0;
+    }
     if (action == "record") {
         if (!s.save(dir))
             return 4;

@@ -8,6 +8,14 @@ class FakeDevice final : public DeviceSystem {
     using Block = std::vector<std::vector<float>>;
     int channels = 2, outputs = 2, rate = 48000;
     bool core = false, asio = true, laptop = false, attached = true;
+    juce::Array<juce::MidiDeviceInfo> midi;
+    juce::String selectedMidi;
+    juce::Array<juce::MidiDeviceInfo> midiDevices() override {return midi;}
+    bool openMidi(const juce::String& id,Audio&) override {
+        selectedMidi.clear();
+        for(auto& p:midi) if(p.identifier==id){selectedMidi=id;return true;}
+        return false;
+    }
     Audio* active = nullptr;
     std::vector<Ports> scan() override {
         if (!attached)
