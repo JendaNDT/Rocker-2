@@ -1,5 +1,14 @@
 # Stav Rockeru 2
 
+## E8 · nápady, Pojistka a podklady
+
+Z úvodu se riff nahrává klávesou R, historie vstupu se uloží klávesou U. Knihovna zachová hvězdy, poznámky, ladění a tempo. Podklady se převádějí na frekvenci skladby při importu. [Postup pro Jendu](../README.md#jak-zachytit-riff)
+
+- **A-18** posílá tři minuty číslovaných vzorků a porovnává každý vzorek posledních dvou minut. Dále vyzkouší dvousekundový předstih, konec záznamu, vypnutí a opětovné zapnutí Pojistky.
+- **A-19** kontroluje délku i výšku tónu převedeného podkladu ve WAV, AIFF, FLAC, Ogg Vorbis, Ogg Opus a MP3. V každém stereo kanálu měří jinou frekvenci.
+- **A-17** obsluhuje nahrávání, hvězdu, poznámku, osm dob, převod na skladbu a přetažení souboru. Kontroluje i posuny o 1 a 10 ms. [Nahrávání](zkousky/E8/nahravani.png) · [Knihovna](zkousky/E8/napady.png)
+- H-11 a H-12 na skutečném počítači **čekají na ruční zkoušku po vydání**.
+
 ## E7 · mix a export
 
 Režim **3 Míchej** má v řádku každé stopy hlasitost, polohu, sólo, ztlumení a měřič. Celkem ukazuje špičku a její takt. Záznam uchovává značku přebuzeného vstupu. Přebuzený mix má vlastní značku a při exportu lze celkovou hlasitost opravit. [Sestavení, snímky a zkoušky na třech systémech](https://github.com/JendaNDT/Rocker-2/pull/8)

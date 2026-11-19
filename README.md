@@ -6,11 +6,19 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-7**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E7](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-7)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-8**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E8](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-8)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
 5. Při prvním startu se otevře **Zapojení**. Tlačítko **Úvodní obrazovka** tě vezme na úvod podle náčrtu 01 / 5.7. Odtud se do průvodce kdykoli vrátíš přes **Zapojení a zvukovka**.
+
+## Jak zachytit riff
+
+1. V úvodu nebo v knihovně **Nápady** stiskni **R**. První dvě sekundy před stiskem se přidají k nahrávce. Při **R** nebo mezerníku se záznam zastaví a uloží. Ve sluchátkách můžeš slyšet poslední zvuk aparátu. Při náhradním mikrofonu notebooku zůstane odposlech vypnutý.
+2. Pokud už jsi riff dohrál, stiskni **U — Ulož, co jsem hrál**. Pojistka uchovává místně poslední dvě minuty vybraného vstupu. Vypneš ji v Zapojení u vstupů nebo přímo v knihovně. Změna zapojení začíná novou historii.
+3. U povedeného riffu klikni na **★ Povedené**, připiš poznámku a klikni na **Uložit poznámku**. V knihovně můžeš vyhledat část poznámky a zapnout **Jen ★**. Náhled průběhu, čas a ladění pomohou najít správný záznam.
+4. U volně hraného riffu zvol **Doťukat tempo**. Jakmile se přehrává, ťukni osmkrát mezerníkem, poprvé na první dobu taktu. Potom zvol **Udělat z toho skladbu**. Ve skladbě bude první stopa Kytara a celý původní riff. Před jeho začátkem může vzniknout krátké místo, aby první doba seděla na začátek taktu.
+5. V režimu **Hraj** zvol **Na začátek skladby** nebo **Na ukazatel** a klikni na **Přidat podklad**. Můžeš také přetáhnout soubor do okna skladby. Pro WAV, AIFF, FLAC, Ogg Vorbis, Ogg Opus a MP3 proběhne převod automaticky. Soubory M4A a AAC využívají dostupný kodek Windows. Vybraný podklad posuneš šipkou o 1 ms, se Shiftem o 10 ms. Importovaný zvuk zůstane ve složce skladby i po přesunu původního souboru.
 
 ## Osm taktů bicích a kytara přes ně
 
