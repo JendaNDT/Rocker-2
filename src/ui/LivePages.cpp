@@ -28,7 +28,7 @@ class Fader final : public Slider {
     }
     void paint(Graphics& g) override {
         auto area = getLocalBounds().reduced(s::gap, 0);
-        auto value = area.removeFromRight(s::levelWidth);
+        auto value = area.removeFromRight(s::faderReadout);
         g.setColour(s::chalk);
         g.setFont(skin.font(s::body, true));
         g.drawText(String((int)getValue()) + unit, value, Justification::centredRight, false);
@@ -62,8 +62,10 @@ class Fader final : public Slider {
     Theme& skin;
     String unit;
     void setFromX(int x) {
-        auto area =
-            getLocalBounds().reduced(s::gap, 0).withTrimmedRight(s::levelWidth).reduced(s::inset / 2, 0);
+        auto area = getLocalBounds()
+                        .reduced(s::gap, 0)
+                        .withTrimmedRight(s::faderReadout)
+                        .reduced(s::inset / 2, 0);
         setValue(proportionOfLengthToValue(
                      jlimit(0., 1., double(x - area.getX()) / std::max(1, area.getWidth()))),
                  sendNotificationSync);
@@ -102,12 +104,6 @@ StringArray Studio::inputNames() const {
     return result;
 }
 void Studio::changeMonitor(int mode) {
-    if (page == Page::amp && ampFromProject) {
-        projectMonitor = mode;
-        configureSongMonitor();
-        triggerAsyncUpdate();
-        return;
-    }
     const bool ampAllowed = (guitarSource == 0 || (guitarSource == 3 && !hearSecond)) && !laptop;
     if (mode == (int)Monitor::amp && !ampAllowed)
         mode = (int)Monitor::off;
@@ -162,9 +158,17 @@ void Studio::setReadout(Readout id, const String& value) {
 }
 void Studio::pollLive() {
     auto& live = link.audio.live;
-    if (auto limit = live.takeThreshold(); limit && page == Page::amp) {
-        sound.gate = static_cast<std::uint8_t>(*limit);
-        live.setAmp(sound, false);
+    if (auto limit = live.takeThreshold();
+        limit && (page == Page::amp || (page == Page::project && soundDeckOpen))) {
+        if (page == Page::project) {
+            auto& a = song.tracks[view.selected].amp;
+            a.values.gate = static_cast<std::uint8_t>(*limit);
+            a.modified = true;
+            applyTrackSound(false);
+        } else {
+            sound.gate = static_cast<std::uint8_t>(*limit);
+            live.setAmp(sound, false);
+        }
         status(cs::gateSet);
     }
     if (page == Page::diagnostics) {
@@ -364,7 +368,7 @@ void Studio::playPanel(Rect area) {
 }
 void Studio::fader(const String& title, Rect area, int low, int high, int initial, const String& unit,
                    std::function<void(int)> apply) {
-    text(title, area.removeFromLeft(s::levelWidth), s::body, s::muted);
+    text(title, area.removeFromLeft(std::min(s::levelWidth, area.getWidth() / 3)), s::body, s::muted);
     auto* slider = new Fader(skin, title, unit);
     controls.add(slider);
     addAndMakeVisible(slider);
@@ -373,7 +377,8 @@ void Studio::fader(const String& title, Rect area, int low, int high, int initia
     slider->setValue(initial, dontSendNotification);
     slider->onValueChange = [this, slider, apply] {
         apply(roundToInt(slider->getValue()));
-        link.audio.live.setAmp(sound, false);
+        if (page == Page::amp)
+            link.audio.live.setAmp(sound, false);
     };
 }
 void Studio::ampPanel(Rect area) {
@@ -386,11 +391,7 @@ void Studio::ampPanel(Rect area) {
               triggerAsyncUpdate();
           });
     top.removeFromLeft(s::gutter);
-    const bool sourceAllowsAmp =
-        ampFromProject
-            ? view.selected < (int)song.tracks.size() && song.tracks[view.selected].kind == "kytara" &&
-                  link.caps.inputs.contains(song.tracks[view.selected].inputs[0])
-            : guitarSource == 0 || (guitarSource == 3 && !hearSecond);
+    const bool sourceAllowsAmp = guitarSource == 0 || (guitarSource == 3 && !hearSecond);
     const bool allowed =
         !laptop && sourceAllowsAmp && !link.caps.inputs.isEmpty() && link.caps.outputChannels > 0;
     if (allowed)
@@ -414,6 +415,8 @@ void Studio::ampPanel(Rect area) {
     });
     fader(cs::drive, row(left), 0, 100, sound.drive, cs::percentUnit,
           [this](int v) { sound.drive = v; });
+    fader(cs::echo, row(left), 0, 100, sound.echo, cs::percentUnit, [this](int v) { sound.echo = v; });
+    fader(cs::room, row(area), 0, 100, sound.room, cs::percentUnit, [this](int v) { sound.room = v; });
     text(cs::cabinet, row(left), s::caption, s::muted);
     fader(cs::bass, row(area), 0, 100, sound.bass, cs::percentUnit, [this](int v) { sound.bass = v; });
     fader(cs::middle, row(area), 0, 100, sound.mid, cs::percentUnit, [this](int v) { sound.mid = v; });
@@ -424,6 +427,155 @@ void Studio::ampPanel(Rect area) {
     fader(cs::volume, row(area), 0, 100, sound.volume, cs::percentUnit,
           [this](int v) { sound.volume = v; });
 }
+void Studio::openTrackSound(int index) {
+    if (index != view.selected) {
+        projectMonitor = 0;
+        view.selected = index;
+        configureSongMonitor();
+        view.save(projectDir);
+    }
+    soundDeckOpen = true;
+    namingPreset = false;
+    triggerAsyncUpdate();
+}
+
+void Studio::applyTrackSound(bool recall) {
+    auto& amp = song.tracks[view.selected].amp;
+    if (performance)
+        performance->playback.setSound(view.selected, amp, recall);
+    link.audio.live.setAmp(amp.values, recall);
+    if (projectMonitor == 2)
+        link.audio.live.monitor = amp.enabled ? Monitor::amp : Monitor::clean;
+    if (soundBadge != nullptr) {
+        auto label = amp.enabled ? amp.name : cs::bypass;
+        auto font = skin.font(s::body, false, true);
+        while (label.isNotEmpty() && GlyphArrangement::getStringWidth(font, label + "*") >
+                                         soundBadge->getWidth() - 2 * s::inset)
+            label = label.dropLastCharacters(1);
+        soundBadge->setName(label + (amp.enabled && amp.modified ? "*" : ""));
+        soundBadge->repaint();
+    }
+    if (recall)
+        saveSong();
+    else
+        pendingSoundSave = Time::getMillisecondCounterHiRes() + 1200;
+}
+
+void Studio::trackSoundDeck(Rect area) {
+    auto& track = song.tracks[view.selected];
+    auto& amp = track.amp;
+    auto header = row(area);
+    StringArray names = cs::presetNames;
+    for (const auto& preset : settings.guitarPresets)
+        names.add(preset.name);
+    if (namingPreset) {
+        button(cs::back, header.removeFromRight(s::levelWidth), [this] {
+            namingPreset = false;
+            triggerAsyncUpdate();
+        });
+        header.removeFromRight(s::gap);
+        button(cs::storePreset, header.removeFromRight(s::nameWidth), [this, names] {
+            auto title = presetDraft.trim();
+            if (title.isEmpty() || names.contains(title, true)) {
+                status(cs::nameTaken);
+                return;
+            }
+            auto preset = song.tracks[view.selected].amp;
+            preset.name = title;
+            preset.enabled = true;
+            preset.modified = false;
+            settings.guitarPresets.push_back(preset);
+            if (!settings.save(settingsFile)) {
+                settings.guitarPresets.pop_back();
+                status(cs::writeError);
+                return;
+            }
+            song.tracks[view.selected].amp = preset;
+            namingPreset = false;
+            applyTrackSound(true);
+            triggerAsyncUpdate();
+        });
+        field(cs::presetTitle, header, presetDraft);
+    } else {
+        text(cs::ampPage, header.removeFromLeft(s::clipWidth), s::heading);
+        button(cs::useProject, header.removeFromRight(s::clipWidth), [this] {
+            soundDeckOpen = false;
+            triggerAsyncUpdate();
+        });
+        header.removeFromRight(s::gap);
+        button(cs::savePreset, header.removeFromRight(s::nameWidth), [this] {
+            namingPreset = true;
+            presetDraft = {};
+            triggerAsyncUpdate();
+        });
+        // An embedded copy can survive removal of its source from the preset library.
+        names.addIfNotAlreadyThere(amp.name);
+        combo(cs::preset, header.removeFromLeft(s::clipWidth * 2), names, names.indexOf(amp.name),
+              [this](int i) {
+                  auto& stored = song.tracks[view.selected].amp;
+                  if (i < (int)presets.size())
+                      stored = {cs::presetNames[i], presets[i], true, false};
+                  else if (i - presets.size() < settings.guitarPresets.size())
+                      stored = settings.guitarPresets[i - presets.size()];
+                  stored.enabled = true;
+                  applyTrackSound(true);
+                  triggerAsyncUpdate();
+              });
+        header.removeFromLeft(s::gap);
+        button(amp.enabled ? cs::bypass : cs::useAmp, header.withWidth(s::clipWidth), [this] {
+            auto& a = song.tracks[view.selected].amp;
+            a.enabled = !a.enabled;
+            applyTrackSound(true);
+            triggerAsyncUpdate();
+        });
+    }
+    const int width = (area.getWidth() - 3 * s::gap) / 4;
+    auto column = [&] {
+        auto part = area.removeFromLeft(width);
+        area.removeFromLeft(s::gap);
+        return part;
+    };
+    auto input = column(), eq = column(), cab = column();
+    auto control = [this, &amp](Rect& col, const String& name, std::uint8_t AmpParameters::* member) {
+        const bool gate = member == &AmpParameters::gate;
+        fader(name, row(col), gate ? -84 : 0, gate ? -24 : 100, (gate ? -1 : 1) * (amp.values.*member),
+              gate ? cs::dbUnit : cs::percentUnit, [this, member, gate](int value) {
+                  auto& a = song.tracks[view.selected].amp;
+                  a.values.*member = static_cast<std::uint8_t>(gate ? -value : value);
+                  a.modified = true;
+                  applyTrackSound(false);
+              });
+    };
+    control(input, cs::gate, &AmpParameters::gate);
+    if (link.caps.inputs.contains(track.inputs[0]))
+        button(cs::noise, row(input), [this] {
+            link.audio.live.learnNoise();
+            status(cs::quiet);
+        });
+    combo(cs::shape, row(input), cs::shapes, amp.values.shape, [this](int value) {
+        auto& a = song.tracks[view.selected].amp;
+        a.values.shape = value;
+        a.modified = true;
+        applyTrackSound(false);
+    });
+    control(input, cs::drive, &AmpParameters::drive);
+    control(eq, cs::bass, &AmpParameters::bass);
+    control(eq, cs::middle, &AmpParameters::mid);
+    control(eq, cs::treble, &AmpParameters::treble);
+    control(eq, cs::presence, &AmpParameters::presence);
+    text(cs::speaker, row(cab), s::section, s::muted);
+    text(cs::builtInCab, row(cab));
+    control(cab, cs::echo, &AmpParameters::echo);
+    control(area, cs::room, &AmpParameters::room);
+    control(area, cs::volume, &AmpParameters::volume);
+    if (!laptop && link.caps.inputs.contains(track.inputs[0]) && link.caps.outputChannels > 0)
+        button(projectMonitor == 2 ? cs::soundOff : cs::soundOn, row(area), [this] {
+            projectMonitor = projectMonitor == 2 ? 0 : 2;
+            configureSongMonitor();
+            triggerAsyncUpdate();
+        });
+}
+
 void Studio::tunerPanel(Rect area) {
     auto options = row(area);
     StringArray names;
@@ -544,14 +696,14 @@ void Studio::diagnosticPanel(Rect area) {
     text(wireless(link.current.output) ? cs::bluetooth : cs::cableGain, advice, s::caption, s::warning);
     auto left = area.removeFromLeft((area.getWidth() - s::gutter) / 2);
     area.removeFromLeft(s::gutter);
-    text(cs::driver, row(left), s::section, s::muted, false, true);
-    text(link.online ? cs::drivers[(int)link.current.driver] : cs::disconnected, row(left), s::heading);
+    auto driver = row(left);
+    text(cs::driver, driver.removeFromLeft(s::levelWidth), s::section, s::muted, false, true);
+    text(link.online ? cs::drivers[(int)link.current.driver] : cs::disconnected, driver, s::body);
     text(cs::io + "   " + String(link.caps.inputs.size()) + " / " + String(link.caps.outputChannels),
          row(left));
     text(link.online ? cs::frequency(link.current.rate) + "   /   " + cs::bufferSize(link.current.buffer)
                      : cs::emptyDash,
          row(left), s::body, s::muted, true);
-    text(cs::processor, row(left), s::section, s::muted, false, true);
     text(SystemStats::getCpuModel().substring(0, 48) + "   /   " + String(SystemStats::getNumCpus()),
          row(left));
     auto cpu = row(left);
@@ -573,9 +725,18 @@ void Studio::diagnosticPanel(Rect area) {
                                          : cs::notMeasured,
          row(area), s::body);
 
-    if (diagnosing) {
+    if (testingLoad || diagnosing) {
         button(cs::stopSong, row(area).withWidth(s::nameWidth), [this] { stopProject(); });
         return;
+    }
+    if (link.online && link.caps.outputChannels > 0 &&
+        link.audio.live.measurement() == Measurement::idle) {
+        auto perf = row(left);
+        StringArray counts;
+        for (int n = 1; n <= 8; ++n)
+            counts.add(String(n));
+        button(cs::loadTrial, perf.removeFromRight(s::nameWidth), [this] { startLoadTrial(); });
+        combo(cs::ampCount, perf, counts, trialAmps - 1, [this](int i) { trialAmps = i + 1; });
     }
     if (link.online && link.caps.outputChannels > 0 && !link.caps.inputs.isEmpty() &&
         link.audio.live.measurement() == Measurement::idle) {

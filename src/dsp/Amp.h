@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <vector>
 
@@ -7,12 +8,35 @@ namespace rocker {
 // Percent controls. Gate stores the magnitude of a negative dBFS threshold.
 struct AmpParameters {
     std::uint8_t shape, drive, bass, mid, treble, presence, volume, gate;
+    std::uint8_t echo = 0, room = 0;
+    std::uint64_t pack() const noexcept;
+    static AmpParameters unpack(std::uint64_t) noexcept;
     bool operator==(const AmpParameters&) const = default;
 };
-inline constexpr std::array<AmpParameters, 4> presets{{{0, 8, 52, 50, 56, 34, 68, 68},
-                                                       {0, 48, 56, 62, 54, 47, 60, 60},
-                                                       {1, 72, 51, 70, 57, 52, 54, 55},
-                                                       {2, 90, 64, 38, 61, 58, 48, 50}}};
+inline constexpr std::array<AmpParameters, 4> presets{{{0, 8, 52, 50, 56, 34, 68, 68, 0, 14},
+                                                       {0, 48, 56, 62, 54, 47, 60, 60, 0, 9},
+                                                       {1, 72, 51, 70, 57, 52, 54, 55, 25, 21},
+                                                       {2, 90, 64, 38, 61, 58, 48, 50, 0, 6}}};
+// A recall is sticky until the audio thread consumes the entire parameter snapshot.
+class AmpCommand {
+  public:
+    static constexpr std::uint64_t enabledBit = std::uint64_t{1} << 63;
+    static constexpr std::uint64_t recallBit = std::uint64_t{1} << 62;
+    static constexpr std::uint64_t valueMask = recallBit - 1;
+    void publish(AmpParameters p, bool enabled, bool recall) noexcept {
+        const auto data = p.pack() | (enabled ? enabledBit : 0) | (recall ? recallBit : 0);
+        auto previous = word.load();
+        while (!word.compare_exchange_weak(previous, data | (previous & recallBit))) {
+        }
+    }
+    std::uint64_t consume() noexcept {
+        auto snapshot = word.load();
+        return (snapshot & recallBit) ? word.fetch_and(~recallBit) : snapshot;
+    }
+
+  private:
+    std::atomic<std::uint64_t> word{presets[1].pack() | enabledBit | recallBit};
+};
 class Amp {
   public:
     void prepare(int sampleRate);
@@ -22,6 +46,14 @@ class Amp {
     int delaySamples() const noexcept { return static_cast<int>(cabinet.size() / 2) + 3; }
 
   private:
+    struct DelayLine {
+        std::vector<float> buffer;
+        int index = 0, valid = 0;
+        void clear() noexcept { index = valid = 0; }
+        float tick(float input, float feedback) noexcept;
+    };
+    DelayLine echo;
+    std::array<DelayLine, 4> room;
     using Branch = std::array<float, 3>;
     Branch upEven{}, upOdd{}, downEven{}, downOdd{};
     float previousOdd = 0;
@@ -29,7 +61,8 @@ class Amp {
     std::vector<float> cabinet, history;
     AmpParameters params = presets[0];
     struct Controls {
-        float gain = 1, level = 1, threshold = 0, bass = 1, mid = 1, treble = 1, presence = 0;
+        float gain = 1, level = 1, threshold = 0, bass = 1, mid = 1, treble = 1, presence = 0, echo = 0,
+              room = 0;
     } current, target;
     float env = 0, gate = 0, release = 0, attack = 0;
     float low = 0, wide = 0, air = 0, lowPole = 0, midPole = 0, airPole = 0;

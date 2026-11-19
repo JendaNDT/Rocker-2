@@ -29,19 +29,32 @@ struct AudioLibrary {
 struct PlaybackClip {
     std::shared_ptr<const MappedWave> wave;
     Frame at, offset, length;
-    size_t trackIndex;
 };
 class Playback {
   public:
     Playback(const Song&, const AudioLibrary&);
     void updateMix(const Song&);
     void prefetch(Frame from, Frame to) const;
-    bool empty() const { return clips.empty(); }
-    void mix(float* const*, int outputs, int size, Frame at) const noexcept;
+    bool empty() const { return !hasClips; }
+    void setSound(size_t track, const GuitarSound&, bool recall);
+    void mix(float* const*, int outputs, int size, Frame at) noexcept;
+    Frame tailFrames() const { return tail; }
 
   private:
-    std::vector<PlaybackClip> clips;
-    std::unique_ptr<std::atomic<bool>[]> audible;
+    struct Strip {
+        std::vector<PlaybackClip> clips;
+        std::vector<Amp> amps;
+        std::atomic<bool> audible{true};
+        AmpCommand command;
+        std::uint64_t applied = 0;
+        Frame next = -1;
+        int channels = 1;
+        void read(float (&block)[2][256], int count, Frame at) const noexcept;
+        void process(float* const*, int outputs, int count, Frame at) noexcept;
+    };
+    std::vector<std::unique_ptr<Strip>> strips;
+    bool hasClips = false;
+    Frame tail = 0;
 };
 bool renderSong(const Song&, const AudioLibrary&, const juce::File& destination);
 struct Take {

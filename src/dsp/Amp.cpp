@@ -29,6 +29,32 @@ float distort(float x, int shape) noexcept {
     }
 }
 } // namespace
+// Nine controls in base 101 and the three-valued distortion type fit one lock-free word.
+std::uint64_t AmpParameters::pack() const noexcept {
+    std::uint64_t word = shape;
+    for (auto value : {drive, bass, mid, treble, presence, volume, gate, echo, room})
+        word = word * 101 + value;
+    return word;
+}
+AmpParameters AmpParameters::unpack(std::uint64_t word) noexcept {
+    AmpParameters p{};
+    for (auto* v :
+         {&p.room, &p.echo, &p.gate, &p.volume, &p.presence, &p.treble, &p.mid, &p.bass, &p.drive}) {
+        *v = static_cast<std::uint8_t>(word % 101);
+        word /= 101;
+    }
+    p.shape = static_cast<std::uint8_t>(word);
+    return p;
+}
+float Amp::DelayLine::tick(float input, float feedback) noexcept {
+    float delayed = valid == static_cast<int>(buffer.size()) ? buffer[index] : 0.f;
+    if (valid < static_cast<int>(buffer.size()))
+        ++valid;
+    buffer[index] = input + feedback * delayed;
+    if (++index == static_cast<int>(buffer.size()))
+        index = 0;
+    return delayed;
+}
 void Amp::prepare(int sampleRate) {
     rate = sampleRate;
     auto pole = [&](float hz) { return static_cast<float>(1 - std::exp(-2 * pi * hz / rate)); };
@@ -51,11 +77,18 @@ void Amp::prepare(int sampleRate) {
         cabinet[i + half] = static_cast<float>(
             window * (lp(4200) - lp(100) + 0.32 * (lp(1550) - lp(700)) - 0.25 * (lp(3400) - lp(2300))));
     }
+    echo.buffer.resize(std::max(1, rate * 3 / 10));
+    // Fixed, mutually different reflection times. No random state or block-size dependence.
+    constexpr std::array<double, 4> reflections{0.0297, 0.0371, 0.0411, 0.0437};
+    for (size_t i = 0; i < room.size(); ++i)
+        room[i].buffer.resize(std::max(1, static_cast<int>(std::round(rate * reflections[i]))));
     configure(params);
     reset();
 }
 void Amp::configure(AmpParameters p) {
     params = p;
+    target.echo = p.echo / 100.f;
+    target.room = p.room / 100.f;
     target.gain = std::pow(10.f, p.drive * 0.015f);
     target.level = 0.75f * std::pow(p.volume / 100.f, 1.6f);
     target.threshold = std::pow(10.f, -p.gate / 20.f);
@@ -70,6 +103,9 @@ void Amp::reset() noexcept {
     upOdd = {};
     downEven = {};
     downOdd = {};
+    echo.clear();
+    for (auto& line : room)
+        line.clear();
     previousOdd = 0;
     std::fill(history.begin(), history.end(), 0);
     current = target;
@@ -106,6 +142,13 @@ float Amp::process(float x) noexcept {
     }
     if (++head == static_cast<int>(history.size()))
         head = 0;
+    smooth(current.echo, target.echo);
+    smooth(current.room, target.room);
+    result += current.echo * echo.tick(result, 0.34f);
+    float reflections = 0;
+    for (auto& line : room)
+        reflections += line.tick(result, 0.66f);
+    result += current.room * 0.25f * reflections;
     return std::clamp(result * current.level, -1.f, 1.f);
 }
 } // namespace rocker

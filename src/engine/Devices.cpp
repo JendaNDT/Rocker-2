@@ -29,6 +29,7 @@ class Native final : public DeviceSystem,
     }
 
   public:
+    int xruns() const override { return device ? device->getXRunCount() : -1; }
     Native() {
 #if JUCE_WINDOWS
         add(Driver::asio, Type::createAudioIODeviceType_ASIO());

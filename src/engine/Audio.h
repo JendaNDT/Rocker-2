@@ -16,6 +16,8 @@ float decibels(float amplitude) noexcept;
 class Audio {
   public:
     // The device must be stopped before changing the channel layout.
+    std::atomic<bool> measuringLoad{false};
+    std::atomic<float> peakLoad{0};
     Live live;
     Timeline timeline;
     void prepare(int inputs, int sampleRate);

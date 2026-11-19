@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/Devices.h"
 #include <map>
+#include "song/GuitarSound.h"
 #include "dsp/Tunings.h"
 namespace rocker {
 struct Calibration {
@@ -8,6 +9,7 @@ struct Calibration {
     int correction() const { return samples - reported; }
 };
 struct Settings {
+    std::vector<GuitarSound> guitarPresets;
     DeviceChoice device;
     bool visited = false;
     juce::String laptopInput;

@@ -20,6 +20,6 @@ inline constexpr int inset = 16, gap = 12, gutter = 32, margin = 56, header = 76
                      maxWidth = 1320, title = 36, heading = 20, keyWidth = 40, row = 64, nameWidth = 220,
                      levelWidth = 124, clipWidth = 152, labelWidth = 248, fieldWidth = 420,
                      maxWindow = 16384, menuHeight = 32, scaleWidth = 100;
-inline constexpr int trackHead = 200, statusStrip = 64, songDeck = 148, songLane = 58,
-                     compactButton = 104;
+inline constexpr int trackHead = 200, statusStrip = 64, songDeck = 148, songLane = 76, soundDeck = 248,
+                     faderReadout = 54, compactButton = 104;
 } // namespace rocker::style

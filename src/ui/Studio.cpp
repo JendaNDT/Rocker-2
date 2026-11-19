@@ -294,8 +294,8 @@ void Studio::finish() {
 void Studio::show(Page value) {
     if (performance)
         stopProject();
-    if (value == Page::amp && page != Page::tuner)
-        ampFromProject = page == Page::project;
+    if ((value == Page::amp || value == Page::live) && page != Page::amp && page != Page::live)
+        link.audio.live.setAmp(sound);
     activityBeforePluck.clear();
     link.audio.stopTone();
     const bool keepMonitor =
@@ -320,7 +320,7 @@ void Studio::show(Page value) {
         link.audio.live.setTuner(true);
     }
     page = value;
-    if (value == Page::project || (value == Page::amp && ampFromProject))
+    if (value == Page::project)
         configureSongMonitor();
     answer = -1;
     played = false;
@@ -333,7 +333,7 @@ void Studio::status(String value) {
 }
 void Studio::timerCallback() {
     projectTick();
-    if (page >= Page::live && page <= Page::customTuning)
+    if ((page >= Page::live && page <= Page::customTuning) || (page == Page::project && soundDeckOpen))
         pollLive();
     if (page == Page::inputs) {
         identifyGuitar();
@@ -478,6 +478,7 @@ void Studio::combo(const String& title, Rect r, const StringArray& items, int se
 }
 void Studio::rebuild() {
     controls.clear();
+    soundBadge = nullptr;
     dynamicLines.clear();
     needleArea = {};
     inputBar = {};
@@ -759,6 +760,15 @@ void Studio::inputPage(Rect area) {
     }
 }
 bool Studio::keyPressed(const KeyPress& key) {
+    if (page == Page::project && namingPreset && soundDeckOpen) {
+        if (key == KeyPress::escapeKey) {
+            namingPreset = false;
+            triggerAsyncUpdate();
+            return true;
+        }
+        if (dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()))
+            return false;
+    }
     if (page == Page::project) {
         if (!performance && (key == KeyPress::leftKey || key == KeyPress::rightKey)) {
             auto bar = song.grid.beatAt(view.cursor) / song.grid.beats;

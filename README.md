@@ -1,12 +1,12 @@
 # Rocker 2
 
-Domácí studio pro kytaru a bicí. V E2 můžeš nahrát bicí, při jejich poslechu dohrát kytaru a další den pokračovat na stejném místě. Aparát, ladička a měření zvukovky jsou k dispozici. Aplikace běží bez internetu a účtu.
+Domácí studio pro kytaru a bicí. Můžeš nahrát bicí, dohrát k nim kytaru a druhý den změnit její zvuk přímo ve skladbě. Aparát, ladička a měření zvukovky jsou k dispozici. Aplikace běží bez internetu a účtu.
 
 Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hotové aplikace. Během vývoje se každá etapa ověřuje automaticky.
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-2**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E2](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-2)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-3**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E3](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-3)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
@@ -17,8 +17,21 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 1. Na úvodu zvol **Nová skladba** nebo stiskni **N**. Pojmenuj ji, nastav **112 BPM**, metrum **4/4** a klikni na **Vytvořit skladbu**. Vzniknou stopy Bicí a Kytara. Rytmus můžeš také několikrát vyťukat tlačítkem **Naťukat tempo**.
 2. Vyber **Bicí → Nastavit stopu**. Zvol skutečný vstup mikrofonu nebo dva sousední vstupy pro stereo modul. Stiskni **Potvrdit**, potom **Připravit**. Rozsvícené **Připraveno** označuje stopu, do které půjde záznam. Podobně lze připravit více stop současně.
 3. Zapni **Klik** a **Odpočet**. **F11** zvětší stav a číslo taktu pro hráče za bicími. Stiskni **R**, po čtyřech dobách nahraj osm taktů a dalším **R** zastav. **F11** tě vrátí na časovou osu. Mezera přehrává a zastavuje.
-4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. V E3 půjde aparát použít také na přehrávanou stopu.
+4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. Při přehrávání použije kytarová stopa vlastní nastavení aparátu.
 5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
+
+## Jak změnit zvuk nahrané kytary
+
+1. V otevřené skladbě spusť přehrávání a klikni na štítek **Crunch** pod názvem kytarové stopy. Ve skladbě z E2 tam najdeš **Bez aparátu**. Ve spodní desce vyber **Metal**. Změnu uslyšíš za běhu.
+2. Posuň **Zkreslení** nebo přidej **Ozvěnu** a **Dozvuk**. Hvězdička u názvu označuje upravený zvuk. Volba **Bez aparátu** pustí původní nahrávku.
+3. Pro další skladby zvol **Uložit jako předvolbu**, napiš nový název a stiskni **Uložit předvolbu**. Samotná skladba si pamatuje i úpravy, které si do knihovny nepřidáš. **Zpět do skladby** zavře spodní desku. [Snímek kytary při přehrávání](docs/zkousky/E3/zvuk-kytary.png)
+
+### Ruční zkoušky E3 po vydání
+
+| Zkouška | Co udělat a zapsat |
+|---|---|
+| H-03 · zvuk | Nahraj krátký riff s drátovými sluchátky ve zvukovce. Vyzkoušej **Čistý, Crunch, Lead a Metal**. Každý zvuk ohodnoť 1–5 a napiš, co bys upravil. Alespoň jeden má dostat 4 nebo 5. Během přehrávání přepni Crunch → Metal → Crunch, přidej ozvěnu, zavři skladbu a přes **Pokračovat** si ji pusť znovu. |
+| M-05 · výkon | Ve Windows nastav ASIO, 48 kHz a buffer 128. V **Diagnostice** nastav **Aparáty** na 8 a spusť **Zkouška výkonu**. Přehraje se deset minut na šestnácti stopách. Zapiš zařízení, procesor, nejvyšší zobrazenou zátěž a počet výpadků. Cíl je pod 50 % a 0 výpadků. Pokud ovladač počítadlo neposkytne, zapiš „ovladač nehlásí“ a poznamenej slyšitelné výpadky. Zopakuj na baterii a na síťovém napájení. Při potížích sniž počet aparátů a zapiš poslední použitelný počet. |
 
 ## Ruční ověření E2 po vydání
 
