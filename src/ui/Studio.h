@@ -21,6 +21,7 @@ enum class Page {
     diagnostics,
     customTuning,
     ideas,
+    drums,
     newProject,
     project,
     trackSettings,
@@ -133,6 +134,19 @@ class Studio final : public juce::Component,
     std::vector<std::uint32_t> activityBeforePluck;
     int detectionTicks = 0;
     void identifyGuitar();
+    DrumSetup drumDraft;
+    juce::StringArray hitPorts;
+    std::vector<float> hitLevels;
+    bool hitMeasured = false, pedalLearning = false;
+    int drumIndex = 0, distantTake = 0;
+    bool offerDistant = false, wasFullscreen = false;
+    int heldTransportKey = 0;
+    bool keyStateChanged(bool) override;
+    void resetDrums();
+    void finishHits();
+    void drumPage(Rect);
+    std::vector<Track> drumTracks() const;
+    void defaultMonitor();
     void handleAsyncUpdate() override;
     void timerCallback() override;
     void rebuild();
@@ -192,6 +206,7 @@ class Studio final : public juce::Component,
     void paintProject(juce::Graphics&);
     void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr);
     void startRepair();
+    void selectKitAttempt(Playback&, const TakeGroup&, int);
     void audition(TakeGroup&);
     void chooseAttempt(bool keep);
     void discardAttempt();

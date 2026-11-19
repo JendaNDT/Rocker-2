@@ -105,14 +105,17 @@ bool Song::addAttempt(Clip pass, Frame from, Frame to, Frame created, bool disca
     return true;
 }
 StringArray Song::members(const String& id) const {
-    auto track=std::find_if(tracks.begin(),tracks.end(),[&](auto& t){return t.id==id;});
-    if(track==tracks.end() || track->group.isEmpty()) return {id};
+    auto track = std::find_if(tracks.begin(), tracks.end(), [&](auto& t) { return t.id == id; });
+    if (track == tracks.end() || track->group.isEmpty())
+        return {id};
     StringArray list;
-    for(auto& t:tracks) if(t.group==track->group) list.add(t.id);
+    for (auto& t : tracks)
+        if (t.group == track->group)
+            list.add(t.id);
     return list;
 }
-bool Song::linkedTrack(const String& a,const String& b) const {
-    return a==b || members(a).contains(b);
+bool Song::linkedTrack(const String& a, const String& b) const {
+    return a == b || members(a).contains(b);
 }
 Frame Song::end() const {
     Frame end = grid.beat(Frame(bars) * grid.beats);
@@ -129,7 +132,9 @@ var Song::json() const {
                        {"nazev", t.name},
                        {"druh", t.kind},
                        {"vstup", object({{"nazvy", var(t.inputs)}})},
-                       {"nahravat", t.armed},{"skupina",t.group},{"skupinaDb",t.groupDb},
+                       {"nahravat", t.armed},
+                       {"skupina", t.group},
+                       {"skupinaDb", t.groupDb},
                        {"amp", t.kind == "kytara" ? t.amp.json() : var()},
                        {"mix", object({{"mute", t.mute},
                                        {"solo", t.solo},
@@ -232,7 +237,8 @@ std::optional<Song> Song::parse(const var& v, bool& damaged) {
                 x.inputs.add(n.toString());
         x.amp = GuitarSound::read(field(t, "amp"));
         x.armed = field(t, "nahravat");
-        x.group=field(t,"skupina").toString();x.groupDb=jlimit(-96.f,6.f,(float)field(t,"skupinaDb",0));
+        x.group = field(t, "skupina").toString();
+        x.groupDb = jlimit(-96.f, 6.f, (float)field(t, "skupinaDb", 0));
         x.mute = field(field(t, "mix"), "mute");
         x.solo = field(field(t, "mix"), "solo");
         auto mix = field(t, "mix");
@@ -413,6 +419,7 @@ bool ViewState::save(const File& d) const {
                                                                 {"odpocet", countIn},
                                                                 {"strihej", editing},
                                                                 {"michej", mixing},
+                                                                {"cilTaktu", targetBars},
                                                                 {"vyberOd", selectionStart},
                                                                 {"vyberDo", selectionEnd},
                                                                 {"prvniTakt", firstBar},
@@ -435,7 +442,8 @@ ViewState ViewState::load(const File& d) {
             field(v, "vybranyKlip").toString(),
             jlimit(0, 8, (int)field(v, "predstih", 2)),
             jlimit(0, 8, (int)field(v, "dohra", 1)),
-            (bool)field(v, "michej", false)};
+            (bool)field(v, "michej", false),
+            jlimit(0, 999, (int)field(v, "cilTaktu", 0))};
 }
 std::unique_ptr<AudioFormatWriter> waveWriter(const File& file, int rate, int channels) {
     std::unique_ptr<OutputStream> stream = file.createOutputStream();

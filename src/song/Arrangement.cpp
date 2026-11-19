@@ -262,7 +262,35 @@ void Song::commitClips() {
     }
     projectOrder();
 }
-void Song::commitGroup(const TakeGroup& edited) {
+void Song::commitGroup(const TakeGroup& edited, Frame previousFrom, Frame previousTo) {
+    if (previousFrom < 0)
+        previousFrom = edited.from;
+    if (previousTo < 0)
+        previousTo = edited.to;
+    std::vector<TakeGroup> changes;
+    for (auto& peer : groups) {
+        if (peer.from != previousFrom || peer.to != previousTo ||
+            !linkedTrack(peer.track, edited.track) || peer.attempts.size() != edited.attempts.size())
+            continue;
+        auto copy = peer;
+        copy.active = edited.active;
+        copy.from = edited.from;
+        copy.to = edited.to;
+        for (size_t i = 0; i < copy.attempts.size(); ++i)
+            copy.attempts[i].discarded = edited.attempts[i].discarded;
+        if (copy.id != edited.id)
+            changes.push_back(std::move(copy));
+    }
+    changes.push_back(edited);
+    for (auto& change : changes)
+        commitSingleGroup(change);
+}
+void Song::commitSingleGroup(const TakeGroup& edited) {
+    for (auto& peer : groups)
+        if (peer.id == edited.id) {
+            peer = edited;
+            break;
+        }
     for (int i = 0; i < (int)order.size(); ++i) {
         const auto& o = order[i];
         for (auto& g : sections.at(o.section).groups) {

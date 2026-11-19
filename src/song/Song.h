@@ -23,7 +23,7 @@ struct Track {
     float gainDb = 0, pan = 0;
     Frame inputOver = -1;
     juce::String group;
-    float groupDb=0;
+    float groupDb = 0;
 };
 struct Clip {
     bool operator==(const Clip&) const = default;
@@ -91,7 +91,8 @@ struct Song {
     bool detachSection(int index);
     bool resizeOccurrence(int index, int length);
     void commitClips();
-    void commitGroup(const TakeGroup&);
+    void commitSingleGroup(const TakeGroup&);
+    void commitGroup(const TakeGroup&, Frame previousFrom = -1, Frame previousTo = -1);
     void extendOrder(Frame);
     Frame end() const;
     bool linkedTrack(const juce::String&, const juce::String&) const;
@@ -112,6 +113,7 @@ struct ViewState {
     juce::String selectedClip;
     int leadBars = 2, tailBars = 1;
     bool mixing = false;
+    int targetBars = 0;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };

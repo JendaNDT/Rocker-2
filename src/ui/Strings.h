@@ -2,6 +2,27 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String insertKit=u8"Přidat nastavené bicí";
+inline const juce::String
+    drumTest = u8"Zahraj na bicí",
+    hitPrompt = u8"Udeř postupně do každého bubnu tak silně, jak budeš hrát.",
+    finishHits = u8"Vyhodnotit údery", drumAgain = u8"Změřit znovu",
+    noHits = u8"Žádný úder. Zkontroluj kabel, vstup a gain na zvukovce.",
+    hitHot = u8"Stáhni gain na zvukovce pod −6 dBFS a zkus to znovu.",
+    hitGood = u8"Úder má dostatečnou rezervu.", oneMic = u8"Jeden mikrofon",
+    stereoKit = u8"Stereo modul L/P", multiKit = u8"Sada bicích", kitGain = u8"Bicí celkem",
+    micAdvice = u8"Dej mikrofon asi 1–1,5 m před soupravu do výšky hlavy. Odposlech nech vypnutý.",
+    stereoAdvice = u8"Zapoj výstupy L a R modulu do zvukovky. Sluchátka připoj ke zvukovce.",
+    portAdvice = u8"Na víc mikrofonů potřebuješ víc vstupů. Můžeš začít jedním mikrofonem.",
+    kitApply = u8"Použít pro nové skladby", kickName = u8"Kopák", snareName = u8"Virbl",
+    tomName = u8"Tom", ohLeft = u8"Overhead L", ohRight = u8"Overhead P",
+    kitWide = u8"Overheady vlevo a vpravo", kitCentre = u8"Overheady uprostřed", pedal = u8"Nožní spínač",
+    pedalLearn = u8"Stiskni tlačítko pro Nahrát. Esc přiřazení zruší.",
+    pedalBound = u8"Přiřazeno pro Nahrát", pedalClear = u8"Zrušit přiřazení",
+    farOffer = u8"Zapnout Pohled zdálky při nahrávání bicích?", farReady = u8"Připraveno",
+    farSaved = u8"Uloženo", farTarget = u8"Cílový takt", farFree = u8"Bez cíle",
+    signalPeak = u8"Nejsilnější úder", kitRole = u8"Název stopy",
+    kitHint = u8"Vstupy jsou seřazené podle zvukovky. Uprav názvy podle mikrofonů.";
 inline const juce::String divider=u8" · ", rangeDash=u8" – ", starMark=u8"★ ";
 inline const juce::String
     totalIdeas = u8"celkem",

@@ -4,17 +4,23 @@ namespace {
 struct EditTracks {
     juce::StringArray members;
     juce::String selected;
-    Frame at=-1, length=0;
-    EditTracks(const Song& song,const juce::String& track,const juce::String& id)
-        :members(song.members(track)),selected(id) {
-        for(auto& c:song.clips) if(c.id==id) {at=c.position;length=c.length;break;}
+    Frame at = -1, length = 0;
+    EditTracks(const Song& song, const juce::String& track, const juce::String& id)
+        : members(song.members(track)), selected(id) {
+        for (auto& c : song.clips)
+            if (c.id == id) {
+                at = c.position;
+                length = c.length;
+                break;
+            }
     }
     bool includes(const Clip& c) const {
-        return members.contains(c.track) && (selected.isEmpty() || selected==c.id ||
-            (members.size()>1 && c.position==at && c.length==length));
+        return members.contains(c.track) &&
+               (selected.isEmpty() || selected == c.id ||
+                (members.size() > 1 && c.position == at && c.length == length));
     }
-    bool intersects(const Clip& c,Span s) const {
-        return includes(c) && c.position<s.to && c.position+c.length>s.from;
+    bool intersects(const Clip& c, Span s) const {
+        return includes(c) && c.position < s.to && c.position + c.length > s.from;
     }
 };
 Clip slice(Clip c, Frame begin, Frame end, bool fresh) {
@@ -43,8 +49,8 @@ Fragment copySpan(const Song& s, const juce::String& track, Span span, const juc
     Fragment part;
     if (!span.valid())
         return part;
-    EditTracks group(s,track,id);
-    part.sourceTracks=group.members;
+    EditTracks group(s, track, id);
+    part.sourceTracks = group.members;
     part.length = span.length();
     for (const auto& c : s.clips)
         if (group.intersects(c, span)) {
@@ -58,7 +64,7 @@ Fragment copySpan(const Song& s, const juce::String& track, Span span, const juc
 bool eraseSpan(Song& s, const juce::String& track, Span span, const juce::String& id) {
     if (!span.valid())
         return false;
-    EditTracks group(s,track,id);
+    EditTracks group(s, track, id);
     std::vector<Clip> result;
     bool changed = false;
     for (const auto& c : s.clips) {
@@ -77,11 +83,10 @@ bool eraseSpan(Song& s, const juce::String& track, Span span, const juce::String
     return changed;
 }
 bool splitAt(Song& s, const juce::String& track, Frame at, const juce::String& id) {
-    EditTracks group(s,track,id);
+    EditTracks group(s, track, id);
     std::vector<Clip> after;
     for (auto& c : s.clips)
-        if (group.includes(c) && c.position < at &&
-            at < c.position + c.length) {
+        if (group.includes(c) && c.position < at && at < c.position + c.length) {
             after.push_back(slice(c, at, c.position + c.length, true));
             c.length = at - c.position;
         }
@@ -99,13 +104,15 @@ bool pasteAt(Song& s, const juce::String& track, Frame at, const Fragment& part)
             c.offset > asset->length - c.length || c.position < 0 || c.position > part.length - c.length)
             return false;
     }
-    auto destinations=s.members(track);
-    if(part.sourceTracks.size()>1 && part.sourceTracks.size()!=destinations.size()) return false;
-    if(part.sourceTracks.size()==1 && destinations.size()>1) return false;
+    auto destinations = s.members(track);
+    if (part.sourceTracks.size() > 1 && part.sourceTracks.size() != destinations.size())
+        return false;
+    if (part.sourceTracks.size() == 1 && destinations.size() > 1)
+        return false;
     eraseSpan(s, track, {at, at + part.length});
     for (auto c : part.clips) {
         c.id = juce::Uuid().toString();
-        c.track = part.sourceTracks.size()>1 ? destinations[part.sourceTracks.indexOf(c.track)] : track;
+        c.track = part.sourceTracks.size() > 1 ? destinations[part.sourceTracks.indexOf(c.track)] : track;
         c.position += at;
         s.clips.push_back(std::move(c));
     }
@@ -126,23 +133,36 @@ bool moveSpan(Song& s, const juce::String& track, Span span, Frame at, const juc
     return true;
 }
 std::optional<Span> trimEdge(Song& s, const juce::String& id, bool left, Frame target) {
-    auto selected=std::find_if(s.clips.begin(),s.clips.end(),[&](auto& c){return c.id==id;});
-    if(selected==s.clips.end()) return {};
-    EditTracks group(s,selected->track,id);
-    const Frame oldStart=selected->position,oldEnd=oldStart+selected->length;
-    Frame low=left?0:oldStart+1, high=left?oldEnd-1:std::numeric_limits<Frame>::max();
+    auto selected = std::find_if(s.clips.begin(), s.clips.end(), [&](auto& c) { return c.id == id; });
+    if (selected == s.clips.end())
+        return {};
+    EditTracks group(s, selected->track, id);
+    const Frame oldStart = selected->position, oldEnd = oldStart + selected->length;
+    Frame low = left ? 0 : oldStart + 1, high = left ? oldEnd - 1 : std::numeric_limits<Frame>::max();
     std::vector<Clip*> clips;
-    for(auto& c:s.clips) if(group.includes(c)) {
-        auto asset=std::find_if(s.assets.begin(),s.assets.end(),[&](auto& a){return a.id==c.asset;});
-        if(asset==s.assets.end()) return {};
-        if(left)low=std::max(low,c.position-c.offset);else high=std::min(high,c.position+asset->length-c.offset);
-        clips.push_back(&c);
+    for (auto& c : s.clips)
+        if (group.includes(c)) {
+            auto asset =
+                std::find_if(s.assets.begin(), s.assets.end(), [&](auto& a) { return a.id == c.asset; });
+            if (asset == s.assets.end())
+                return {};
+            if (left)
+                low = std::max(low, c.position - c.offset);
+            else
+                high = std::min(high, c.position + asset->length - c.offset);
+            clips.push_back(&c);
+        }
+    auto edge = std::clamp(target, low, high);
+    Span bounds{left ? edge : oldStart, left ? oldEnd : edge};
+    if (edge == (left ? oldStart : oldEnd) || !fits(s, bounds.from, bounds.length()))
+        return {};
+    for (auto* c : clips) {
+        c->offset += bounds.from - c->position;
+        c->position = bounds.from;
+        c->length = bounds.length();
     }
-    auto edge=std::clamp(target,low,high);
-    Span bounds{left?edge:oldStart,left?oldEnd:edge};
-    if(edge==(left?oldStart:oldEnd) || !fits(s,bounds.from,bounds.length())) return {};
-    for(auto* c:clips){c->offset+=bounds.from-c->position;c->position=bounds.from;c->length=bounds.length();}
-    extend(s,bounds.to);return bounds;
+    extend(s, bounds.to);
+    return bounds;
 }
 void EditHistory::reset(const Song& s) {
     states = {{s, {}}};

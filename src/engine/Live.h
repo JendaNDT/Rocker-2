@@ -31,7 +31,7 @@ class Live {
     Measurement measurement() const { return phase.load(); }
     int ampDelay() const { return amp.delaySamples(); }
     std::atomic<Monitor> monitor{Monitor::off};
-    std::atomic<int> input{0};
+    std::atomic<int> input{0}, stereoRight{-1};
     std::atomic<float> outputPeak{0}, cpuPercent{0};
 
   private:

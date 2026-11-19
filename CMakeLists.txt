@@ -19,7 +19,7 @@ function(add_sample_rate_converter)
 endfunction()
 add_sample_rate_converter()
 juce_add_binary_data(Fonts SOURCES assets/fonts/Inter.ttf assets/fonts/InterSemiBold.ttf assets/fonts/Mono.ttf)
-add_library(Studio STATIC src/ui/IdeaPage.cpp src/storage/Ideas.cpp src/engine/Import.cpp src/engine/IdeaInput.cpp src/engine/Export.cpp src/engine/Mp3.cpp src/engine/Mp3Length.cpp src/song/Arrangement.cpp src/song/Edit.cpp src/engine/LoadTrial.cpp src/song/GuitarSound.cpp src/storage/AtomicFile.cpp src/song/Song.cpp src/engine/Timeline.cpp src/dsp/Amp.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp src/ui/ProjectPage.cpp src/ui/MixPage.cpp src/ui/EditPage.cpp src/ui/SectionPage.cpp)
+add_library(Studio STATIC src/ui/DrumPage.cpp src/ui/IdeaPage.cpp src/storage/Ideas.cpp src/engine/Import.cpp src/engine/IdeaInput.cpp src/engine/Export.cpp src/engine/Mp3.cpp src/engine/Mp3Length.cpp src/song/Arrangement.cpp src/song/Edit.cpp src/engine/LoadTrial.cpp src/song/GuitarSound.cpp src/storage/AtomicFile.cpp src/song/Song.cpp src/engine/Timeline.cpp src/dsp/Amp.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp src/ui/ProjectPage.cpp src/ui/MixPage.cpp src/ui/EditPage.cpp src/ui/SectionPage.cpp)
 target_include_directories(Studio PUBLIC src "${JUCE_MODULES_DIR}")
 target_compile_definitions(Studio PUBLIC JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
     JUCE_USE_WIN_WEBVIEW2=0 JUCE_REPORT_APP_USAGE=0 $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>)

@@ -123,6 +123,17 @@ void Studio::mixPage(Rect area) {
     auto actions = line(foot);
     button(cs::sendMix, actions.removeFromLeft(s::clipWidth), [this] { mixMode(true); }, 1);
     actions.removeFromLeft(s::gap);
+    if (isPositiveAndBelow(view.selected, (int)song.tracks.size()) &&
+        song.tracks[view.selected].group.isNotEmpty()) {
+        auto& t = song.tracks[view.selected];
+        text(cs::kitGain, actions.removeFromLeft(s::compactButton));
+        mixSlider(cs::kitGain, actions.removeFromLeft(s::nameWidth), t.groupDb, false,
+                  [this, id = t.group](float gain) {
+                      for (auto& member : song.tracks)
+                          if (member.group == id)
+                              member.groupDb = gain;
+                  });
+    }
     auto meter = performance ? performance->playback.meter() : lastMeter;
     if (meter.over >= 0)
         button(cs::mixOver + cs::divider + bar(song, meter.over), actions.removeFromLeft(s::labelWidth),

@@ -8,7 +8,13 @@ struct Calibration {
     int samples = 0, reported = 0;
     int correction() const { return samples - reported; }
 };
+struct DrumSetup {
+    juce::StringArray ports, names;
+    bool stereo = false, wide = true;
+};
 struct Settings {
+    std::map<juce::String, DrumSetup> drumSetups;
+    int pedalKey = 0;
     std::vector<GuitarSound> guitarPresets;
     DeviceChoice device;
     bool visited = false, insurance = true;

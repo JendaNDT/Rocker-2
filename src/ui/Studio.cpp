@@ -317,6 +317,8 @@ void Studio::finish() {
     persist();
 }
 void Studio::show(Page value) {
+    if (value != Page::device)
+        pedalLearning = false;
     if (value != Page::ideas) {
         stopPreview();
         stopIdea();
@@ -525,6 +527,11 @@ void Studio::rebuild() {
         return;
     auto area = getLocalBounds().reduced(s::margin, 0);
     area = area.withSizeKeepingCentre(std::min(area.getWidth(), s::maxWidth), area.getHeight());
+    if (page == Page::drums) {
+        drumPage(area);
+        repaint();
+        return;
+    }
     if (page == Page::ideas) {
         ideaPage(area);
         repaint();
@@ -649,6 +656,19 @@ void Studio::makeHome(Rect area) {
 void Studio::makeWizard(Rect area) {
     auto footer = area.removeFromBottom(s::footer).reduced(0, (s::footer - s::button) / 2);
     button(cs::home, footer.removeFromLeft(s::nameWidth), [this] { finish(); });
+    if (page == Page::device) {
+        button(cs::pedal, footer.removeFromLeft(s::clipWidth), [this] {
+            pedalLearning = true;
+            grabKeyboardFocus();
+            status(cs::pedalLearn);
+        });
+        if (settings.pedalKey)
+            button(cs::pedalClear, footer.removeFromLeft(s::clipWidth), [this] {
+                settings.pedalKey = 0;
+                persist();
+                status({});
+            });
+    }
     auto primaryArea = footer.removeFromRight(s::nameWidth);
     const bool last = page == Page::inputs;
     auto advance = [this] {
@@ -802,6 +822,10 @@ void Studio::inputPage(Rect area) {
     text(cs::inputHelp, area.removeFromTop(s::button));
     auto options = area.removeFromTop(s::button);
     if (!link.caps.inputs.isEmpty()) {
+        button(cs::drumTest, options.removeFromRight(s::clipWidth), [this] {
+            resetDrums();
+            show(Page::drums);
+        });
         button(cs::findGuitar, options.removeFromRight(s::nameWidth), [this] {
             activityBeforePluck.clear();
             detectionTicks = 0;
@@ -840,7 +864,67 @@ void Studio::inputPage(Rect area) {
         row->setBounds(0, i * s::row, w, s::row);
     }
 }
+bool Studio::keyStateChanged(bool down) {
+    if (heldTransportKey && (!down || !KeyPress::isKeyCurrentlyDown(heldTransportKey)))
+        heldTransportKey = 0;
+    return false;
+}
 bool Studio::keyPressed(const KeyPress& key) {
+    const int code = key.getKeyCode();
+    if (pedalLearning && page == Page::device) {
+        pedalLearning = false;
+        if (key != KeyPress::escapeKey && !key.getModifiers().isAnyModifierKeyDown()) {
+            settings.pedalKey = code;
+            persist();
+            status(cs::pedalBound + " · " + key.getTextDescription());
+        } else
+            status({});
+        return true;
+    }
+    const bool editable = dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()) != nullptr;
+    if (!editable && !key.getModifiers().isAnyModifierKeyDown()) {
+        if (page == Page::drums && key == KeyPress::escapeKey) {
+            show(Page::inputs);
+            return true;
+        }
+        if (page == Page::project && view.distant &&
+            (key == KeyPress::escapeKey || key == KeyPress::F11Key)) {
+            toggleDistant();
+            return true;
+        }
+        const bool pedal = settings.pedalKey != 0 && code == settings.pedalKey;
+        bool projectRecord =
+            page == Page::project && (pedal || (code == KeyPress::returnKey && !comparing));
+        if (projectRecord || (page == Page::project && code == KeyPress::numberPad0) ||
+            (pedal && (page == Page::home || page == Page::ideas))) {
+            if (heldTransportKey == code && KeyPress::isKeyCurrentlyDown(code))
+                return true;
+            heldTransportKey = code;
+            if (page == Page::project) {
+                if (performance)
+                    stopProject();
+                else
+                    startProject(projectRecord);
+            } else if (ideaRecording)
+                stopIdea();
+            else
+                startIdea(false);
+            return true;
+        }
+        if (page == Page::project && code == KeyPress::numberPadAdd) {
+            chooseAttempt(false);
+            return true;
+        }
+        if (page == Page::project && code == KeyPress::numberPadSubtract) {
+            if (!performance) {
+                auto bar = song.grid.beatAt(view.cursor) / song.grid.beats;
+                view.cursor = song.barFrame((int)std::max<Frame>(0, bar - 1));
+                view.save(projectDir);
+                repaint();
+            }
+            return true;
+        }
+    }
     if (page == Page::ideas && !key.getModifiers().isAnyModifierKeyDown()) {
         if (dynamic_cast<TextEditor*>(Component::getCurrentlyFocusedComponent()) &&
             key != KeyPress::escapeKey)
