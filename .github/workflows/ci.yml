@@ -146,7 +146,10 @@ jobs:
             fi
             test "$(gh release view v1.0.0 --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
           else
-            gh release create v1.0.0 --draft --target "$GITHUB_SHA" --title "Rocker 2 · verze 1.0.0" --notes-file packaging/VYDANI.md
+            cp packaging/VYDANI.md release-notes.md
+            echo >> release-notes.md
+            echo "[Ověřená sestavení, testy a instalace ve Windows]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)" >> release-notes.md
+            gh release create v1.0.0 --draft --target "$GITHUB_SHA" --title "Rocker 2 · verze 1.0.0" --notes-file release-notes.md
           fi
           gh release upload v1.0.0 release/* --clobber
           mkdir downloaded

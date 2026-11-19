@@ -1,4 +1,4 @@
-#ifndef TargetArch
+﻿#ifndef TargetArch
   #error TargetArch must identify the native Windows build
 #endif
 
