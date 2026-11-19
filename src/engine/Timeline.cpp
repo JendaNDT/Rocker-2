@@ -443,10 +443,11 @@ bool renderSong(const Song& song, const AudioLibrary& library, const File& desti
     return commitTemporary(output);
 }
 Performance::Performance(const Song& s, const AudioLibrary& library, Frame from, bool rec,
-                         bool metronome, int count, bool rhythm)
+                         bool metronome, int count, bool rhythm, std::optional<LoopSpan> loop)
     : grid(s.grid), playback(s, library), start(from),
       end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()),
       clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock) {
+    juce::ignoreUnused(loop);
     if (metronome && rhythm)
         guide.emplace(grid, from);
     // Anchor count-in to the punch position; normal beats follow the song grid.

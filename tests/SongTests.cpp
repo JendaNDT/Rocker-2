@@ -370,6 +370,103 @@ TEST_CASE("A-32 louder delivery meets the integrated and true-peak limits after 
         CHECK(outcome->peak <= Decibels::decibelsToGain(-1.));
     }
 }
+TEST_CASE("A-33 three loop passes share one WAV and preserve every compensated sample") {
+    Workspace w;
+    Song song;
+    song.title = "Loop";
+    song.bars = 1;
+    song.tracks = {{"t", "Loop", "jine", {"in"}, true}};
+    constexpr Frame first = 1200, length = 2300, compensation = 79;
+    const LoopSpan loop{first, first + length};
+    REQUIRE(song.save(w.dir));
+    Performance performance(song, {}, 0, true, false, 0, false, loop);
+    REQUIRE(performance.arm(song, w.dir, {"in"}, compensation, false));
+    constexpr int block = 379;
+    std::array<float, block> input{};
+    const float* in[]{input.data()};
+    const Frame duration = first + 3 * length + compensation;
+    for (Frame at = 0; at < duration; at += block) {
+        const int n = int(std::min<Frame>(block, duration - at));
+        for (int i = 0; i < n; ++i)
+            input[i] = float(at + i);
+        performance.process(in, 1, nullptr, 0, n);
+        REQUIRE(performance.drain());
+    }
+    performance.finishDisk();
+    REQUIRE(recoverTake(song, w.dir, performance.journal));
+    REQUIRE(song.assets.size() == 1);
+    REQUIRE(song.groups.size() == 1);
+    auto& group = song.groups.front();
+    CHECK(group.from == loop.from);
+    CHECK(group.to == loop.to);
+    REQUIRE(group.attempts.size() == 3);
+    CHECK(group.active == 3);
+    CHECK(group.cycle() == 0);
+    auto reader = waveReader(w.dir.getChildFile(song.assets[0].path));
+    REQUIRE(reader);
+    AudioBuffer<float> written(1, int(length));
+    for (int i = 0; i < 3; ++i) {
+        const auto& take = group.attempts[i];
+        CHECK_FALSE(take.discarded);
+        REQUIRE(take.clips.size() == 1);
+        const auto& clip = take.clips.front();
+        CHECK(clip.position == first);
+        CHECK(clip.offset == first + compensation + i * length);
+        CHECK(clip.length == length);
+        REQUIRE(reader->read(&written, 0, int(length), clip.offset, true, false));
+        for (int n = 0; n < length; ++n)
+            if (written.getSample(0, n) != float(clip.offset + n))
+                FAIL("Incorrect sample after loop compensation");
+    }
+}
+void loopPlaybackBlock(Performance& take, float* const* outputs, int size)
+#if defined(ROCKER_RT_AUDIT)
+    [[clang::nonblocking]]
+#endif
+{
+    take.process(nullptr, 0, outputs, 1, size);
+}
+TEST_CASE("A-33 the monitor wraps at the exact sample inside arbitrary device blocks", "[realtime]") {
+    Workspace w;
+    Song song;
+    song.title = "Monitor";
+    song.bars = 1;
+    song.tracks = {{"t", "Source", "jine"}};
+    song.tracks[0].pan = -1;
+    constexpr LoopSpan span{1200, 3500};
+    auto path = w.dir.getChildFile("Zvuk/monitor.wav");
+    REQUIRE(path.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(path, song.grid.rate, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> recorded(1, int(span.to));
+    for (int i = 0; i < span.to; ++i)
+        recorded.setSample(0, i, (i % 64) / 128.f);
+    REQUIRE(writer->writeFromAudioSampleBuffer(recorded, 0, int(span.to)));
+    writer.reset();
+    song.assets = {{"a", "Zvuk/monitor.wav", span.to, 1}};
+    song.clips = {{"c", "t", "a", 0, 0, span.to}};
+    AudioLibrary media;
+    REQUIRE(media.load(song, w.dir));
+    Performance performance(song, media, 0, true, false, 0, false, span);
+    constexpr int block = 379;
+    std::array<float, block> samples{};
+    const auto duration = span.from + 3 * (span.to - span.from);
+    for (Frame at = 0; at < duration; at += block) {
+        const auto n = int(std::min<Frame>(block, duration - at));
+        samples.fill(0);
+        float* out[]{samples.data()};
+        loopPlaybackBlock(performance, out, n);
+        for (int i = 0; i < n; ++i) {
+            const auto clock = at + i;
+            const auto expected = clock < span.from ? clock : span.from + (clock - span.from) % span.length();
+            const auto sample = recorded.getSample(0, int(expected));
+            if (samples[i] != sample) {
+                CAPTURE(at, i, expected);
+                REQUIRE(samples[i] == sample);
+            }
+        }
+    }
+}
 TEST_CASE("A-04 ten minutes of bar downbeats land on their exact samples") {
     auto s = example();
     s.bars = 400;

@@ -112,10 +112,14 @@ struct Take {
     std::unique_ptr<CaptureQueue> queue;
     std::unique_ptr<juce::AudioFormatWriter> writer;
 };
+struct LoopSpan {
+    Frame from = 0, to = 0;
+    Frame length() const noexcept { return to - from; }
+};
 class Performance {
   public:
     Performance(const Song&, const AudioLibrary&, Frame start, bool recording, bool click,
-                int countBeats, bool rhythm = false);
+                int countBeats, bool rhythm = false, std::optional<LoopSpan> loop = {});
     ~Performance();
     bool arm(const Song&, const juce::File&, const juce::StringArray& ports, int delay,
              bool useWorker = true, int midiDelay = 0);
