@@ -668,7 +668,16 @@ TEST_CASE("A-07 A-15 ten minute dry overdub with independent input and output de
     std::array<float, 128> in{}, out{};
     const float* inputs[]{nullptr, in.data()};
     float* outputs[]{out.data()};
+    constexpr int batchFrames = 128 * 100;
     for (int at = 0; at < duration + 384; at += 128) {
+        // Pace the accelerated device outside the callback. Keep the real disk worker running.
+        if (at % batchFrames == 0 && !p.hasAudioCaptureRoom(batchFrames)) {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            while (!p.hasAudioCaptureRoom(batchFrames) && !p.failed &&
+                   std::chrono::steady_clock::now() < deadline)
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            REQUIRE(p.hasAudioCaptureRoom(batchFrames));
+        }
         for (int i = 0; i < 128; ++i) {
             int time = at + i;
             in[i] = inputDelay[time % 211];
@@ -677,8 +686,6 @@ TEST_CASE("A-07 A-15 ten minute dry overdub with independent input and output de
         overdubBlock(device, inputs, outputs);
         for (int i = 0; i < 128; ++i)
             outputDelay[(at + i) % 173] = out[i];
-        if (at % (128 * 100) == 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     device.timeline.detach();
     p.finishDisk();

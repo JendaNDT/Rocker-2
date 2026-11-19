@@ -16,6 +16,20 @@ struct Temp {
     File file = dir.getChildFile("nastaveni.json");
     ~Temp() { dir.deleteRecursively(); }
 };
+// Keep the original bytes while making atomic replacement fail on every supported OS.
+struct BlockedProjectFile {
+    File path;
+    File original;
+    explicit BlockedProjectFile(const File& target)
+        : path(target), original(target.getSiblingFile(target.getFileName() + ".original")) {
+        REQUIRE(path.moveFileTo(original));
+        REQUIRE(path.getChildFile("occupied").create().wasOk());
+    }
+    void restore() {
+        REQUIRE(path.deleteRecursively());
+        REQUIRE(original.moveFileTo(path));
+    }
+};
 template <class T> T* find(Component& root, const String& name) {
     for (auto* c : root.getChildren()) {
         if (c->getName() == name)
@@ -623,9 +637,19 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
         click(view, cs::stopSong);
         REQUIRE(view.keyPressed(KeyPress(KeyPress::tabKey)));
         view.resized();
+        BlockedProjectFile discardBlocked(folder.getChildFile("skladba.json"));
+        click(view, cs::discardAttempt);
+        CHECK(view.statusText() == cs::songSaveError);
+        discardBlocked.restore();
+        REQUIRE_FALSE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         click(view, cs::discardAttempt);
         REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         click(view, cs::stopSong);
+        BlockedProjectFile restoreBlocked(folder.getChildFile("skladba.json"));
+        click(view, cs::restoredTake);
+        CHECK(view.statusText() == cs::songSaveError);
+        restoreBlocked.restore();
+        REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         click(view, cs::restoredTake);
         REQUIRE_FALSE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
         REQUIRE(view.keyPressed(KeyPress('Z', ModifierKeys::ctrlModifier, 0)));
@@ -1589,6 +1613,55 @@ TEST_CASE("Recording workflow offers the saved take, monitor help and explicit i
         for (int pixels : {1280, 1920})
             snapshot(studio, scene, pixels);
     };
+    SECTION("A selected attempt can be saved again after a write failure") {
+        click(studio, cs::recordSong);
+        process(.25f, 4096);
+        click(studio, cs::stopSong);
+        click(studio, cs::repeatTake);
+        process(-.5f, 4096);
+        click(studio, cs::stopSong);
+        click(studio, cs::editMode);
+        click(studio, cs::attemptLabel + " 1");
+        BlockedProjectFile blocked(dir.getChildFile("skladba.json"));
+        click(studio, cs::keepAttempt);
+        CHECK(studio.statusText() == cs::songSaveError);
+        blocked.restore();
+        bool damaged = false;
+        auto stored = Song::load(dir, damaged);
+        REQUIRE(stored);
+        REQUIRE(stored->groups.at(0).active == 1);
+        click(studio, cs::keepAttempt);
+        CHECK(studio.statusText() == cs::savedAttempt);
+        stored = Song::load(dir, damaged);
+        REQUIRE(stored);
+        CHECK(stored->groups.at(0).active == 0);
+        CHECK(stored->assets.size() == 2);
+    }
+    SECTION("The metronome keeps the tempo ready to retry after a write failure") {
+        const bool blockSong = GENERATE(true, false);
+        click(studio, cs::navMetro);
+        click(studio, cs::tempoMore);
+        click(studio, cs::countIn);
+        BlockedProjectFile blocked(dir.getChildFile(blockSong ? "skladba.json" : "zobrazeni.json"));
+        click(studio, cs::applySongTempo);
+        CHECK(studio.statusText() == (blockSong ? cs::songSaveError : cs::metroViewSaveError));
+        REQUIRE(studio.currentPage() == Page::metronome);
+        fits(studio);
+        blocked.restore();
+        bool damaged = false;
+        auto stored = Song::load(dir, damaged);
+        REQUIRE(stored);
+        CHECK(stored->grid.bpm == song.grid.bpm + (blockSong ? 0 : 1));
+        CHECK_FALSE(ViewState::load(dir).countIn);
+        click(studio, cs::applySongTempo);
+        REQUIRE(studio.currentPage() == Page::project);
+        click(studio, cs::home);
+        click(studio, cs::resume);
+        stored = Song::load(dir, damaged);
+        REQUIRE(stored);
+        CHECK(stored->grid.bpm == song.grid.bpm + 1);
+        CHECK(ViewState::load(dir).countIn);
+    }
     SECTION("Switching to edit follows the running transport") {
         song.bars = 24;
         song.grid.bpm = 300;

@@ -7,7 +7,8 @@ $compilerDir = Join-Path $env:RUNNER_TEMP 'inno-compiler'
 $flags = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',('/DIR="{0}"' -f $compilerDir))
 $installed = Start-Process $compilerSetup -ArgumentList $flags -Wait -PassThru
 if ($installed.ExitCode) { throw "Compiler setup failed $($installed.ExitCode)" }
-& (Join-Path $compilerDir 'ISCC.exe') "/DTargetArch=$TargetArch" (Join-Path $PSScriptRoot 'Rocker2.iss')
+$version = (Get-Content (Join-Path $PSScriptRoot '../VERSION') -Raw).Trim()
+& (Join-Path $compilerDir 'ISCC.exe') "/DTargetArch=$TargetArch" "/DAppSemVer=$version" (Join-Path $PSScriptRoot 'Rocker2.iss')
 if ($LASTEXITCODE) { throw 'ISCC failed' }
 $setup = (Resolve-Path "installers/Rocker2-Setup-$TargetArch.exe").Path
 $installDir = Join-Path $env:RUNNER_TEMP "instalace-řůě-$TargetArch"
@@ -20,6 +21,10 @@ $result = Start-Process $setup -ArgumentList $flags -Wait -PassThru
 if ($result.ExitCode) { throw 'App installation failed' }
 $exe = Join-Path $installDir 'Rocker 2.exe'
 if ((Get-FileHash -LiteralPath $exe).Hash -ne (Get-FileHash -LiteralPath 'pack/Rocker 2.exe').Hash) { throw 'Installed executable differs from the native build' }
+foreach ($binary in @($exe, $setup)) {
+    $info = (Get-Item -LiteralPath $binary).VersionInfo
+    if ("$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart)" -ne $version) { throw "Unexpected version in $binary" }
+}
 $app = Start-Process $exe -PassThru
 try {
     $deadline = (Get-Date).AddSeconds(40)

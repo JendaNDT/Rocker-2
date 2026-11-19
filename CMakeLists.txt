@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-project(Rocker2 VERSION 1.0.0 LANGUAGES C CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" ROCKER_RELEASE_VERSION LIMIT_COUNT 1)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET AND "$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version")
+endif()
+project(Rocker2 VERSION ${ROCKER_RELEASE_VERSION} LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
@@ -53,7 +58,10 @@ target_compile_definitions(Studio PUBLIC JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 
     JUCE_USE_WIN_WEBVIEW2=0 JUCE_REPORT_APP_USAGE=0 $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>)
 target_link_libraries(Studio PRIVATE miniz RockerEbur128 juce::juce_cryptography SampleRate::samplerate Fonts RockerIcons juce::juce_audio_formats juce::juce_audio_devices juce::juce_gui_basics
     PUBLIC juce::juce_recommended_config_flags)
-juce_add_gui_app(Rocker2 PRODUCT_NAME "Rocker 2" BUNDLE_ID "cz.rocker2.studio"
+if(APPLE)
+    set(rocker_platform_plist PLIST_TO_MERGE "<plist><dict><key>LSMinimumSystemVersion</key><string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string></dict></plist>")
+endif()
+juce_add_gui_app(Rocker2 ${rocker_platform_plist} PRODUCT_NAME "Rocker 2" BUNDLE_ID "cz.rocker2.studio"
     MICROPHONE_PERMISSION_ENABLED TRUE MICROPHONE_PERMISSION_TEXT "Rocker 2 potřebuje vstup pro měření signálu z nástroje.")
 target_sources(Rocker2 PRIVATE src/app/Main.cpp)
 target_compile_definitions(Rocker2 PRIVATE ROCKER_VERSION="${PROJECT_VERSION}")

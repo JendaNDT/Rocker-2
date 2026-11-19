@@ -63,11 +63,19 @@ void Studio::newProject() {
     show(Page::newProject);
 }
 void Studio::saveSong(String action) {
-    if (projectDir != File{} && !song.title.isEmpty())
-        history.remember(song, action.isEmpty() ? cs::edited : action);
+    writeSong(song, action);
+}
+bool Studio::writeSong(const Song& next, const String& action) {
     pendingSoundSave = 0;
-    if (projectDir != File{} && !song.save(projectDir))
+    if (projectDir == File{})
+        return false;
+    if (!next.save(projectDir)) {
         status(cs::songSaveError);
+        return false;
+    }
+    if (next.title.isNotEmpty())
+        history.remember(next, action.isEmpty() ? cs::edited : action);
+    return true;
 }
 void Studio::finishProject() {
     if (pendingSoundSave)

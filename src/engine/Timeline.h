@@ -132,6 +132,7 @@ class Performance {
     void finishDisk();
     bool drain();
     void storeInputMarks(Song&) const;
+    bool hasAudioCaptureRoom(int frames) const noexcept;
     bool captures(const juce::String& track) const;
     void configureClick(int level, int sound) noexcept;
     void setClickEnabled(bool enabled) noexcept { clickEnabled.store(enabled, std::memory_order_relaxed); }

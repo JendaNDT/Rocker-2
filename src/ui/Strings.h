@@ -166,6 +166,7 @@ inline const juce::String
     unplugged = u8"Zapojení se změnilo. Zkontroluj zařízení a vstupy.",
     failed = u8"Zařízení se nepodařilo otevřít. Zkus jiný ovladač nebo zařízení.",
     settingsError = u8"Nastavení se nepodařilo uložit. Zkontroluj volné místo.",
+    metroViewSaveError = u8"Tempo je uložené. Volby kliku a odpočtu zkus uložit znovu.",
     songSaveError = u8"Skladbu se nepodařilo uložit. Zkontroluj volné místo a přístup ke složce.",
     takeSaveError = u8"Nahrávku se nepodařilo dokončit. Zkontroluj složku skladby.",
     takeNeedsRecovery = u8"Nahrávka čeká na obnovu při dalším otevření skladby.",
