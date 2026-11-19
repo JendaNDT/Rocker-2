@@ -8,27 +8,32 @@
 namespace rocker {
 using Frame = juce::int64;
 struct BeatGrid {
+    bool operator==(const BeatGrid&) const = default;
     int rate = 48000, beats = 4, unit = 4;
     double bpm = 112;
     Frame beat(Frame index) const;
     Frame beatAt(Frame sample) const;
 };
 struct Track {
+    bool operator==(const Track&) const = default;
     juce::String id, name, kind;
     juce::StringArray inputs;
     bool armed = false, mute = false, solo = false;
     GuitarSound amp;
 };
 struct Clip {
+    bool operator==(const Clip&) const = default;
     juce::String id, track, asset;
     Frame position = 0, offset = 0, length = 0;
 };
 struct Asset {
+    bool operator==(const Asset&) const = default;
     juce::String id, path;
     Frame length = 0;
     int channels = 1;
 };
 struct Song {
+    bool operator==(const Song&) const = default;
     juce::String title, tuning = "Standard";
     BeatGrid grid;
     std::vector<Track> tracks;
@@ -48,6 +53,9 @@ struct ViewState {
     Frame cursor = 0;
     int selected = 0, zoom = 8;
     bool distant = false, click = true, countIn = true;
+    bool editing = false;
+    Frame selectionStart = 0, selectionEnd = 0, firstBar = 0;
+    juce::String selectedClip;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };

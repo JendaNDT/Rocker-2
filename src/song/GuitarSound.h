@@ -4,6 +4,7 @@
 
 namespace rocker {
 struct GuitarSound {
+    bool operator==(const GuitarSound&) const = default;
     juce::String name = "Crunch";
     AmpParameters values = presets[1];
     bool enabled = false, modified = false;

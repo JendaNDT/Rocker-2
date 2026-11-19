@@ -61,7 +61,9 @@ void Studio::newProject() {
     lastTap = 0;
     show(Page::newProject);
 }
-void Studio::saveSong() {
+void Studio::saveSong(String action) {
+    if (projectDir != File{} && !song.title.isEmpty())
+        history.remember(song, action.isEmpty() ? cs::edited : action);
     pendingSoundSave = 0;
     if (projectDir != File{} && !song.save(projectDir))
         status(cs::writeError);
@@ -83,7 +85,13 @@ void Studio::openProject(File dir) {
         return;
     }
     finishProject();
+    const bool sameProject = projectDir == dir;
     projectDir = dir;
+    browsingVersions = false;
+    drag = Drag::none;
+    if (!sameProject)
+        clipboard = {};
+
     library.data.clear();
     bool damaged = false;
     auto loaded = Song::load(dir, damaged);
@@ -93,6 +101,8 @@ void Studio::openProject(File dir) {
         return;
     }
     song = *loaded;
+    if (!sameProject || !history.matches(song))
+        history.reset(song);
     for (int i = 0; i < (int)tunings.size(); ++i)
         if (tunings[i].name == song.tuning) {
             tuningIndex = i;
@@ -102,6 +112,7 @@ void Studio::openProject(File dir) {
     view = ViewState::load(dir);
     view.selected = jlimit(0, std::max(0, (int)song.tracks.size() - 1), view.selected);
     view.cursor = std::min(view.cursor, song.end());
+    normalizeSelection();
     projectMonitor = 0;
     settings.lastSong = dir.getFullPathName();
     persist();
@@ -252,6 +263,8 @@ void Studio::stopProject() {
         else
             status(p->drop >= 0 ? cs::dropout : cs::savedSong);
     }
+    if (p->recording)
+        history.remember(song, cs::newTake);
     if (!view.save(projectDir))
         status(cs::writeError);
     triggerAsyncUpdate();
@@ -467,6 +480,27 @@ void Studio::projectPage(Rect area) {
             repaint();
         });
     }
+    auto modes = row(area);
+    button(
+        cs::playMode, cell(modes, s::compactButton), [this] { editMode(false); }, view.editing ? 0 : 1);
+    button(
+        cs::editMode, cell(modes, s::compactButton), [this] { editMode(true); }, view.editing ? 1 : 0);
+    if (!performance)
+        button(cs::fileMenu, cell(modes, s::compactButton), [this] { showVersions(); });
+    if (view.editing) {
+        button(cs::beforeBars, cell(modes, s::clipWidth), [this] {
+            view.firstBar = std::max<Frame>(0, view.firstBar - visibleBars());
+            view.save(projectDir);
+            repaint();
+        });
+        button(cs::afterBars, cell(modes, s::clipWidth), [this] {
+            view.firstBar = std::min<Frame>(999999, view.firstBar + visibleBars());
+            view.save(projectDir);
+            repaint();
+        });
+        button(cs::zoomIn, cell(modes, s::compactButton), [this] { editKey(KeyPress('+')); });
+        button(cs::zoomOut, cell(modes, s::compactButton), [this] { editKey(KeyPress('-')); });
+    }
     auto tools = row(area);
     button(cs::distantView, cell(tools, s::compactButton), [this] { toggleDistant(); });
     if (!performance) {
@@ -506,7 +540,13 @@ void Studio::projectPage(Rect area) {
     panels.push_back(foot);
     foot.reduce(s::inset, s::gap);
     auto notice = area.removeFromBottom(s::button);
-    if (soundDeckOpen) {
+    if (browsingVersions) {
+        inputMeter = {};
+        versionsDeck(foot);
+    } else if (view.editing && !soundDeckOpen) {
+        inputMeter = {};
+        editDeck(foot);
+    } else if (soundDeckOpen) {
         inputMeter = {};
         trackSoundDeck(foot);
     } else {
@@ -589,6 +629,7 @@ void Studio::projectPage(Rect area) {
             [this, i] {
                 if (!performance) {
                     view.selected = i;
+                    view.selectedClip.clear();
                     projectMonitor = 0;
                     configureSongMonitor();
                     view.save(projectDir);
@@ -647,6 +688,7 @@ void Studio::projectPage(Rect area) {
         if (!performance || !performance->recording)
             combo(cs::audioTracks, cell(r, s::fieldWidth), names, view.selected, [this](int i) {
                 view.selected = i;
+                view.selectedClip.clear();
                 projectMonitor = 0;
                 configureSongMonitor();
                 view.save(projectDir);
@@ -708,19 +750,19 @@ void Studio::paintProject(Graphics& g) {
         g.fillRect(barArea.withWidth(
             roundToInt(barArea.getWidth() * std::clamp((decibels(peak) + 60.f) / 60.f, 0.f, 1.f))));
     }
-    const Frame bar = beat / song.grid.beats;
-    const Frame first = bar / view.zoom * view.zoom;
+    const Frame first = firstBar();
+    const int bars = visibleBars();
     auto axis = ruler.withTrimmedLeft(s::trackHead);
     Frame begin = song.grid.beat(first * song.grid.beats),
-          last = song.grid.beat((first + view.zoom) * song.grid.beats);
+          last = song.grid.beat((first + bars) * song.grid.beats);
     auto x = [&](Frame f) {
         return axis.getX() + roundToInt((double)(f - begin) / (last - begin) * axis.getWidth());
     };
-    for (int i = 0; i < view.zoom; ++i) {
+    for (int i = 0; i < bars; ++i) {
         int left = x(song.grid.beat((first + i) * song.grid.beats));
         g.setColour(s::barGrid);
         g.drawVerticalLine(left, (float)axis.getY(), (float)timelineArea.getBottom());
-        g.setFont(skin.font(s::caption, true));
+        g.setFont(skin.font(view.editing ? s::heading : s::caption, true));
         g.setColour(s::muted);
         g.drawText(String(first + i + 1), left + s::grid, axis.getY(), s::scaleWidth, axis.getHeight(),
                    Justification::centredLeft);
@@ -770,6 +812,8 @@ void Studio::paintProject(Graphics& g) {
                 }
         }
     }
+    if (view.editing)
+        paintEditOverlay(g);
     for (auto mark : song.dropouts)
         if (mark >= begin && mark < last) {
             g.setColour(s::warning);
@@ -783,6 +827,10 @@ void Studio::paintProject(Graphics& g) {
 void Studio::mouseDown(const MouseEvent& event) {
     if (page != Page::project || performance || view.distant)
         return;
+    if (view.editing) {
+        editMouseDown(event);
+        return;
+    }
     auto axis = ruler.withTrimmedLeft(s::trackHead);
     if (event.x < axis.getX() || event.x >= axis.getRight() || event.y < axis.getY() ||
         event.y >= timelineArea.getBottom())

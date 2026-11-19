@@ -1,5 +1,13 @@
 # Stav Rockeru 2
 
+## E4 · střih, vracení úprav a verze
+
+V režimu Stříhej je rozsah vidět přes všechny stopy. Střih, přesun, opakování, vložení, zkrácení a smazání mění odkazy vybrané stopy na zvukové soubory. Zpět a Znovu vracejí snímky skladby. Nabídka Soubor umožňuje vybrat uloženou verzi podle data a času. [Návrh E4 s výsledky a sestaveními](https://github.com/JendaNDT/Rocker-2/pull/5)
+
+- **A-01** provede 1 000 náhodných změn. Po každé načte nový stav, pak vrátí všechny kroky a provede je znovu. Porovná celé JSON skladby. Samostatně se zkouší zrušení větve Znovu po nové úpravě, mezery ve výběru, přesné polohy zdrojových vzorků a meze okrajů.
+- **A-17** ovládá skutečné okno testovací skladby. Vybere takty 5–6, přesune je na 9, zopakuje výběr, vrátí jej, posune okraj s Alt a obnoví starší verzi. Ověřuje polohu vzorků a bajtovou shodu zdrojového WAV. [Výběr](zkousky/E4/strihej.png) · [Lupa](zkousky/E4/lupa.png)
+- Přesný střih a poslech na Jendově počítači **čeká na ruční zkoušku po vydání**. [Postup](../README.md)
+
 ## E3 · změna zvuku po nahrání
 
 Kytarová stopa zpracuje při přehrávání kopii nastavení uloženou ve skladbě. Ve spodní desce lze přepnout aparát, změnit parametry a uložit vlastní předvolbu. Zachování zdrojového WAV, poloha vůči bicím a stejné nastavení po obnovení skladby mají automatické zkoušky. [Snímek](zkousky/E3/zvuk-kytary.png) · [Sestavení a výsledky pro jednotlivé systémy](https://github.com/JendaNDT/Rocker-2/pull/4)

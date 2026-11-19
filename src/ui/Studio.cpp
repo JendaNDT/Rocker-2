@@ -760,6 +760,8 @@ void Studio::inputPage(Rect area) {
     }
 }
 bool Studio::keyPressed(const KeyPress& key) {
+    if (page == Page::project && !namingPreset && editKey(key))
+        return true;
     if (page == Page::project && namingPreset && soundDeckOpen) {
         if (key == KeyPress::escapeKey) {
             namingPreset = false;

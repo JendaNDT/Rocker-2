@@ -5,7 +5,7 @@ inline const juce::Colour background{0xff121417}, panel{0xff1b1e23}, raised{0xff
     line{0xff333843}, barGrid{0xff3a404c}, beatGrid{0xff262a31}, chalk{0xffede9e3}, muted{0xffa9adb5},
     faint{0xff757b86}, record{0xffff3b3b}, recording{0xffb3141b}, playhead{0xfff7f4ee},
     selection{0xff4c8dff}, warning{0xffffc233}, clipping{0xffff6a1a}, ready{0xff3ccb7f};
-inline constexpr float selectionOpacity = 0.22f;
+inline constexpr float selectionOpacity = 0.22f, disabledOpacity = 0.5f;
 inline const juce::Colour drums{0xff2ec4b6}, guitar{0xfff2a541}, guitar2{0xffe86a92}, bass{0xff8f7cf7},
     voice{0xff5bb8f5}, backing{0xff9aa3af}, other{0xffb7c46a};
 inline const juce::Colour intro{0xff7c86ff}, verse{0xff3fb6a8}, chorus{0xfff0b429}, bridge{0xffe5737a},

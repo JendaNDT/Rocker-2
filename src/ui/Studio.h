@@ -1,6 +1,7 @@
 #pragma once
 #include "storage/Settings.h"
 #include "Tokens.h"
+#include "song/Edit.h"
 #include <functional>
 #include <deque>
 
@@ -36,6 +37,8 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
   public:
     Studio(DeviceSystem&, juce::File, juce::File songLibrary = {});
     void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
     ~Studio() override;
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -120,7 +123,42 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     void startProject(bool);
     void stopProject();
     void projectTick();
-    void saveSong();
+    void saveSong(juce::String action = {});
+    EditHistory history;
+    Fragment clipboard;
+    juce::Array<juce::File> versions;
+    int versionIndex = 0;
+    bool browsingVersions = false;
+    Frame anchorBar = 0;
+    enum class Drag { none, move, left, right, bars };
+    Drag drag = Drag::none;
+    Frame grabOffset = 0, dragTarget = 0;
+    juce::Point<int> pointer;
+    bool dragged = false;
+    double lastPan = 0;
+    enum class EditOp { split, copy, paste, erase, repeat, move, trimLeft, trimRight };
+    Span selection() const { return {view.selectionStart, view.selectionEnd}; }
+    void pick(Span, juce::String clip = {});
+    void editMode(bool);
+    void editOp(EditOp);
+    void undo(bool forward);
+    void editDeck(Rect);
+    void versionsDeck(Rect);
+    void showVersions();
+    void restoreVersion();
+    void normalizeSelection();
+    void reveal(Frame);
+    int visibleBars() const;
+    Frame firstBar() const;
+    Frame frameAt(int x) const;
+    int pixelAt(Frame) const;
+    void selectBar(Frame, bool extend);
+    void editMouseDown(const juce::MouseEvent&);
+    void paintEditOverlay(juce::Graphics&);
+    void paintOverChildren(juce::Graphics&) override;
+    bool editKey(const juce::KeyPress&);
+    juce::String selectedTrack() const;
+
     void editTrack(bool);
     void configureSongMonitor();
     bool testingLoad = false;

@@ -54,3 +54,11 @@ M-02, H-02, M-04 i H-10 proběhnou na vydané aplikaci podle Jendova rozhodnutí
 | Ozvěna a dozvuk | Ozvěna má opakování po 300 ms. Čtyři pevné odrazy dozvuku začínají po přibližně 30–44 ms. Hráč mění podíl každého efektu. Při přehrávání a renderu mají kytarové klipy na konci skladby dvě sekundy na doznění. | Další ovládání délky ozvěny nebo typu prostoru by rozšířilo panel nad požadavky E3. |
 | Zkouška výkonu | Diagnostika vytvoří šestnáct dočasných desetisekundových WAV, po jednom na stopu, a jejich opakováním přehraje deset minut. Sleduje nejvyšší vyhlazenou zátěž zvukového vlákna a přírůstek výpadků hlášených ovladačem. Při nedostupném počítadle ukáže „ovladač nehlásí“. | Šestnáct desetiminutových souborů by zatížilo také disk a potřebovalo při 48 kHz přibližně 1,8 GB. |
 | Větev E3 | E3 vychází z ověřeného konce E2. Při zahájení byl návrh E2 ještě otevřený. Návrh E3 proto míří do větve etapa-2, aby ukazoval pouze změny zvuku. | Po sloučení E2 lze návrh E3 přesměrovat do hlavní větve. |
+
+## E4 · střih a verze
+
+| Otázka | Rozhodnutí a důvod | Alternativa |
+|---|---|---|
+| Obsazený cíl | Přesun, vložení i opakování v cílovém rozsahu nahradí materiál vybrané stopy. Části před a za cílem zůstanou na místě, stejně jako ostatní stopy. Uvnitř výběru se zachovají mezery. Předchozí skladbu vrátí Zpět. | Odsunout zbytek stopy by posunulo její souhru s ostatními nástroji. |
+| Dvě historie | Zpět a Znovu drží během práce se skladbou její snímky v paměti. Režim, přiblížení, ukazatel a výběr se ukládají zvlášť. Obnovení datované verze kontroluje čitelnost popisu i nahrávek a má vlastní krok Zpět. | Procházet ručně starší soubory ve složce Verze. |
+| Samostatné pokračování | Jenda požádal o dokončení zbývajících etap v1 bez potvrzování každé z nich. Práce navazuje na automaticky ověřené větve a předání. Termín ručního hraní a měření zůstává po vydání. | Přerušovat práci mezi etapami a čekat na jednotlivé pokyny. |

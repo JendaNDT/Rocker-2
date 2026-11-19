@@ -1,47 +1,41 @@
-# Předání E3 · zvuk nahrané kytary
+# Předání E4 · přesný střih nahrávky
 
 ## 1. Hotovo
 
-Otevři skladbu se zaznamenanou kytarou, spusť přehrávání a klikni na štítek zvuku u stopy. Ve spodní desce vyber Metal a vrať se na Crunch. Posun jezdce přidá hvězdičku. Přes **Uložit jako předvolbu** si zvuk pojmenuješ i pro další skladby. **Pokračovat** obnoví nastavení jednotlivých stop. Předvolba může z knihovny zmizet a skladba si ponechá všechny její hodnoty.
-
-Návrh E3 odkazuje na ověřený běh pro Windows x64, Windows ARM64 a Mac, tři aplikace i jejich snímky. [Výsledky a soubory ke stažení](https://github.com/JendaNDT/Rocker-2/pull/4) · [Spodní deska Zvuk kytary](zkousky/E3/zvuk-kytary.png) · [Podrobný postup](../README.md)
+V otevřené skladbě stiskni **2**. Vyber stopu, klikni na takt **5** a se Shift na **6**. Přesuň vybraný zvuk na takt **9**, zopakuj jej klávesou **D** a vrať oba kroky přes **Ctrl+Z**. Okraje mají lupu ×4 a volný pohyb s Alt. **Soubor → Vrátit skladbu do stavu z…** umožňuje obnovit dřívější skladbu. [Sestavení, ověřené testy a balíky](https://github.com/JendaNDT/Rocker-2/pull/5) · [Výběr](zkousky/E4/strihej.png) · [Lupa](zkousky/E4/lupa.png)
 
 ## 2. Zbývá
 
-Sloučení E2 a navazující E3 do hlavní větve. Kvalitu jednotlivých zvuků a výkon kamarádova notebooku posoudí hráč po vydání. V Diagnostice lze spustit desetiminutovou skladbu s šestnácti stopami a vybrat až osm aparátů. Dostupnost počítadla výpadků závisí na ovladači zvukovky.
+E4 navazuje na větev E3. Následuje nahrání více pokusů opravy stejného taktu v E5. Přesun na obsazené místo nahrazuje materiál ve vybrané stopě. Předchozí stav lze obnovit přes Zpět.
 
 ## 3. Ruční zkoušky
 
-| Zkouška | Stav |
-|---|---|
-| H-03 · poslech čtyř předvoleb, přepnutí během hry a návrat do skladby | čeká na ruční zkoušku po vydání |
-| M-05 · síť a baterie, ASIO 128, nejvyšší zátěž a výpadky | čeká na ruční zkoušku po vydání |
-| Poslech, kabelová měření, hraní a obnova na skutečném vybavení z E0–E2 | čeká na ruční zkoušku po vydání |
+Přesné umístění střihu a poslech přechodu na vlastní nahrávce čeká na ruční zkoušku po vydání. Totéž platí pro poslech a měření z E0–E3. [Postup pro Jendu](../README.md)
 
 ## 4. Rozhodnutí
 
-Starší skladba se otevře s původním čistým zvukem. Nová přímo připojená kytara má Crunch. Ozvěna a dozvuk sdílejí nastavení při hraní, přehrávání a renderu. [Podrobnosti a alternativy](ROZHODNUTI.md#e3--zvuk-kytary-ve-skladbě)
+Historie v paměti uchovává všechny kroky otevřené skladby, posledních padesát datovaných verzí zůstává na disku. Úpravy ponechávají původní WAV čitelné. [Rozhodnutí E4](ROZHODNUTI.md#e4--střih-a-verze)
 
-## 5. Prompt pro etapu E4
+## 5. Prompt pro etapu E5
 
-Jsi hlavní vývojář českého domácího studia Rocker 2. Jenda rozhoduje, zkouší po vydání a schvaluje. Ty píšeš kód, testy a dokumentaci.
+Jsi hlavní vývojář Rockeru 2. Jenda schvaluje výsledek, zkouší s hráčem po vydání a požádal o samostatné dokončení etap až po E11. Piš česky, srozumitelně pro muzikanta a začni krátkým plánem.
 
 ### Podklady
 
-Přečti dokumenty 01–05, STAV.md, ROZHODNUTI.md a toto předání. Rozsah E4 určuje dokument 04. Začni krátkým plánem a ověř, která větev obsahuje přezkoušenou E3.
+Přečti dokumenty 01–05, STAV.md, ROZHODNUTI.md a toto předání v poslední automaticky ověřené větvi. Pro E5 platí 04 a scénář opravy v 01 / 2.2 a 5.4. Ověř stav otevřených PR.
 
 ### Závazné podmínky
 
-**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** Použij vlastní kreslení komponent JUCE a společné tokeny. Původní repozitář neměň. C++20, JUCE 9.0.5, provoz offline, české texty na jednom místě, anglický kód a komentáře, AGPLv3 a licence písem. Zvukové vlákno dodržuje 02 / 4.3. Zachovej čisté WAV, obnovu po pádu i zvuk stop. Ruční zkoušky proběhnou po vydání hotové aplikace.
+**Vzhled a rozložení od nuly, bez inspirace původním Rockerem, podle 01 / kap. 5.** C++20, JUCE 9.0.5, vlastní komponenty, designové tokeny, české texty na jednom místě, anglický kód a komentáře. Provoz offline, AGPLv3, licence fontů. Dodrž pravidla zvukového vlákna 02 / 4.3. Zachovej suché zdrojové WAV, nedestruktivní střih, kompenzaci zpoždění a souhru aparátu.
 
 ### Úkol
 
-Vytvoř režim **Stříhej** podle 01 / 5.4. Přidej výběr taktů klikáním na jejich čísla, rozstřižení klávesou X, přesun s přichycením k mřížce a volný přesun s Alt. Podporuj kopii, smazání, zopakování pomocí D, tažení okrajů s lupou a přiblížení. Přidej Zpět, Znovu a návrat k uložené verzi skladby.
+V režimu Stříhej přidej **P – Oprav takt** s předstihem, odpočtem a dohrou. Uchovej celý nahraný průchod. Seskupej pokusy, ukaž jejich štítek nad úsekem a čas vzniku ve spodní desce Pokusy. Tab prochází další pokus, Enter ponechá vybraný, Zahodit pokus přesune do koše skladby. Nastav desetimiliskundové prolnutí na hranách a přepnutí živého vstupu v aparátu. Začni původním zahráním, oprav chybu v taktu 6 dvakrát a vrať první pokus.
 
 ### Ověření
 
-Automaticky předveď vystřižení taktů 5–6, přesun na takt 9, zopakování a návrat přes Ctrl+Z. V A-01 proveď 1 000 náhodných úprav a porovnej JSON výchozího i konečného stavu po úplném Zpět a Znovu. Proveď A-17 pro režim Stříhej a znovu všechny testy E0–E3 na obou druzích Windows a na Macu. Připrav pro Jendu postup přesného střihu po vydání.
+Proveď A-21 včetně měření nespojitosti na hranách opravené sinusovky, testy modelu pokusů, znovuotevření, Zpět a předchozí automatické testy. Připrav postup H-04 a označ jej „čeká na ruční zkoušku po vydání“. Ověř sestavení na Windows x64, Windows ARM64 a Macu a ulož snímky.
 
 ### Předání
 
-Pracuj ve větvi etapa-4 po malých commitech. Otevři český pull request se snímky a odkazy na ověřené sestavení. Aktualizuj STAV.md, ROZHODNUTI.md a PREDANI.md v pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E5 podle dokumentu 04. Jendovi napiš česky na 5–10 řádků.
+Ve větvi etapa-5 dělej malé commity a otevři český pull request s výsledky, balíky a snímky. Aktualizuj STAV.md, ROZHODNUTI.md a PREDANI.md v pořadí Hotovo, Zbývá, Ruční zkoušky, Rozhodnutí, Prompt pro E6. Pokračuj podle dokumentu 04 bez čekání na potvrzení etapy. Výsledek sděl Jendovi na 5–10 řádků.
