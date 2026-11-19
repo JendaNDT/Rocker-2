@@ -195,7 +195,7 @@ void Studio::metronomePage(Rect workspace) {
                 view.rhythm = metroGuide == 1;
             view.countIn = metroCountIn;
             reveal(view.cursor);
-            view.save(projectDir);
+            saveView();
             saveSong();
         } else {
             ideaTempo = metroGrid.bpm;

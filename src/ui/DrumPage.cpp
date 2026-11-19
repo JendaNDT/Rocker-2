@@ -20,6 +20,8 @@ String micName(int index, int count) {
 }
 } // namespace
 void Studio::defaultMonitor() {
+    previousMonitor = 1;
+    monitorHelpOpen = false;
     projectMonitor = 0;
     if (isPositiveAndBelow(view.selected, (int)song.tracks.size())) {
         auto& t = song.tracks[view.selected];

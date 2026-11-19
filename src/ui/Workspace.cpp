@@ -129,7 +129,7 @@ void Studio::projectTransport(Rect bounds) {
                                          .withSizeKeepingCentre(s::transport, s::transport),
                          [this] {
                              view.cursor = 0;
-                             view.save(projectDir);
+                             saveView();
                              repaint();
                          }, roundIdle, {}, Icon::start);
     start->setEnabled(!performance);
@@ -169,20 +169,20 @@ void Studio::projectTransport(Rect bounds) {
     };
     auto* loop = pill(cs::playLoop, s::levelWidth - s::gutter, view.playLoop && selection().valid(), [this] {
         view.playLoop = !view.playLoop;
-        view.save(projectDir);
+        saveView();
         triggerAsyncUpdate();
     });
     loop->setEnabled(!performance && selection().valid());
     loop->setTooltip(cs::playLoopHelp);
     pill(cs::countIn, s::levelWidth - s::gutter, view.countIn, [this] {
         view.countIn = !view.countIn;
-        view.save(projectDir);
+        saveView();
         triggerAsyncUpdate();
     });
     auto guide = !view.click ? cs::guideOff : view.rhythm ? cs::guideRhythm : cs::songClick;
     pill(guide, s::levelWidth - s::gutter, view.click, [this] {
         view.click = !view.click;
-        view.save(projectDir);
+        saveView();
         triggerAsyncUpdate();
     });
 }
@@ -215,8 +215,7 @@ void Studio::paintTransport(Graphics& g) {
     auto info = transportInfo;
     StringArray destinations;
     for (const auto& track : song.tracks)
-        if (recordingNow && performance->isPunch() ? song.linkedTrack(track.id, selectedTrack())
-                                                   : track.armed)
+        if (recordingNow ? performance->captures(track.id) : track.armed)
             destinations.add(track.name);
     if (!destinations.isEmpty()) {
         auto action = info.removeFromTop(s::caption + s::grid);
@@ -242,10 +241,11 @@ void Studio::selectProjectTrack(int i) {
     if (performance && performance->recording)
         return;
     view.selected = i;
+    monitorHelpOpen = false;
     view.selectedClip.clear();
     defaultMonitor();
     configureSongMonitor();
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 
@@ -261,8 +261,17 @@ void Studio::projectTrack(int i, Rect bounds) {
     track->setEnabled(!performance || !performance->recording);
     auto toggles = head.removeFromTop(s::inspectorRow).reduced(0, s::stroke);
     auto qualified = [&](const String& title) { return i == view.selected ? title : title + cs::divider + t.name; };
+    const auto lost = missingPorts(t);
     const auto armLabel = t.armed ? cs::disarm : cs::arm;
-    auto* arm = button(qualified(armLabel), toggles.removeFromLeft(s::armWidth), [this, i] {
+    auto armArea = toggles.removeFromLeft(s::armWidth);
+    if (lost.isNotEmpty()) {
+        auto* route = button(qualified(cs::chooseInput), armArea, [this, i] {
+            beginRemap(i);
+        }, plain, {}, Icon::none, cs::chooseInput);
+        route->setEnabled(!performance);
+        route->setTooltip(lost);
+    } else {
+    auto* arm = button(qualified(armLabel), armArea, [this, i] {
         auto& t = song.tracks[i];
         const bool enable = !t.armed;
         for (auto& member : song.tracks)
@@ -273,6 +282,7 @@ void Studio::projectTrack(int i, Rect bounds) {
     }, t.armed ? armActive : plain, {}, Icon::none, armLabel);
     arm->setToggleState(t.armed, dontSendNotification);
     arm->setEnabled(!performance);
+    }
     auto toggle = [&](const String& description, const String& label, bool solo, int style) {
         toggles.removeFromLeft(s::grid);
         const bool enabled = solo ? t.solo : t.mute;
@@ -292,7 +302,9 @@ void Studio::projectTrack(int i, Rect bounds) {
     toggle(cs::mute, cs::muteShort, false, muteActive);
     toggle(cs::solo, cs::soloShort, true, soloActive);
     head.removeFromBottom(s::traceHeight);
-    if (t.kind == "kytara") {
+    if (lost.isNotEmpty())
+        text(limit(skin.font(s::caption), lost, head.getWidth()), head, s::caption, s::warning);
+    else if (t.kind == "kytara") {
         auto name = t.amp.enabled ? t.amp.name + (t.amp.modified ? "*" : "") : cs::bypass;
         auto* badge = button(limit(skin.font(s::body, false, true), name, head.getWidth() - 2 * s::inset),
                              head, [this, i] { openTrackSound(i); });
@@ -315,14 +327,20 @@ void Studio::playInspector(Rect area) {
         return;
     }
     auto& t = song.tracks[view.selected];
-    const auto input = t.kind == "midi" ? cs::midiModule : t.inputs.joinIntoString(" + ");
+    const auto lost = missingPorts(t);
+    const auto input = lost.isNotEmpty() ? lost : t.kind == "midi" ? cs::midiModule : t.inputs.joinIntoString(" + ");
     auto title = row();
     text(limit(skin.font(s::workspaceTitle, false, true), t.name, title.getWidth()), title,
          s::workspaceTitle, s::chalk, false, true);
-    auto connection = row(s::caption + s::grid);
+    auto connection = row(t.kind == "kytara" ? s::inspectorRow : s::caption + s::grid);
+    if (t.kind == "kytara")
+        button(cs::monitorHelp, connection.removeFromRight(s::nameWidth), [this] {
+            monitorHelpOpen = !monitorHelpOpen;
+            triggerAsyncUpdate();
+        });
     text(limit(skin.font(s::caption, true), input, connection.getWidth()), connection,
          s::caption, s::muted, true);
-    if (t.kind == "kytara" || t.kind == "jine") {
+    if (!monitorHelpOpen && (t.kind == "kytara" || t.kind == "jine")) {
         text(cs::voicePanel.toUpperCase(), row(s::caption + s::grid), s::section, s::navigationInk,
              false, true);
         if (t.kind == "kytara") {
@@ -390,7 +408,7 @@ void Studio::playInspector(Rect area) {
                            defaultMonitor();
                            configureSongMonitor();
                            saveSong();
-                           view.save(projectDir);
+                           saveView();
                            triggerAsyncUpdate();
                        });
                 break;

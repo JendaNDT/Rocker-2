@@ -562,7 +562,7 @@ void Studio::finishImport() {
         song = std::move(*target);
         view.selected = int(song.tracks.size()) - 1;
         history.remember(song, cs::addBacking);
-        view.save(projectDir);
+        saveView();
         if (!library.load(song, projectDir)) {
             status(cs::partialProject);
             return;

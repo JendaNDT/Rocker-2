@@ -36,6 +36,14 @@ String Studio::soloNames() const {
     return names.joinIntoString(", ");
 }
 void Studio::mixMode(bool panel) {
+    if (!view.mixing) {
+        view.firstBar = firstBar();
+        pendingModeReveal = true;
+    }
+    if (!view.mixing)
+        firstTrack = std::min(firstTrack, view.selected);
+    if (!view.mixing && (view.selected >= firstTrack + (int)lanes.size()))
+        firstTrack = view.selected;
     exporting = panel;
     view.mixing = true;
     view.editing = false;
@@ -44,14 +52,14 @@ void Studio::mixMode(bool panel) {
     drag = Drag::none;
     if (!selection().valid())
         selectedRange = false;
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::seekMix(Frame frame) {
     if (performance)
         stopProject();
     view.cursor = std::clamp<Frame>(frame, 0, song.end());
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::toggleMix(int i, bool solo) {
@@ -65,7 +73,7 @@ void Studio::toggleMix(int i, bool solo) {
     if (performance)
         performance->playback.updateMix(song);
     saveSong();
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::mixPage(Rect area) {
@@ -73,6 +81,7 @@ void Studio::mixPage(Rect area) {
     if (!mixInspectorCollapsed)
         inspectorBounds = area.removeFromRight(s::inspectorWidth);
     auto notice = area.removeFromBottom(s::button).reduced(s::inset, 0);
+    takeActions(notice);
     auto trackNavigation = area.removeFromBottom(s::button).reduced(s::inset, 0);
     const int laneWidth = s::mixTrackHead;
     auto axis = [&](Rect r) { return r.withTrimmedLeft(laneWidth - s::trackHead); };
@@ -83,6 +92,11 @@ void Studio::mixPage(Rect area) {
     text(cs::gainLabel, header.removeFromLeft(s::mixGainWidth), s::caption, s::navigationInk);
     text(cs::panLabel, header.removeFromLeft(s::levelWidth), s::caption, s::navigationInk);
     ruler = axis(area.removeFromTop(s::workspaceRuler / 2));
+    if (pendingModeReveal) {
+        reveal(playPosition());
+        pendingModeReveal = false;
+        saveView();
+    }
     lanes.clear();
     trackMeters.clear();
     const int visible = std::max(1, area.getHeight() / s::workspaceLane);
@@ -98,7 +112,7 @@ void Studio::mixPage(Rect area) {
             limit(skin.font(s::body, false, true), t.name, nameArea.getWidth() - 2 * s::inset), nameArea,
             [this, i] {
                 view.selected = i;
-                view.save(projectDir);
+                saveView();
                 triggerAsyncUpdate();
             }, view.selected == i ? 1 : 0);
         label->setTooltip(t.name);

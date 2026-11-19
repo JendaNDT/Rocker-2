@@ -87,7 +87,7 @@ void Studio::tapeAction(TapeAction action, int value) {
     selectOccurrence(index);
     reveal(view.cursor);
     saveSong(label);
-    view.save(projectDir);
+    saveView();
     status(label);
 }
 void Studio::confirmRepair(bool independent) {

@@ -18,7 +18,7 @@ Frame Studio::firstBar() const {
     if (view.editing)
         return view.firstBar;
     auto bar = song.grid.beatAt(std::max<Frame>(0, playPosition())) / song.grid.beats;
-    return bar / view.zoom * view.zoom;
+    return std::clamp(view.firstBar, std::max<Frame>(0, bar - visibleBars() + 1), bar);
 }
 Frame Studio::frameAt(int x) const {
     auto axis = ruler.withTrimmedLeft(s::trackHead);
@@ -57,21 +57,20 @@ void Studio::normalizeSelection() {
 }
 void Studio::reveal(Frame pos) {
     auto bar = song.grid.beatAt(std::max<Frame>(0, pos)) / song.grid.beats;
-    if (bar < view.firstBar || bar >= view.firstBar + visibleBars())
-        view.firstBar = bar / visibleBars() * visibleBars();
+    view.firstBar = std::clamp(view.firstBar, std::max<Frame>(0, bar - visibleBars() + 1), bar);
 }
 void Studio::editMode(bool edit) {
     if (view.editing == edit && !view.mixing && !browsingVersions)
         return;
+    view.firstBar = firstBar();
     selectedOccurrence = -1;
     askingRepair = false;
     exporting = view.mixing = false;
     view.editing = edit;
     browsingVersions = soundDeckOpen = namingPreset = false;
     drag = Drag::none;
-    if (edit)
-        reveal(view.cursor);
-    view.save(projectDir);
+    pendingModeReveal = true;
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::selectBar(Frame bar, bool extend) {
@@ -144,6 +143,8 @@ void Studio::editOp(EditOp op) {
         }
         break;
     }
+    if (changed)
+        savedTake.reset();
     if (!changed) {
         status(cs::noAudio);
         return;
@@ -152,7 +153,7 @@ void Studio::editOp(EditOp op) {
     history.remember(song, label);
     pendingSoundSave = Time::getMillisecondCounterHiRes() + 1200;
     reveal(view.cursor);
-    view.save(projectDir);
+    saveView();
     status(label);
 }
 void Studio::undo(bool forward) {
@@ -163,6 +164,7 @@ void Studio::undo(bool forward) {
     auto action = history.step(song, forward);
     if (action.isEmpty())
         return;
+    savedTake.reset();
     preview = -1;
     previewGroup.clear();
     selectedOccurrence = -1;
@@ -173,7 +175,7 @@ void Studio::undo(bool forward) {
     projectMonitor = 0;
     configureSongMonitor();
     const bool complete = library.load(song, projectDir);
-    view.save(projectDir);
+    saveView();
     status(complete ? (forward ? cs::redo : cs::undo) + " · " + action : cs::partialProject);
     saveSong();
 }
@@ -213,7 +215,7 @@ void Studio::restoreVersion() {
     normalizeSelection();
     view.cursor = std::min(view.cursor, song.end());
     reveal(view.cursor);
-    view.save(projectDir);
+    saveView();
     projectMonitor = 0;
     configureSongMonitor();
     browsingVersions = false;
@@ -264,7 +266,7 @@ void Studio::startRepair(bool looping) {
 }
 void Studio::selectKitAttempt(Playback& playback, const TakeGroup& group, int index) {
     for (auto& g : song.groups)
-        if (g.from == group.from && g.to == group.to && song.linkedTrack(g.track, group.track) &&
+        if (g.from == group.from && g.to == group.to && (song.linkedTrack(g.track, group.track) || g.sameSession(group)) &&
             g.attempts.size() == group.attempts.size())
             playback.selectAttempt(g.id, index);
 }
@@ -334,7 +336,8 @@ void Studio::attemptDeck(TakeGroup& g, Rect area) {
     const int first = std::clamp(active - 1, 0, std::max(0, (int)attempts.size() - 4));
     for (int n = first; n < std::min(first + 4, (int)attempts.size()); ++n) {
         const int pass = attempts[n];
-        const auto name = pass == 0 ? cs::originalTake : cs::attemptLabel + " " + String(pass);
+        const auto name = pass == 0 && g.retakeFamily.isEmpty() ? cs::originalTake
+            : cs::attemptLabel + " " + String(pass + (g.retakeFamily.isNotEmpty() ? 1 : 0));
         button(name, row(), [this, pass] {
             auto* group = song.groupAt(selectedTrack(), selection().from, selection().to);
             if (!group || (performance && performance->recording))
@@ -427,11 +430,11 @@ void Studio::editDeck(Rect area) {
         lengths.add(String(i));
     combo(cs::preRoll, row(), lengths, view.leadBars, [this](int n) {
         view.leadBars = n;
-        view.save(projectDir);
+        saveView();
     });
     combo(cs::postRoll, row(), lengths, view.tailBars, [this](int n) {
         view.tailBars = n;
-        view.save(projectDir);
+        saveView();
     });
 }
 bool Studio::editKey(const KeyPress& key) {
@@ -538,7 +541,7 @@ bool Studio::editKey(const KeyPress& key) {
         view.zoom = (code == '+' || key.getTextCharacter() == '+') ? std::max(1, visibleBars() / 2)
                                                                    : std::min(64, visibleBars() * 2);
         reveal(view.cursor);
-        view.save(projectDir);
+        saveView();
         triggerAsyncUpdate();
         return true;
     }
@@ -552,7 +555,7 @@ bool Studio::editKey(const KeyPress& key) {
                 : song.grid.beat(std::max<Frame>(0, bar + (key == KeyPress::leftKey ? -1 : 1)) *
                                  song.grid.beats);
         reveal(view.cursor);
-        view.save(projectDir);
+        saveView();
         repaint();
         return true;
     }
@@ -606,7 +609,7 @@ void Studio::editMouseDown(const MouseEvent& e) {
                             drag = Drag::takeLeft;
                         else if (std::abs(e.x - pixelAt(group.to)) <= s::grid)
                             drag = Drag::takeRight;
-                        view.save(projectDir);
+                        saveView();
                         triggerAsyncUpdate();
                         return;
                     }
@@ -637,7 +640,7 @@ void Studio::editMouseDown(const MouseEvent& e) {
                 break;
             }
     }
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::mouseDrag(const MouseEvent& e) {
@@ -717,7 +720,7 @@ void Studio::mouseUp(const MouseEvent&) {
                                     : EditOp::trimRight);
     drag = Drag::none;
     dragged = false;
-    view.save(projectDir);
+    saveView();
     triggerAsyncUpdate();
 }
 void Studio::paintEditOverlay(Graphics& g) {

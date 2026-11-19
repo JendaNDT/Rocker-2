@@ -52,7 +52,7 @@ void Studio::startPackage(bool open, File file) {
     if (fileTask.valid() || performance || importing.valid() || delivery.valid())
         return;
     if (!open) {
-        if (!song.save(projectDir) || !view.save(projectDir)) {
+        if (!song.save(projectDir) || !saveView()) {
             status(cs::songSaveError);
             return;
         }
@@ -87,16 +87,21 @@ void Studio::chooseLibrary() {
                                  self->status(syncedFolder(self->libraryRoot) ? cs::syncPath : cs::saved);
                              });
 }
-void Studio::beginRemap() {
+void Studio::beginRemap(int onlyTrack) {
+    singleRemap = onlyTrack;
     remapped.clear();
     for (auto& t : song.tracks) {
         auto ports = t.inputs;
         for (int i = 0; i < ports.size(); ++i)
             if (!link.caps.inputs.contains(ports[i]))
                 ports.set(i, {});
+        auto binding = view.inputDevices.find(t.id);
+        if (binding != view.inputDevices.end() && binding->second != endpoint(link.current))
+            for (int i = 0; i < ports.size(); ++i)
+                ports.set(i, {});
         remapped.push_back(ports);
     }
-    remapIndex = 0;
+    remapIndex = std::max(0, singleRemap);
     show(Page::remap);
 }
 void Studio::remapPage(Rect area) {
@@ -110,7 +115,10 @@ void Studio::remapPage(Rect area) {
     for (auto& t : song.tracks)
         names.add(t.name);
     if (!names.isEmpty()) {
-        combo(cs::trackLabel, line(), names, remapIndex, [this](int i) {
+        if (singleRemap >= 0)
+            text(names[remapIndex], line(), s::body);
+        else
+            combo(cs::trackLabel, line(), names, remapIndex, [this](int i) {
             remapIndex = i;
             triggerAsyncUpdate();
         });
@@ -133,11 +141,18 @@ void Studio::remapPage(Rect area) {
             }
         }
     }
+    if (singleRemap >= 0) {
+        text(link.online ? link.current.input : cs::connectInput, line());
+        if (laptop)
+            text(cs::fallback, line(), s::body, s::warning);
+    }
     auto actions = line();
-    button(
+    auto* apply = button(
         cs::apply, actions.removeFromLeft(s::clipWidth),
         [this] {
             for (size_t i = 0; i < song.tracks.size(); ++i) {
+                if (singleRemap >= 0 && i != size_t(singleRemap))
+                    continue;
                 auto& ports = remapped[i];
                 if (ports.size() > 1 && ports[0].isNotEmpty() && ports[0] == ports[1]) {
                     status(cs::missingInputs);
@@ -145,15 +160,28 @@ void Studio::remapPage(Rect area) {
                 }
             }
             for (size_t i = 0; i < song.tracks.size(); ++i) {
+                if (singleRemap >= 0 && i != size_t(singleRemap))
+                    continue;
                 auto ports = remapped[i];
+                if (singleRemap >= 0 && (ports.isEmpty() || ports.contains(String{}))) {
+                    status(cs::missingInputs);
+                    return;
+                }
                 ports.removeEmptyStrings();
                 song.tracks[i].inputs = ports;
+                bindInput(song.tracks[i]);
             }
+            singleRemap = -1;
             saveSong();
+            saveView();
             show(Page::project);
         },
         1);
-    button(cs::remapLater, actions.removeFromLeft(s::nameWidth), [this] { show(Page::project); });
+    apply->setEnabled(singleRemap < 0 || (link.online && !link.caps.inputs.isEmpty()));
+    button(cs::remapLater, actions.removeFromLeft(s::nameWidth), [this] {
+        singleRemap = -1;
+        show(Page::project);
+    });
     text(message, line(), s::body, s::warning);
 }
 String Studio::rigReport() const {

@@ -2,6 +2,18 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String chooseInput = u8"Vybrat vstup", inputLost = u8"odpojen",
+    connectInput = u8"Připoj zvukovku nebo vyber dostupný vstup v Zapojení.",
+    interruptedTake = u8"Nahrávání přerušeno. Zapsaná část je ve skladbě.";
+inline const juce::String monitorHelp = u8"Slyšíš kytaru dvakrát?",
+    monitorHelpInput = u8"Zvukovka může posílat kytaru přímo do sluchátek.",
+    monitorHelpApp = u8"Pokud kytaru slyšíš dvakrát, vypni její odposlech v Rockeru. Nahrávání pokračuje.",
+    monitorHelpHardware = u8"Odposlech v Rockeru je vypnutý. Zkontroluj Direct Monitor na zvukovce.",
+    monitorDisable = u8"Vypnout odposlech v aplikaci", monitorRestore = u8"Zapnout odposlech v aplikaci",
+    closeHelp = u8"Zavřít nápovědu";
+inline const juce::String listenTake = u8"Poslechnout pokus", repeatTake = u8"Nahrát další",
+    savedPartial = u8"Nedokončený průchod je uložený. Celý pokus zatím chybí.",
+    noTake = u8"Žádný záběr k uložení.", savedTakeLabel = u8"uloženo";
 inline const juce::String manualPending = u8"čeká na ruční zkoušku";
 inline const juce::String
     packageSong = u8"Zabalit skladbu",

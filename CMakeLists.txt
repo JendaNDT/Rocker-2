@@ -48,7 +48,7 @@ juce_add_binary_data(RockerIcons HEADER_NAME RockerIconsData.h NAMESPACE RockerI
         assets/icons/send.svg)
 add_library(Studio STATIC src/storage/ProjectFiles.cpp src/engine/ClockDomains.cpp src/ui/FilePage.cpp src/engine/MidiDrums.cpp src/ui/MidiPage.cpp src/ui/DrumPage.cpp src/ui/IdeaPage.cpp src/storage/Ideas.cpp src/engine/Import.cpp src/engine/IdeaInput.cpp src/engine/Export.cpp src/engine/Loudness.cpp src/engine/Mp3.cpp src/engine/Aac.cpp src/engine/Mp3Length.cpp src/song/Arrangement.cpp src/song/Edit.cpp src/engine/LoadTrial.cpp src/song/GuitarSound.cpp src/storage/AtomicFile.cpp src/song/Song.cpp src/engine/Timeline.cpp src/engine/GuideRhythm.cpp src/dsp/Amp.cpp src/dsp/Voice.cpp src/dsp/Pitch.cpp src/dsp/Tunings.cpp src/engine/Live.cpp src/engine/Audio.cpp src/engine/Devices.cpp src/storage/Settings.cpp src/ui/Studio.cpp src/ui/LivePages.cpp src/ui/ProjectPage.cpp src/ui/MixPage.cpp src/ui/EditPage.cpp src/ui/SectionPage.cpp)
 target_include_directories(Studio PUBLIC src "${JUCE_MODULES_DIR}")
-target_sources(Studio PRIVATE src/ui/Icons.cpp src/ui/Workspace.cpp src/ui/MetronomePage.cpp)
+target_sources(Studio PRIVATE src/ui/Icons.cpp src/ui/Workspace.cpp src/ui/RecordingWorkflow.cpp src/ui/MetronomePage.cpp)
 target_compile_definitions(Studio PUBLIC JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
     JUCE_USE_WIN_WEBVIEW2=0 JUCE_REPORT_APP_USAGE=0 $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>)
 target_link_libraries(Studio PRIVATE miniz RockerEbur128 juce::juce_cryptography SampleRate::samplerate Fonts RockerIcons juce::juce_audio_formats juce::juce_audio_devices juce::juce_gui_basics

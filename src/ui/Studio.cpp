@@ -356,15 +356,26 @@ void Studio::persist() {
         message = cs::settingsError;
 }
 void Studio::refresh(bool notify) {
+    const bool inSong = page == Page::project || (page == Page::remap && singleRemap >= 0);
+    if (inSong && notify && link.online && devices.streamMatches(link.current, link.caps)) {
+        link.ports = devices.scan();
+        for (const auto& ports : link.ports)
+            if (ports.driver == link.current.driver &&
+                (link.current.input.isEmpty() || ports.inputs.contains(link.current.input)) &&
+                (link.current.output.isEmpty() || ports.outputs.contains(link.current.output)))
+                return;
+    }
     answer = -1;
     played = false;
     stopMetronome();
     stopPreview();
     stopIdea();
     activityBeforePluck.clear();
+    const auto previous = link.current;
+    const bool wasOnline = link.online;
     const bool recording=performance && performance->recording;
     if(performance) stopProject();
-    const auto outcome=recording?message:String{};
+    const auto outcome = recording && savedTake ? cs::interruptedTake : recording ? message : String{};
     link.rescan(settings.device);
     laptop = link.online &&
              (builtIn(link.current.input) ||
@@ -386,7 +397,18 @@ void Studio::refresh(bool notify) {
     refreshMidi();
     if (notify) {
         message = outcome.isEmpty()?cs::unplugged:cs::unplugged+cs::divider+outcome;
-        if (page != Page::home)
+        if (inSong) {
+            if (wasOnline && (!link.online || endpoint(previous) != endpoint(link.current))) {
+                // JUCE reports names rather than hardware serials. Rebinding after a loss is explicit.
+                for (auto& [track, binding] : view.inputDevices)
+                    if (binding == endpoint(previous))
+                        binding = "?" + binding;
+                saveView();
+            }
+            singleRemap = -1;
+            page = Page::project;
+            configureSongMonitor();
+        } else if (page != Page::home)
             page = Page::device;
     }
     triggerAsyncUpdate();
@@ -1212,7 +1234,7 @@ bool Studio::keyPressed(const KeyPress& key) {
             if (!performance) {
                 auto bar = song.grid.beatAt(view.cursor) / song.grid.beats;
                 view.cursor = song.barFrame((int)std::max<Frame>(0, bar - 1));
-                view.save(projectDir);
+                saveView();
                 repaint();
             }
             return true;
@@ -1260,13 +1282,13 @@ bool Studio::keyPressed(const KeyPress& key) {
                 std::min(song.end(),
                          song.grid.beat(std::max<Frame>(0, bar + (key == KeyPress::leftKey ? -1 : 1)) *
                                         song.grid.beats));
-            view.save(projectDir);
+            saveView();
             repaint();
             return true;
         }
         if (key.getTextCharacter() == '+' || key.getTextCharacter() == '-') {
             view.zoom = jlimit(1, 64, key.getTextCharacter() == '+' ? view.zoom / 2 : view.zoom * 2);
-            view.save(projectDir);
+            saveView();
             repaint();
             return true;
         }
@@ -1283,7 +1305,7 @@ bool Studio::keyPressed(const KeyPress& key) {
         }
         if (key == KeyPress::homeKey && !performance) {
             view.cursor = 0;
-            view.save(projectDir);
+            saveView();
             repaint();
             return true;
         }
