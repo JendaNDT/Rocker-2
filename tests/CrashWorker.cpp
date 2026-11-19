@@ -70,6 +70,56 @@ int main(int argc, char** argv) {
                 return 15;
         return 0;
     }
+    if (action == "loop") {
+        s.tracks = {{"t", "Loop crash", "jine", {"in"}, true}};
+        if (!s.save(dir))
+            return 17;
+        constexpr Frame length = 48000;
+        Performance p(s, {}, 0, true, false, 0, false, LoopSpan{0, length});
+        if (!p.arm(s, dir, {"in"}, 0))
+            return 18;
+        std::array<float, 480> data{};
+        const float* in[]{data.data()};
+        for (int k = 0; k < 250; ++k) {
+            for (int i = 0; i < 480; ++i)
+                data[i] = float(k * 480 + i);
+            p.process(in, 1, nullptr, 0, 480);
+            if ((k % 45) == 0)
+                Thread::sleep(4);
+        }
+        const auto waves = dir.getChildFile("Zvuk").findChildFiles(File::findFiles, false, "*.wav");
+        if (waves.size() != 1)
+            return 19;
+        const auto deadline = Time::getMillisecondCounterHiRes() + 3000;
+        bool ready = false;
+        while (!ready && Time::getMillisecondCounterHiRes() < deadline) {
+            auto check = waveReader(waves[0]);
+            ready = check && check->lengthInSamples > 2 * length;
+            if (!ready)
+                Thread::sleep(5);
+        }
+        if (!ready)
+            return 20;
+        std::cout << "READY" << std::endl;
+        for (;;)
+            Thread::sleep(1000);
+    }
+    if (action == "recoverLoop") {
+        bool bad = false;
+        auto song = Song::load(dir, bad);
+        const auto logs = dir.getChildFile("Zachrana").findChildFiles(File::findFiles, false, "*.json");
+        if (!song || bad || logs.size() != 1 || !recoverTake(*song, dir, logs[0]) ||
+            song->assets.size() != 1 || song->groups.size() != 1)
+            return 21;
+        auto& group = song->groups.front();
+        if (group.attempts.size() != 3 || group.active != 2 || !group.attempts[2].discarded)
+            return 22;
+        bool restoredBad = false;
+        auto again = Song::load(dir, restoredBad);
+        if (restoredBad || !again || again->groups != song->groups)
+            return 23;
+        return 0;
+    }
     if (action == "record") {
         if (!s.save(dir))
             return 4;

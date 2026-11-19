@@ -195,7 +195,9 @@ void Studio::configureSongMonitor() {
     live.monitor =
         projectMonitor == 2 && !t.amp.enabled ? Monitor::clean : static_cast<Monitor>(projectMonitor);
 }
-Frame Studio::playPosition() const { return performance ? performance->cursor.load() : view.cursor; }
+Frame Studio::playPosition() const {
+    return performance ? performance->position(performance->cursor.load()) : view.cursor;
+}
 void Studio::toggleDistant() {
     if (auto* window = findParentComponentOfClass<ResizableWindow>()) {
         if (!view.distant)
@@ -226,7 +228,7 @@ void Studio::editTrack(bool fresh) {
     }
     show(Page::trackSettings);
 }
-void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
+void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup, bool looping) {
     if (performance)
         return;
     if (!link.online) {
@@ -253,8 +255,9 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
     if (repair) {
         start = std::max<Frame>(0, selection().from - song.grid.beat(view.leadBars * song.grid.beats));
     }
+    const auto loop = looping ? std::optional<LoopSpan>{{selection().from, selection().to, song.grid.beat(view.tailBars * song.grid.beats)}} : std::nullopt;
     auto p = std::make_unique<Performance>(song, library, start, record, view.click,
-                                           record && view.countIn ? song.grid.beats : 0, view.rhythm);
+                                           record && view.countIn ? song.grid.beats : 0, view.rhythm, loop);
     if (repair) {
         p->punchFrom = selection().from;
         p->punchTo = selection().to;
@@ -295,7 +298,8 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
             return;
         }
         if (repair) {
-            p->end = p->punchTo + song.grid.beat(view.tailBars * song.grid.beats) + p->compensation;
+            if (!looping)
+                p->end = p->punchTo + song.grid.beat(view.tailBars * song.grid.beats) + p->compensation;
             link.audio.live.monitor = Monitor::off;
         }
         offerDistant =
@@ -307,13 +311,22 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
     liveWaves.clear();
     performance = std::move(p);
     link.audio.timeline.attach(*performance);
-    if (repair) {
+    if (looping) {
+        status(cs::loopRecording + cs::divider + cs::attemptLabel + " 1");
+    } else if (repair) {
         auto* group = song.groupAt(selectedTrack(), selection().from, selection().to);
         status(cs::repairState + " · " + cs::bars + " " +
                String(song.grid.beatAt(selection().from) / song.grid.beats + 1) + " · " +
                cs::attemptLabel + " " + String(group ? (int)group->attempts.size() + 2 : 2));
     } else
         status({});
+}
+void Studio::stopFromTransport() {
+    if (performance && performance->requestLoopStop()) {
+        status(cs::postRoll);
+        return;
+    }
+    stopProject();
 }
 void Studio::stopProject(bool automatic) {
     if (!performance)
@@ -337,9 +350,9 @@ void Studio::stopProject(bool automatic) {
         finishSync(*p);
         return;
     }
-    view.cursor = std::max(p->start, p->cursor.load());
+    view.cursor = std::max(p->start, p->position(p->cursor.load()));
     if (p->drop >= 0)
-        song.dropouts.push_back(p->drop.load());
+        song.dropouts.push_back(p->position(p->drop.load()));
     bool complete = false;
     offerDistant = false;
     if (p->recording) {
@@ -364,7 +377,7 @@ void Studio::stopProject(bool automatic) {
     if (p->isPunch()) {
         configureSongMonitor();
         if (auto* g = song.groupAt(selectedTrack(), p->punchFrom, p->punchTo);
-            g && automatic && complete) {
+            g && automatic && complete && !p->loopSpan()) {
             preview = g->active;
             previewGroup = g->id;
             audition(*g);
@@ -384,12 +397,20 @@ void Studio::projectTick() {
         return;
     }
     if (performance && performance->recording && !diagnosing && !view.distant) {
+        if (auto loop = performance->loopSpan(); loop && !performance->diskWarning && !performance->loopStopping()) {
+            const auto pass = 1 + std::max<Frame>(0, performance->cursor.load() - loop->from) / loop->length();
+            const auto text = cs::loopRecording + cs::divider + cs::attemptLabel + " " + String(pass);
+            if (message != text)
+                status(text);
+        }
         auto frame = playPosition();
         if (frame >= performance->start)
             for (const auto& t : song.tracks)
                 if ((performance->isPunch() ? song.linkedTrack(t.id, selectedTrack()) : t.armed) &&
                     !t.inputs.isEmpty()) {
                     auto& peaks = liveWaves[t.id];
+                    if (!peaks.empty() && peaks.back().first > frame)
+                        peaks.clear();
                     if (peaks.empty() || peaks.back().first != frame) {
                         peaks.emplace_back(frame,
                                            link.audio.read(link.caps.inputs.indexOf(t.inputs[0])).peak);
@@ -599,7 +620,7 @@ void Studio::projectPage(Rect area) {
         button(cs::normal, cell(footer, s::nameWidth), [this] { toggleDistant(); });
         button(performance ? cs::stopSong : cs::recordSong, cell(footer, s::nameWidth), [this] {
             if (performance)
-                stopProject();
+                stopFromTransport();
             else
                 startProject(true);
         });
@@ -628,7 +649,7 @@ void Studio::projectPage(Rect area) {
         performance ? cs::stopSong : cs::recordSong, cell(top, s::clipWidth),
         [this] {
             if (performance)
-                stopProject();
+                stopFromTransport();
             else
                 startProject(true);
         },

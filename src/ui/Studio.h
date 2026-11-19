@@ -191,7 +191,7 @@ class Studio final : public juce::Component,
     double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler, sectionStrip;
     int selectedOccurrence = -1, cutBar = 0, targetBar = 0;
-    bool askingRepair = false, copyingSection = false;
+    bool askingRepair = false, copyingSection = false, askingLoop = false;
     juce::String sectionDraft;
     enum class TapeAction { split, repeat, detach, restore, resize, name, colour, move };
     void selectOccurrence(int);
@@ -218,8 +218,8 @@ class Studio final : public juce::Component,
     void finishProject();
     void projectPage(Rect);
     void paintProject(juce::Graphics&);
-    void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr);
-    void startRepair();
+    void startProject(bool, bool repair = false, TakeGroup* auditionGroup = nullptr, bool looping = false);
+    void startRepair(bool looping = false);
     void selectKitAttempt(Playback&, const TakeGroup&, int);
     void audition(TakeGroup&);
     void chooseAttempt(bool keep);
@@ -228,6 +228,7 @@ class Studio final : public juce::Component,
     int preview = -1;
     juce::String previewGroup;
     void attemptDeck(TakeGroup&, Rect);
+    void stopFromTransport();
     void stopProject(bool automatic = false);
     void projectTick();
     static juce::String limit(const juce::Font&, juce::String, int width);

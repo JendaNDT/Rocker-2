@@ -102,7 +102,7 @@ void Studio::confirmRepair(bool independent) {
         saveSong(cs::sectionDetach);
     }
     selectedOccurrence = -1;
-    startProject(true, true);
+    startProject(true, true, nullptr, std::exchange(askingLoop, false));
 }
 void Studio::sectionDeck(Rect area) {
     auto top = area.removeFromTop(s::button);
@@ -132,7 +132,7 @@ void Studio::sectionDeck(Rect area) {
         add(count == 2 ? cs::sharedRepair : cs::repairAll, [this] { confirmRepair(false); });
         add(cs::ownRepair, [this] { confirmRepair(true); });
         add(cs::sectionCancel, [this] {
-            askingRepair = false;
+            askingRepair = askingLoop = false;
             triggerAsyncUpdate();
         });
         return;
