@@ -4,6 +4,12 @@ Domácí studio pro kytaru a bicí. Můžeš nahrát bicí, dohrát k nim kytaru
 
 Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hotové aplikace. Během vývoje se každá etapa ověřuje automaticky.
 
+## Závěrečné sestavení E18
+
+Pro společné zkoušky si stáhni balík pro svůj počítač. Přihlas se na GitHub a v tabulce u svého systému klikni na **Aplikace**. Stažený ZIP obsahuje další ZIP se samotnou aplikací. Pro Windows je přiložen i instalátor. Balík pro Mac funguje na čipech Apple i Intel. [Závěrečné balíky a snímky](https://github.com/JendaNDT/Rocker-2/pull/21)
+
+[Postup společných ručních zkoušek](docs/PREDANI.md#3-ruční-zkoušky)
+
 ## Stažení v1.0.0 a spuštění
 
 | Počítač | Co stáhnout |
@@ -17,7 +23,7 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 3. V **Zapojení** vyber zvukovku a vyzkoušej tón ve sluchátkách. Na úvod se dostaneš tlačítkem **Úvodní obrazovka**. [Vydání, snímky a kontrolní součty](https://github.com/JendaNDT/Rocker-2/releases/tag/v1.0.0)
 4. Vývojová sestavení jsou také na GitHub Actions. Otevři zelený běh **Rocker 2**, dole v **Artifacts** zvol aplikaci nebo snímky pro svůj systém. GitHub při stahování z Actions vyžaduje přihlášení. [Běhy sestavení](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml)
 
-Novější vývojový balík pro Mac z E13 obsahuje i verzi pro Intel. Na stránce sestavení dole vyber balík **Rocker2-Mac**. V nabídce **Poslat mix…** na Macu zvol **M4A (AAC) · 256 kb/s**, pokud chceš menší soubor k poslechu. [Ověřený balík E13](https://github.com/JendaNDT/Rocker-2/pull/16)
+V sestavení E18 můžeš na Macu v nabídce **Poslat mix…** zvolit **M4A (AAC) · 256 kb/s**, pokud chceš menší soubor k poslechu.
 
 ## Přenos skladby a kontrola sestavy
 
