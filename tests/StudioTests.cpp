@@ -547,6 +547,22 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
     initial.title = "Riff";
     initial.grid.bpm = 240;
     initial.tracks = {{"g", cs::guitar, "kytara", {"In 1"}}};
+    auto originalFile = folder.getChildFile("Zvuk/original.wav");
+    REQUIRE(originalFile.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(originalFile, initial.grid.rate, 1);
+    REQUIRE(writer);
+    const int beat = (int)initial.grid.beat(1);
+    AudioBuffer<float> phrase(1, beat);
+    for (int n = 0; n < 32; ++n) {
+        for (int i = 0; i < beat; ++i)
+            phrase.setSample(0, i, .5f * std::sin(i * (n == 20 ? .085f : .06f)) * std::exp(-i / 3300.f));
+        REQUIRE(writer->writeFromAudioSampleBuffer(phrase, 0, beat));
+    }
+    writer.reset();
+    initial.assets = {{"original", "Zvuk/original.wav", 32 * beat, 1}};
+    initial.clips = {{"original-clip", "g", "original", 0, 0, 32 * beat}};
+    MemoryBlock original;
+    REQUIRE(originalFile.loadFileAsData(original));
     REQUIRE(initial.save(folder));
     Settings settings;
     settings.visited = true;
@@ -602,6 +618,9 @@ TEST_CASE("Repair bar six twice from the keyboard and keep the original after re
         REQUIRE(view.keyPressed(KeyPress('Z', ModifierKeys::ctrlModifier, 0)));
         REQUIRE(Song::load(folder, bad)->groups.front().attempts.front().discarded);
     }
+    MemoryBlock after;
+    REQUIRE(originalFile.loadFileAsData(after));
+    REQUIRE(after == original);
     Studio reopened(device, temp.file);
     click(reopened, cs::resume);
     REQUIRE(find<Button>(reopened, cs::restoredTake));

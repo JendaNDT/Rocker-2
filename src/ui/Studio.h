@@ -129,7 +129,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     int preview = -1;
     juce::String previewGroup;
     void attemptDeck(TakeGroup&, Rect);
-    void stopProject();
+    void stopProject(bool automatic = false);
     void projectTick();
     void saveSong(juce::String action = {});
     EditHistory history;

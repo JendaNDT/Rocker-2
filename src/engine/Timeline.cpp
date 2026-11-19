@@ -86,6 +86,7 @@ void Playback::setSound(size_t track, const GuitarSound& sound, bool recall) {
 Playback::Playback(const Song& s, const AudioLibrary& lib) {
     for (auto& track : s.tracks) {
         auto& strip = *strips.emplace_back(std::make_unique<Strip>());
+        strip.channels = std::clamp(track.inputs.size(), 1, 2);
         strip.fade = std::max(1, roundToInt(s.grid.rate * 0.010));
         auto addClips = [&](const std::vector<Clip>& clips, std::vector<PlaybackClip>& output) {
             for (const auto& clip : clips) {
@@ -109,6 +110,7 @@ Playback::Playback(const Song& s, const AudioLibrary& lib) {
             overlay.to = group.to;
             for (const auto& attempt : group.attempts)
                 addClips(attempt.clips, overlay.variants.emplace_back());
+            overlay.weights.resize(overlay.variants.size());
             overlay.active.store(group.active);
         }
         if (track.kind == "kytara") {
@@ -211,16 +213,35 @@ void Playback::Strip::process(float* const* out, int outputs, int size, Frame at
         const Frame position = at + delay + offset;
         read(clips, block, count, position);
         for (const auto& group : groups) {
-            int index = group->active.load();
-            if (!index || position >= group->to || position + count <= group->from)
+            const int index = group->active.load();
+            if (position >= group->to || position + count <= group->from)
                 continue;
-            float take[2][256];
-            read(group->variants[index - 1], take, count, position);
-            for (int i = 0; i < count; ++i) {
-                float weight = envelope(position + i, group->from, group->to, fade);
-                for (int ch = 0; ch < channels; ++ch)
-                    block[ch][i] += weight * (take[ch][i] - block[ch][i]);
+            if (index != group->target || (restart && offset <= 0)) {
+                group->remaining = group->target < 0 || restart ? 0 : fade;
+                group->target = index;
             }
+            float original[2][256];
+            for (int ch = 0; ch < channels; ++ch)
+                std::copy_n(block[ch], count, original[ch]);
+            for (size_t variant = 0; variant < group->variants.size(); ++variant) {
+                float wanted = int(variant) + 1 == index ? 1.f : 0.f;
+                float oldWeight = group->remaining ? group->weights[variant] : wanted;
+                if (oldWeight == 0 && wanted == 0) {
+                    group->weights[variant] = 0;
+                    continue;
+                }
+                float step = group->remaining ? (wanted - oldWeight) / group->remaining : 0.f;
+                float take[2][256];
+                read(group->variants[variant], take, count, position);
+                for (int i = 0; i < count; ++i) {
+                    float blend = i < group->remaining ? oldWeight + i * step : wanted;
+                    float weight = blend * envelope(position + i, group->from, group->to, fade);
+                    for (int ch = 0; ch < channels; ++ch)
+                        block[ch][i] += weight * (take[ch][i] - original[ch][i]);
+                }
+                group->weights[variant] = count < group->remaining ? oldWeight + count * step : wanted;
+            }
+            group->remaining = std::max(0, group->remaining - count);
         }
         if (position < punchTo && position + count > punchFrom && punchTo > punchFrom) {
             for (int i = 0; i < count; ++i) {

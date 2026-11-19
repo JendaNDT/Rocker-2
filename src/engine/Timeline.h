@@ -49,6 +49,8 @@ class Playback {
         Frame from = 0, to = 0;
         std::vector<std::vector<PlaybackClip>> variants;
         std::atomic<int> active{0};
+        std::vector<float> weights;
+        int target = -1, remaining = 0;
     };
     struct Strip {
         std::vector<std::unique_ptr<Overlay>> groups;

@@ -269,11 +269,13 @@ void Studio::startProject(bool record, bool repair, TakeGroup* auditionGroup) {
     } else
         status({});
 }
-void Studio::stopProject() {
+void Studio::stopProject(bool automatic) {
     if (!performance)
         return;
     link.audio.timeline.detach();
     comparing = false;
+    preview = -1;
+    previewGroup.clear();
     auto p = std::move(performance);
     p->finishDisk();
     if (p->recording)
@@ -305,7 +307,8 @@ void Studio::stopProject() {
         history.remember(song, cs::newTake);
     if (p->isPunch()) {
         configureSongMonitor();
-        if (auto* g = song.groupAt(selectedTrack(), p->punchFrom, p->punchTo); g && complete) {
+        if (auto* g = song.groupAt(selectedTrack(), p->punchFrom, p->punchTo);
+            g && automatic && complete) {
             preview = g->active;
             previewGroup = g->id;
             audition(*g);
@@ -317,7 +320,7 @@ void Studio::stopProject() {
 }
 void Studio::projectTick() {
     if (performance && performance->finished.load()) {
-        stopProject();
+        stopProject(true);
         return;
     }
     if (performance && performance->recording && !diagnosing && !view.distant) {

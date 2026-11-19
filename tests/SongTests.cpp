@@ -304,6 +304,16 @@ TEST_CASE("A-21 sample continuity through both edges of opposite-phase takes", "
     float* channels[]{next.data()};
     playback.mix(channels, 1, 13, start + 3000);
     CHECK(std::abs(next[0] - .7f * std::cos(float(start + 3000) * .004f)) < .00001f);
+    // Change selection in continuous playback, including a second request mid-fade.
+    int position = start + 3013;
+    for (int selected : {1, 0, 1, 1, 1}) {
+        playback.selectAttempt(s.groups.front().id, selected);
+        float previous = next.back();
+        next.fill(0);
+        playback.mix(channels, 1, (int)next.size(), position);
+        CHECK(std::abs(previous - next.front()) < .006f);
+        position += (int)next.size();
+    }
     REQUIRE(s.save(w.dir));
     bool bad = false;
     REQUIRE(Song::load(w.dir, bad) == s);
