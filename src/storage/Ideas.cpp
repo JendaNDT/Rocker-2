@@ -27,6 +27,9 @@ void Ideas::load() {
             x.tuning = row.getProperty("ladeni", "Standard").toString();
             x.star = row.getProperty("hvezda", false);
             x.bpm = row.getProperty("tempo", 0.);
+            x.beats = jlimit(1, 16, int(row.getProperty("dobyVTaktu", 4)));
+            const int unit = row.getProperty("jednotka", 4);
+            x.unit = unit == 8 ? 8 : 4;
             x.firstBeat = row.getProperty("prvniDoba", 0);
             auto peaks = row.getProperty("nahled", {});
             if (auto* a = peaks.getArray())
@@ -78,6 +81,8 @@ bool Ideas::save(const std::vector<Idea>& rows) const {
                         {"ladeni", x.tuning},
                         {"hvezda", x.star},
                         {"tempo", x.bpm},
+                        {"dobyVTaktu", x.beats},
+                        {"jednotka", x.unit},
                         {"prvniDoba", x.firstBeat},
                         {"nahled", peaks}}));
     }
@@ -140,6 +145,8 @@ std::optional<Song> Ideas::toSong(const Idea& x, const File& dir, const String& 
     s.title = title;
     s.grid.rate = x.rate;
     s.grid.bpm = x.bpm > 0 ? x.bpm : 112;
+    s.grid.beats = x.beats;
+    s.grid.unit = x.unit;
     s.tuning = x.tuning;
     Track guitar;
     guitar.id = Uuid().toString();

@@ -1,5 +1,9 @@
 # Stav Rockeru 2
 
+## Redesign 1b
+
+Nový rám sdružuje režimy skladby a nástroje na jedné boční liště. V Hraj, Stříhej i Míchej drží přehrávání a záznam stejnou polohu. Stříhej má výběr, díly a pokusy v pravém panelu. Panel mixu se dá sbalit. Metronom umí samostatný odposlech, ťukání, volbu zvuku a hlasitosti. Úvod, Ladička a Zapojení používají stejné rozložení. Testy s falešnou zvukovkou pokrývají přesnost kliku, polohu tlačítek, otevření starší skladby, nahrávání dokola i export. Poslech a hraní čekají na ruční zkoušku. [Plán](07_PLAN_REDESIGNU_1B.md) · [Sestavení redesignu](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aredesign-1b)
+
 ## E18 · nahrávání dokola
 
 Ve vybraných taktech lze nahrát několik průchodů. Rozpracovaný průchod jde po pádu do koše pokusů. A-33 ověřuje jejich přesnou polohu, výběr přes Tab a obnovu po skutečném ukončení procesu. Poslech na zvukovce a zkouška hraní H-14 čekají po E18. [Zkoušky a závěrečná sestavení](https://github.com/JendaNDT/Rocker-2/pull/21)

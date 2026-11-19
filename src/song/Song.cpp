@@ -456,6 +456,7 @@ bool ViewState::save(const File& d) const {
                                                                 {"cilTaktu", targetBars},
                                                                 {"ulozenePokusy", savedTakes},
                                                                 {"rytmus", rhythm},
+                                                                {"smyckaPrehravani", playLoop},
                                                                 {"vyberOd", selectionStart},
                                                                 {"vyberDo", selectionEnd},
                                                                 {"prvniTakt", firstBar},
@@ -481,7 +482,8 @@ ViewState ViewState::load(const File& d) {
             (bool)field(v, "michej", false),
             jlimit(0, 999, (int)field(v, "cilTaktu", 0)),
             std::max(0, (int)field(v, "ulozenePokusy", 0)),
-            (bool)field(v, "rytmus", false)};
+            (bool)field(v, "rytmus", false),
+            (bool)field(v, "smyckaPrehravani", false)};
 }
 std::unique_ptr<AudioFormatWriter> waveWriter(const File& file, int rate, int channels) {
     std::unique_ptr<OutputStream> stream = file.createOutputStream();

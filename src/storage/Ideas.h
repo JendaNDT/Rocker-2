@@ -10,6 +10,7 @@ struct Idea {
     double bpm = 0;
     bool star = false;
     std::vector<float> peaks;
+    int beats = 4, unit = 4;
 };
 class Ideas {
   public:

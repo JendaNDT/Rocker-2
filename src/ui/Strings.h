@@ -320,4 +320,27 @@ inline const juce::String voicePanel = u8"Zvuk stopy", voiceCompression = u8"Kom
 inline const juce::StringArray voicePresets{juce::String(u8"Bez úprav"), juce::String(u8"Zpěv"), juce::String(u8"Baskytara")};
 inline const juce::StringArray trackKinds{juce::String(u8"Bicí"), juce::String("Kytara"),
                                           juce::String(u8"Jiná")};
+inline const juce::String navHome = u8"Úvod", navEdit = u8"Stříhej", navMix = u8"Míchej",
+    navSetup = u8"Zapojení", navMetro = u8"Metronom", navSong = u8"Skladba",
+    pause = u8"Pozastavit", recordingInto = u8"Nahrávám do", readyToRecord = u8"Připraveno",
+    detailPanel = u8"Nastavení stopy", closeInspector = u8"Sbalit panel",
+    openInspector = u8"Rozbalit panel", advancedSound = u8"Další nastavení zvuku",
+    muteShort = u8"M", soloShort = u8"S", attemptKeys = u8"Tab přepíná · Enter ponechá",
+    repairScopeHint = u8"Vyber, kde se má oprava projevit.",
+    playLoop = u8"Smyčka", playLoopHelp = u8"Přehrávat vybrané takty dokola",
+    tempoLess = u8"Zpomalit tempo", tempoMore = u8"Zrychlit tempo",
+    clickLevel = u8"Hlasitost kliku", clickVoice = u8"Zvuk kliku", clickMode = u8"Vodítko",
+    applySongTempo = u8"Použít ve skladbě", applyIdeaTempo = u8"Použít pro nápady",
+    metroTarget = u8"Použít pro",
+    tapCancel = u8"Ukončit ťukání", tempoGridWarning = u8"Změní se mřížka taktů.",
+    monogram = u8"R2", playWithoutSong = u8"Hraní bez skladby", recentSongs = u8"Skladby",
+    ideaBefore = u8"Včetně až dvou sekund před stiskem",
+    tunerAdvice = u8"Brnkni na jednu strunu. Po ustálení zazní potvrzení.",
+    tunerBackHint = u8"T nebo Esc tě vrátí zpět.", setupSummary = u8"Souhrn zapojení",
+    tonePending = u8"Čeká na zkoušku", inputCount = u8"Počet vstupů",
+    toneLeft = u8"1 s vlevo", toneRight = u8"1 s vpravo", toneBoth = u8"1 s v obou",
+    tuningTarget = u8"Cíl", farRecordDrums = u8"Zdálky pro bicí", recordShort = u8"Nahrát";
+inline const juce::StringArray meterNames{"2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"};
+inline const juce::StringArray clickVoices{juce::String(u8"Klasický"), juce::String(u8"Hluboký"),
+                                          juce::String(u8"Výrazný")};
 } // namespace rocker::cs

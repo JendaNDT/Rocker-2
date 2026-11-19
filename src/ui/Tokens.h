@@ -10,6 +10,7 @@ inline const juce::Colour drums{0xff2ec4b6}, guitar{0xfff2a541}, guitar2{0xffe86
     voice{0xff5bb8f5}, backing{0xff9aa3af}, other{0xffb7c46a};
 inline const juce::Colour intro{0xff7c86ff}, verse{0xff3fb6a8}, chorus{0xfff0b429}, bridge{0xffe5737a},
     solo{0xffb884f5}, ending{0xff8d99a6};
+inline const juce::Colour navigationInk{0xff8e95a1}, armedInk{0xffff8181};
 inline constexpr int grid = 4, button = 32, transport = 44, recordButton = 52, radius = 4, tapeCut = 8,
                      tapeAngle = 45, target = 32, icon = 20, stroke = 2, hairline = 1, recordFrame = 6,
                      minWidth = 1280, minHeight = 720;
@@ -22,4 +23,15 @@ inline constexpr int inset = 16, gap = 12, gutter = 32, margin = 56, header = 76
                      maxWindow = 16384, menuHeight = 32, scaleWidth = 100;
 inline constexpr int trackHead = 200, statusStrip = 64, songDeck = 148, songLane = 76, soundDeck = 248,
                      faderReadout = 54, compactButton = 104;
+inline constexpr int railWidth = 72, railItemWidth = 64, railItemHeight = 52, railModeHeight = 60,
+                     railLabel = 10, railLogoHeight = 40, railIndicator = 3, panelRadius = 6,
+                     workspaceHeader = 52, workspaceFooter = 76, inspectorWidth = 300,
+                     workspaceRuler = 56, workspaceLane = 84, inspectorRow = 28, inspectorGap = 6,
+                     armWidth = 112, trackToggle = 26, traceHeight = 3, outlineInset = 3,
+                     transportSide = 300, transportTimeWidth = 120, transportPill = 36,
+                     transportPillRadius = 18, transportLed = 6, safeGutter = 24,
+                     closeColumn = 36, mixTrackHead = 466, mixNameWidth = 152, mixGainWidth = 140,
+                     workspaceTitle = 18, meterClock = 140, homeActions = 380, resumeHeight = 188,
+                     timelineBarMin = 24;
+inline constexpr float armedOpacity = 0.18f, clipFillOpacity = 0.18f;
 } // namespace rocker::style

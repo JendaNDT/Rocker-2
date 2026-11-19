@@ -1,6 +1,7 @@
 #pragma once
 #include "storage/Settings.h"
 #include "Tokens.h"
+#include "Icons.h"
 #include "song/Edit.h"
 #include <functional>
 #include <deque>
@@ -20,6 +21,7 @@ enum class Page {
     tuner,
     diagnostics,
     customTuning,
+    metronome,
     ideas,
     drums,
     midi,
@@ -28,6 +30,11 @@ enum class Page {
     trackSettings,
     rescue,
     remap
+};
+enum ButtonStyle {
+    plain, primary, recording, newSong, clipButton, tunerButton, selected,
+    railIdle, railCurrent, roundIdle, roundPlay, roundRecord, roundRecording, pillOff, pillOn,
+    armActive, muteActive, soloActive
 };
 class Theme final : public juce::LookAndFeel_V4 {
   public:
@@ -90,8 +97,9 @@ class Studio final : public juce::Component,
     void finishPreview();
     juce::String ideaId, ideaFilter, ideaNote;
     Idea capturedIdea;
-    bool starsOnly = false, tapping = false, ideaClick = false;
+    bool starsOnly = false, tapping = false, ideaClick = false, ideaRhythm = false;
     double ideaTempo = 112;
+    int ideaBeats = 4, ideaUnit = 4;
     std::vector<Frame> taps;
     std::unique_ptr<Performance> ideaMetronome;
     std::map<juce::String, Rect> ideaWaves;
@@ -169,13 +177,33 @@ class Studio final : public juce::Component,
     void refresh(bool);
     void status(juce::String);
     void makeHome(Rect);
+    void deviceStatus(Rect);
+    std::vector<std::pair<Rect, juce::Colour>> homePreview;
+    int recentOffset = 0;
+    void navigation(Rect);
+    void paintWorkspace(juce::Graphics&);
+    void projectTransport(Rect);
+    void paintTransport(juce::Graphics&);
+    void openTempoSettings();
+    void openMetronome();
+    void metronomePage(Rect);
+    void paintMetronome(juce::Graphics&);
+    void stopMetronome();
+    void startMetronome();
+    void toggleMetronome();
+    void changeMetroTempo(double, bool rebuild = true);
+    void tapMetronome();
+    void playInspector(Rect);
+    void projectTrack(int, Rect);
+    void selectProjectTrack(int);
     void makeWizard(Rect);
     void devicePage(Rect);
     void tonePage(Rect);
     void inputPage(Rect);
     void text(juce::String, Rect, int size = style::body, juce::Colour colour = style::chalk,
               bool mono = false, bool bold = false, bool right = false);
-    juce::Button* button(const juce::String&, Rect, Handler, int look = 0, juce::String key = {});
+    juce::Button* button(const juce::String&, Rect, Handler, int look = plain, juce::String key = {},
+                         Icon icon = Icon::none, juce::String visible = {});
     void combo(const juce::String&, Rect, const juce::StringArray&, int selected,
                std::function<void(int)> change, bool mono = false);
     void choose(DeviceChoice, bool refreshCalibration = false);
@@ -190,6 +218,15 @@ class Studio final : public juce::Component,
     int projectMonitor = 0;
     double lastTap = 0, lastArchive = 0;
     Rect timelineArea, ruler, sectionStrip;
+    Rect navigationBounds, workspaceHeading, transportBounds, transportPosition, transportInfo;
+    Rect inspectorBounds;
+    Rect metroBeats;
+    Page metroReturn = Page::home;
+    BeatGrid metroGrid;
+    int metroGuide = 0;
+    bool metroForSong = false, metroCountIn = true, metroTapping = false;
+    std::vector<double> metroTaps;
+    std::unique_ptr<Performance> metronome;
     int selectedOccurrence = -1, cutBar = 0, targetBar = 0;
     bool askingRepair = false, copyingSection = false, askingLoop = false;
     juce::String sectionDraft;
@@ -204,7 +241,6 @@ class Studio final : public juce::Component,
     std::vector<Rect> lanes;
     int firstTrack = 0;
     std::map<juce::String, std::deque<std::pair<Frame, float>>> liveWaves;
-    Rect inputMeter;
     bool soundDeckOpen = false, namingPreset = false;
     juce::String presetDraft;
     juce::Component::SafePointer<juce::Button> soundBadge;
@@ -241,6 +277,7 @@ class Studio final : public juce::Component,
     void mixSlider(const juce::String&, Rect, float initial, bool pan, std::function<void(float)>);
     void seekMix(Frame);
     bool louderExport = false;
+    bool mixInspectorCollapsed = false;
     std::optional<LoudnessReading> lastLoudness;
     void beginExport();
     void pollExport();
@@ -332,13 +369,15 @@ class Studio final : public juce::Component,
     double lastVoiced = 0, needleCents = 0;
     std::vector<bool> confirmed;
     juce::String customName, customNotes;
-    Rect needleArea, inputBar, outputBar, routeSymbol;
-    enum class Readout { inputLevel, level, cpu, pitch, hint, confirmed };
+    Rect needleArea, tunerArea, tunerNote, tunerHint, inputBar, outputBar, routeSymbol;
+    std::vector<Rect> tunerTiles;
+    enum class Readout { inputLevel, level, cpu };
     std::map<Readout, std::size_t> dynamicLines;
     void livePages(Rect);
     void playPanel(Rect);
     void ampPanel(Rect);
     void tunerPanel(Rect);
+    void paintTuner(juce::Graphics&);
     void diagnosticPanel(Rect);
     void customPanel(Rect);
     void pollLive();

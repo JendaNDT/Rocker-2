@@ -11,7 +11,7 @@ String Studio::selectedTrack() const {
 }
 int Studio::visibleBars() const {
     return view.editing
-               ? jlimit(1, view.zoom, std::max(1, (ruler.getWidth() - s::trackHead) / s::target))
+               ? jlimit(1, view.zoom, std::max(1, (ruler.getWidth() - s::trackHead) / s::timelineBarMin))
                : view.zoom;
 }
 Frame Studio::firstBar() const {
@@ -317,25 +317,45 @@ void Studio::discardAttempt() {
     status(cs::discardedAttempt);
 }
 void Studio::attemptDeck(TakeGroup& g, Rect area) {
-    int index =
+    const int index =
         previewGroup == g.id && preview >= 0 && preview <= (int)g.attempts.size() ? preview : g.active;
-    auto line = area.removeFromTop(s::button);
-    text(cs::takeGroup, line.removeFromLeft(s::levelWidth), s::heading);
-    String name =
-        cs::attemptLabel + " " + String(index + 1) + " · " +
-        (index ? Time(g.attempts[index - 1].created).formatted("%d.%m. %H:%M:%S") : cs::originalTake);
-    text(name, line, s::body);
-    auto row = area.removeFromTop(s::button);
-    auto add = [&](String label, Handler fn) {
-        auto* b = button(label, row.removeFromLeft(s::clipWidth), std::move(fn));
-        row.removeFromLeft(s::grid);
-        return b;
+    auto row = [&] {
+        auto part = area.removeFromTop(s::inspectorRow);
+        area.removeFromTop(s::inspectorGap);
+        return part;
     };
-    add(cs::repair, [this] { startRepair(); });
+    text(cs::takeGroup, row(), s::workspaceTitle, s::chalk, false, true);
+    text(cs::attemptKeys, row(), s::caption, s::muted);
+    std::vector<int> attempts{0};
+    for (int i = 0; i < (int)g.attempts.size(); ++i)
+        if (!g.attempts[i].discarded)
+            attempts.push_back(i + 1);
+    const int active = int(std::find(attempts.begin(), attempts.end(), index) - attempts.begin());
+    const int first = std::clamp(active - 1, 0, std::max(0, (int)attempts.size() - 4));
+    for (int n = first; n < std::min(first + 4, (int)attempts.size()); ++n) {
+        const int pass = attempts[n];
+        const auto name = pass == 0 ? cs::originalTake : cs::attemptLabel + " " + String(pass);
+        button(name, row(), [this, pass] {
+            auto* group = song.groupAt(selectedTrack(), selection().from, selection().to);
+            if (!group || (performance && performance->recording))
+                return;
+            previewGroup = group->id;
+            preview = pass;
+            if (performance)
+                selectKitAttempt(performance->playback, *group, pass);
+            else
+                audition(*group);
+            triggerAsyncUpdate();
+        }, index == pass ? 1 : 0)->setEnabled(!performance || !performance->recording);
+    }
+    auto add = [&](const String& label, Handler action) {
+        return button(label, row(), std::move(action));
+    };
+    add(cs::repair, [this] { startRepair(); })->setEnabled(!performance || comparing);
     add(cs::recordLoop, [this] { startRepair(true); })->setEnabled(!performance || comparing);
-    add(cs::nextAttempt, [this] { chooseAttempt(false); });
-    add(cs::keepAttempt, [this] { chooseAttempt(true); });
-    add(cs::discardAttempt, [this] { discardAttempt(); })->setEnabled(index != 0);
+    add(cs::nextAttempt, [this] { chooseAttempt(false); })->setEnabled(!performance || !performance->recording);
+    add(cs::keepAttempt, [this] { chooseAttempt(true); })->setEnabled(!performance || !performance->recording);
+    add(cs::discardAttempt, [this] { discardAttempt(); })->setEnabled(index != 0 && (!performance || !performance->recording));
     if (std::any_of(g.attempts.begin(), g.attempts.end(), [](auto& a) { return a.discarded; }))
         add(cs::restoredTake, [this] {
             auto* active = song.groupAt(selectedTrack(), selection().from, selection().to);
@@ -367,51 +387,52 @@ void Studio::editDeck(Rect area) {
         attemptDeck(*group, area);
         return;
     }
-    auto line = area.removeFromTop(s::button);
-    String caption = cs::rangeHint;
-    if (span.valid() && !selectedTrack().isEmpty()) {
-        auto first = song.grid.beatAt(span.from) / song.grid.beats + 1,
-             last = song.grid.beatAt(span.to - 1) / song.grid.beats + 1;
-        caption = cs::bars + " " + String(first) +
-                  (last == first ? String{} : String(u8"–") + String(last)) + "  ·  " +
-                  song.tracks[view.selected].name.substring(0, 32) + "  ·  " +
-                  String(double(span.length()) / song.grid.rate, 2).replaceCharacter('.', ',') + " s";
-    }
-    text(cs::selectionTitle, line.removeFromLeft(s::levelWidth), s::heading);
-    text(caption, line, s::body);
-    area.removeFromTop(s::gap);
-    auto row = area.removeFromTop(s::button);
-    auto action = [&](String label, Handler f, bool enabled) {
-        auto* b = button(label, row.removeFromLeft(s::levelWidth), std::move(f));
-        b->setEnabled(enabled && !performance);
-        b->setAlpha(b->isEnabled() ? 1.f : s::disabledOpacity);
-        row.removeFromLeft(s::gap);
+    auto row = [&] {
+        auto part = area.removeFromTop(s::inspectorRow);
+        area.removeFromTop(s::inspectorGap);
+        return part;
     };
-    bool selected = span.valid();
+    text(cs::selectionTitle.toUpperCase(), row(), s::section, s::navigationInk, false, true);
+    if (span.valid() && !selectedTrack().isEmpty()) {
+        const auto first = song.grid.beatAt(span.from) / song.grid.beats + 1;
+        const auto last = song.grid.beatAt(span.to - 1) / song.grid.beats + 1;
+        text(cs::bars + " " + String(first) + (last == first ? String{} : cs::rangeDash + String(last)),
+             row(), s::workspaceTitle, s::chalk, false, true);
+        auto details = row();
+        auto caption = song.tracks[view.selected].name + cs::divider +
+                       String(double(span.length()) / song.grid.rate, 2).replaceCharacter('.', ',') + " s";
+        text(limit(skin.font(s::caption), caption, details.getWidth()), details, s::caption, s::muted);
+    } else {
+        auto hint = row();
+        text(limit(skin.font(s::caption), cs::rangeHint, hint.getWidth()), hint, s::caption, s::muted);
+    }
+    const bool selected = span.valid();
+    auto action = [&](const String& name, Handler run, bool enabled) {
+        button(name, row(), std::move(run))->setEnabled(enabled && !performance);
+    };
+    action(cs::repair, [this] { startRepair(); }, selected);
+    action(cs::recordLoop, [this] { startRepair(true); }, selected);
     action(cs::split, [this] { editOp(EditOp::split); }, true);
+    action(cs::repeat, [this] { editOp(EditOp::repeat); }, selected);
     action(cs::copy, [this] { editOp(EditOp::copy); }, selected);
     action(cs::paste, [this] { editOp(EditOp::paste); }, !clipboard.clips.empty());
-    action(cs::repeat, [this] { editOp(EditOp::repeat); }, selected);
     action(cs::erase, [this] { editOp(EditOp::erase); }, selected);
-    action(cs::undo, [this] { undo(false); }, history.canStep(false));
-    action(cs::redo, [this] { undo(true); }, history.canStep(true));
-    action(cs::repair, [this] { startRepair(); }, selected);
-    auto settingsRow = area.removeFromBottom(s::button);
+    auto historyRow = row();
+    auto left = historyRow.removeFromLeft((historyRow.getWidth() - s::grid) / 2);
+    historyRow.removeFromLeft(s::grid);
+    button(cs::undo, left, [this] { undo(false); })->setEnabled(history.canStep(false) && !performance);
+    button(cs::redo, historyRow, [this] { undo(true); })->setEnabled(history.canStep(true) && !performance);
     StringArray lengths;
     for (int i = 0; i <= 8; ++i)
         lengths.add(String(i));
-    combo(cs::preRoll, settingsRow.removeFromLeft(s::clipWidth), lengths, view.leadBars, [this](int n) {
+    combo(cs::preRoll, row(), lengths, view.leadBars, [this](int n) {
         view.leadBars = n;
         view.save(projectDir);
     });
-    settingsRow.removeFromLeft(s::gap);
-    combo(cs::postRoll, settingsRow.removeFromLeft(s::clipWidth), lengths, view.tailBars, [this](int n) {
+    combo(cs::postRoll, row(), lengths, view.tailBars, [this](int n) {
         view.tailBars = n;
         view.save(projectDir);
     });
-    button(cs::recordLoop, settingsRow.removeFromRight(s::clipWidth), [this] { startRepair(true); })
-        ->setEnabled(selected && !performance);
-    text(cs::editHint, settingsRow.reduced(s::gap, 0), s::caption, s::muted);
 }
 bool Studio::editKey(const KeyPress& key) {
     auto code = key.getKeyCode();

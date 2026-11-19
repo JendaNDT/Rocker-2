@@ -169,3 +169,13 @@ Volitelný vývoz pro telefon má střídmý omezovač s předstihem. Měření 
 Zařízení zapisuje spojitě. Hudební ukazatel se vrací na začátek výběru, zatímco délka záznamu běží dál. Tím lze po zastavení nebo po pádu vyznačit jednotlivé průchody v jednom souboru na vstup. Po stisku Zastavit záznam doběhne o kompenzaci zvukovky a odposlech odehraje nastavenou dohru. Úplné průchody přebírají prolínání z opravy taktu. Rozpracovaný poslední průchod je v koši pokusů.
 
 Tlačítko v režimu Stříhej zatím stačí. Pro budoucí zkratku připadá v úvahu Ctrl+Shift+R. Zkratku použijeme po zkoušce hraní a ověření, že nenaruší běžné nahrávání klávesou R.
+
+## Redesign 1b
+
+Předlohou je varianta 1b z Jendova ZIPu. Boční lišta, pravý panel a transport mají rozměry 72, 300 a 76 logických bodů. Při větším okně roste hlavní plocha. Míchej má užší ovládání stop a volitelně sbalený pravý panel. Číslo taktu a stav nahrávání používají vyšší kontrast. [Plán redesignu](07_PLAN_REDESIGNU_1B.md)
+
+Samostatný Metronom používá stejný zdroj kliku a vodicího rytmu jako skladba. Druh vodítka a odpočet patří ke skladbě. Hlasitost a zvuk kliku patří k nastavení počítače. Metrum 9/8 zůstává dostupné vedle možností z makety. Klik a velký ukazatel dob vycházejí ze stejné mřížky. Nastavení rozpracované skladby se uloží po potvrzení a vrátí hráče na odpovídající takt.
+
+Rozšířené nastavení aparátu, soubory a historie mají vlastní širší panel, protože obsahují více voleb, než ukazuje návrh režimu Hraj. Vývoz má vlastní formulář. Pohled zdálky používá celou plochu okna. Zapojení zobrazuje skutečné možnosti ovladače. Když Úvod ještě nemá načtený zvuk skladby, ukáže díly a poslední polohu.
+
+Ikony Lucide 0.460.0 se kreslí z vložených SVG. Licence je u souborů a v balících pro Windows i Mac. Inter a JetBrains Mono mají stejné soubory jako referenční maketa. [Vydání Lucide](https://github.com/lucide-icons/lucide/releases/tag/0.460.0) · [Licence ikon](../assets/icons/Lucide-LICENSE.txt)

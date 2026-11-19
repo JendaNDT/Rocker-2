@@ -105,13 +105,15 @@ void Studio::confirmRepair(bool independent) {
     startProject(true, true, nullptr, std::exchange(askingLoop, false));
 }
 void Studio::sectionDeck(Rect area) {
-    auto top = area.removeFromTop(s::button);
-    auto actions = area.removeFromTop(s::button + s::grid).withTrimmedTop(s::grid);
-    auto add = [&](String name, Handler fn, bool enabled = true) {
-        button(name, actions.removeFromLeft(s::nameWidth), std::move(fn))
-            ->setEnabled(enabled && !performance);
-        actions.removeFromLeft(s::grid);
+    auto row = [&] {
+        auto part = area.removeFromTop(s::inspectorRow);
+        area.removeFromTop(s::inspectorGap);
+        return part;
     };
+    auto add = [&](String name, Handler fn, bool enabled = true) {
+        button(name, row(), std::move(fn))->setEnabled(enabled && !performance);
+    };
+    text(cs::sections, row(), s::workspaceTitle, s::chalk, false, true);
     if (askingRepair) {
         String name;
         int count = 0;
@@ -126,9 +128,10 @@ void Studio::sectionDeck(Rect area) {
                 break;
             }
         }
-        text(name.substring(0, 32) + " " + cs::repeatsAt + " " + String(count) + String(u8"×. ") +
-                 cs::repeatWarning,
-             top, s::body);
+        auto heading = row();
+        auto summary = name + " " + cs::repeatsAt + " " + String(count) + String(u8"×");
+        text(limit(skin.font(s::body), summary, heading.getWidth()), heading, s::body);
+        text(cs::repairScopeHint, row(), s::caption, s::warning);
         add(count == 2 ? cs::sharedRepair : cs::repairAll, [this] { confirmRepair(false); });
         add(cs::ownRepair, [this] { confirmRepair(true); });
         add(cs::sectionCancel, [this] {
@@ -144,10 +147,9 @@ void Studio::sectionDeck(Rect area) {
     int full = song.order.empty()
                    ? length
                    : song.sections.at(song.order[index].section).bars - song.order[index].crop;
-    field(cs::sectionName, top.removeFromLeft(s::fieldWidth), sectionDraft);
-    button(cs::sectionRename, top.removeFromLeft(s::clipWidth), [this] { tapeAction(TapeAction::name); });
-    top.removeFromLeft(s::gap);
-    combo(cs::sectionColour, top, cs::sectionNames,
+    field(cs::sectionName, row(), sectionDraft);
+    add(cs::sectionRename, [this] { tapeAction(TapeAction::name); });
+    combo(cs::sectionColour, row(), cs::sectionNames,
           song.order.empty() ? 1 : palette(song.sections.at(song.order[index].section).colour),
           [this](int i) { tapeAction(TapeAction::colour, i); });
     add(
@@ -156,7 +158,7 @@ void Studio::sectionDeck(Rect area) {
     add(cs::sectionRepeat, [this, index] { tapeAction(TapeAction::repeat, index + 1); });
     add(cs::sectionDetach, [this] { tapeAction(TapeAction::detach); }, song.linked(index));
     add(cs::sectionRestore, [this] { tapeAction(TapeAction::restore); }, length < full);
-    text(String(length) + cs::outOf + String(full) + " " + cs::totalBars, actions, s::body);
+    text(String(length) + cs::outOf + String(full) + " " + cs::totalBars, row(), s::body);
 }
 void Studio::drawSections(Graphics& g) {
     auto axis = sectionStrip.withTrimmedLeft(s::trackHead);
