@@ -128,7 +128,7 @@ MixFile exportMix(const Song& song, const AudioLibrary& lib, const File& dest, D
     if (format == Delivery::mp3 && (!encodeMp3(pcm.getFile(), output.getFile()) ||
                 !tagMp3Length(output.getFile(),std::llround(input->lengthInSamples*44100./input->sampleRate))))
         return result;
-    if (format == Delivery::m4a && !encodeAac(pcm.getFile(), output.getFile()))
+    if (format == Delivery::m4a && !encodeAac(pcm.getFile(), output.getFile(), result.detail))
         return result;
     result.ok = commitTemporary(output);
     return result;

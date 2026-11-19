@@ -105,7 +105,9 @@ TEST_CASE("A-28 native AAC delivers both edges and the exact editorial length") 
     AudioLibrary sources;
     REQUIRE(sources.load(song, root));
     auto file = root.getChildFile("Univerzální poslech.m4a");
-    REQUIRE(exportMix(song, sources, file, Delivery::m4a, 0, length).ok);
+    auto encoded = exportMix(song, sources, file, Delivery::m4a, 0, length);
+    INFO(encoded.detail.toStdString());
+    REQUIRE(encoded.ok);
     FileInputStream bytes(file);
     REQUIRE(bytes.openedOk());
     REQUIRE(bytes.setPosition(4));
