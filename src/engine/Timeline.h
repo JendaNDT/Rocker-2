@@ -129,6 +129,7 @@ class Performance {
     void finishDisk();
     bool drain();
     void storeInputMarks(Song&) const;
+    void configureClick(int level, int sound) noexcept;
     BeatGrid grid;
     Playback playback;
     Frame start, end, clock;
@@ -166,6 +167,7 @@ class Performance {
     int loopCaptureDelay = 0;
     int clickAge = -1;
     bool accent = false;
+    std::atomic<unsigned> clickConfiguration{100};
 };
 // Only the device callback reads the published pointer. The controller waits
 // for a current callback to exit before releasing a performance.

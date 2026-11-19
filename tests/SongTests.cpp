@@ -295,6 +295,36 @@ TEST_CASE("A-31 guide signals leave the captured input waveform identical") {
         CHECK(std::all_of(dry, dry + samples.getNumSamples(), [](float v) { return v == .125f; }));
     }
 }
+
+TEST_CASE("The metronome repeats odd meters and applies its output volume and tone") {
+    for (const auto [beats, unit] : {std::pair{5, 4}, std::pair{7, 8}}) {
+        Song song;
+        song.grid = {48000, beats, unit, 120.};
+        const Frame end = song.grid.beat(beats);
+        Performance classic(song, {}, 0, false, true, 0, false, LoopSpan{0, end, 0});
+        Performance chosen(song, {}, 0, false, true, 0, false, LoopSpan{0, end, 0});
+        chosen.configureClick(50, 1);
+        std::vector<float> a(size_t(end + song.grid.beat(2)), 0.f), b(a.size(), 0.f);
+        float* const outputA[]{a.data()};
+        float* const outputB[]{b.data()};
+        classic.process(nullptr, 0, outputA, 1, int(a.size()));
+        chosen.process(nullptr, 0, outputB, 1, int(b.size()));
+        for (int i = 0; i < beats + 2; ++i) {
+            const auto tick = size_t(song.grid.beat(i));
+            CHECK(std::abs(a[tick] - .16f) < 1.e-6f);
+            CHECK(std::abs(b[tick] - .08f) < 1.e-6f);
+            if (tick > 0)
+                CHECK(a[tick - 1] == 0.f);
+        }
+        CHECK(std::abs(a[20] * .5f - b[20]) > .001f);
+        CHECK_FALSE(chosen.finished);
+        chosen.configureClick(0, 2);
+        std::array<float, 64> silent{};
+        float* const muted[]{silent.data()};
+        chosen.process(nullptr, 0, muted, 1, int(silent.size()));
+        CHECK(std::all_of(silent.begin(), silent.end(), [](float sample) { return sample == 0.f; }));
+    }
+}
 TEST_CASE("A-32 independently generated EBU Tech 3341 minimum cases pass within 0.1 LU") {
     Workspace w;
     constexpr int rate = 48000;

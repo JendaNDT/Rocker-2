@@ -448,6 +448,8 @@ Performance::Performance(const Song& s, const AudioLibrary& library, Frame from,
       end(rec ? std::numeric_limits<Frame>::max() : s.end() + playback.tailFrames()),
       clock(from - s.grid.beat(count)), recording(rec), click(metronome), cursor(clock),
       looped(loop && loop->from >= from && loop->to > loop->from ? loop : std::nullopt) {
+    if (looped)
+        end = std::numeric_limits<Frame>::max();
     if (metronome && rhythm)
         guide.emplace(grid, from);
     // Anchor count-in to the punch position; normal beats follow the song grid.
@@ -654,6 +656,11 @@ bool Performance::requestLoopStop() noexcept {
     Frame previous = std::numeric_limits<Frame>::max();
     return loopStop.compare_exchange_strong(previous, loopStopRequested);
 }
+void Performance::configureClick(int level, int sound) noexcept {
+    const auto options = unsigned(std::clamp(level, 0, 100)) |
+                         (unsigned(std::clamp(sound, 0, 2)) << 8);
+    clickConfiguration.store(options, std::memory_order_relaxed);
+}
 void Performance::hits(std::span<const Hit> events, Frame position, bool overflow) noexcept {
     if (finished.load())
         return;
@@ -733,6 +740,13 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
             }
         }
     }
+    const auto guideOptions = clickConfiguration.load(std::memory_order_relaxed);
+    const auto volume = float(guideOptions & 0xffu) / 100.f;
+    struct Pulse {
+        double beat, accent, decay;
+    };
+    static constexpr Pulse sounds[]{{1000, 1600, .0025}, {660, 1080, .0035}, {1400, 2100, .0018}};
+    const auto pulse = sounds[guideOptions >> 8];
     for (int i = 0; i < n; ++i) {
         const Frame now = position(clock + i, stop);
         if (looped && clock + i >= looped->to && now == looped->from) {
@@ -762,18 +776,18 @@ void Performance::process(const float* const* in, int ni, float* const* out, int
                 nextBeat = grid.beat(beatIndex);
         }
         if (guide && now >= start) {
-            const float beat = guide->sample(now);
+            const float beat = volume * guide->sample(now);
             for (int c = 0; c < std::min(2, no); ++c)
                 if (out[c])
                     out[c][i] += beat;
         }
         if (clickAge >= 0) {
-            float pulse =
-                (float)(0.16 * std::exp(-clickAge / (grid.rate * .0025)) *
-                        std::cos(2 * std::numbers::pi * (accent ? 1600 : 1000) * clickAge / grid.rate));
+            const auto frequency = accent ? pulse.accent : pulse.beat;
+            const float sample = volume * float(.16 * std::exp(-clickAge / (grid.rate * pulse.decay)) *
+                         std::cos(2 * std::numbers::pi * frequency * clickAge / grid.rate));
             for (int c = 0; c < std::min(2, no); ++c)
                 if (out[c])
-                    out[c][i] += pulse;
+                    out[c][i] += sample;
             if (++clickAge >= grid.rate / 80)
                 clickAge = -1;
         }

@@ -64,6 +64,8 @@ Settings Settings::load(const juce::File& file) {
             if (e.value.isInt())
                 result.midiCorrections[e.name.toString()] = juce::jlimit(-48000, 48000, int(e.value));
     result.pedalKey = integer("pedal", 0, 0, 0x7fffffff);
+    result.clickVolume = integer("clickVolume", 100, 0, 100);
+    result.clickSound = integer("clickSound", 0, 0, 2);
     auto kits = data.getProperty("bici", {});
     if (auto* obj = kits.getDynamicObject())
         for (auto& entry : obj->getProperties()) {
@@ -147,6 +149,8 @@ bool Settings::save(const juce::File& file) const {
     for (auto& [key, value] : midiCorrections)
         corrections->setProperty(key, value);
     object->setProperty("pedal", pedalKey);
+    object->setProperty("clickVolume", clickVolume);
+    object->setProperty("clickSound", clickSound);
     auto* kits = new juce::DynamicObject;
     object->setProperty("bici", juce::var(kits));
     for (auto& [key, kit] : drumSetups) {
