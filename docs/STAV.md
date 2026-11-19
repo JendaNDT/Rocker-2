@@ -1,5 +1,13 @@
 # Stav Rockeru 2
 
+## E6 · sloky, refrény a pořadí
+
+Pás Díly ukazuje jednotlivé výskyty skladby. Umožňuje je přejmenovat, obarvit, rozdělit, zopakovat, přesunout, zkrátit a osamostatnit. Při opravě taktu ve spojeném výskytu hráč vybírá rozsah změny. [Výsledky CI a sestavení](https://github.com/JendaNDT/Rocker-2/pull/7)
+
+- **A-02** měří polohu následujícího dílu ve vzorcích, ověřuje shodu původního WAV, průběh obou hran ořezu, návrat délky, Zpět a opětovné načtení. Samostatná zkouška upraví viditelnou část zkráceného refrénu a zkontroluje zvuk po roztažení.
+- **Zkouška ovládání** připraví Sloku a dva spojené refrény, zkrátí druhý refrén z osmi taktů na šest a porovná stav po Zpět, tažení okraje i příkazu Obnovit celou délku. Zkouška používá jeho tlačítko ve spodní desce. Nahraje opravu pro oba refrény a další jen pro druhý. [Díly](zkousky/E6/dily.png) · [Výběr rozsahu opravy](zkousky/E6/oprava.png)
+- Hraní, poslech návaznosti a posouzení čitelnosti hráčem **čeká na ruční zkoušku po vydání**. [Postup](../README.md#jak-zopakovat-refrén)
+
 ## E5 · oprava jednoho taktu
 
 Klávesa P pořídí celý čistý průchod s předstihem a dohrou. Ve výběru zní aktivní pokus. Při přepnutí klávesou Tab dál běží čas i aparát stopy. Enter uloží výběr. [PR, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/6)

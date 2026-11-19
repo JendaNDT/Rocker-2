@@ -1,6 +1,17 @@
 #pragma once
 #include "engine/Devices.h"
+#include "song/SectionLabels.h"
 namespace rocker::cs {
+inline const juce::String sections = u8"Díly", sectionSplit = u8"Rozdělit díl zde",
+                          sectionRepeat = u8"Zopakovat díl", sectionDetach = u8"Osamostatnit",
+                          sectionRestore = u8"Obnovit celou délku", sectionResize = u8"Délka výskytu",
+                          sectionName = u8"Název dílu", sectionColour = u8"Barva pásky",
+                          sectionRename = u8"Uložit název", sectionMove = u8"Přesunout díl",
+                          sharedRepair = u8"Opravit oba", ownRepair = u8"Jen tento výskyt",
+                          repeatWarning = u8"Oprava platí pro všechny výskyty.", repeatsAt = u8"se hraje",
+                          repairAll = u8"Opravit všechny", totalBars = u8"taktů", outOf = u8" z ",
+                          sectionCancel = u8"Zrušit";
+
 inline const juce::String repair = u8"P · Oprav takt", repairState = u8"OPRAVA", attemptLabel = u8"Pokus",
                           takeGroup = u8"Pokusy", keepAttempt = u8"Ponechat tenhle",
                           discardAttempt = u8"Zahodit pokus", nextAttempt = u8"Další pokus",
@@ -154,7 +165,7 @@ inline const juce::String
     newTrack = u8"Přidat stopu", trackEdit = u8"Nastavit stopu", trackName = u8"Název stopy",
     trackKind = u8"Druh stopy", channels = u8"Kanály", noSong = u8"Zatím tu žádná skladba není.",
     recordSong = u8"Nahrávat", playSong = u8"Přehrát", stopSong = u8"Zastavit", atStart = u8"Na začátek",
-    distantView = u8"Zdálky", normal = u8"Zpět k časové ose", bars = u8"Takty", verse = u8"Sloka",
+    distantView = u8"Zdálky", normal = u8"Zpět k časové ose", bars = u8"Takty", verse = verseName,
     arm = u8"Připravit", disarm = u8"Připraveno", mute = u8"Ztlumit", solo = u8"Sólo",
     songClick = u8"Klik", countIn = u8"Odpočet", enabled = u8"Zapnuto", disabled = u8"Vypnuto",
     missingInputs = u8"Vyber vstup u každé připravené stopy.",

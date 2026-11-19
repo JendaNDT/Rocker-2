@@ -6,7 +6,7 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-5**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E5](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-5)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-6**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E6](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-6)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
@@ -19,6 +19,15 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 3. Zapni **Klik** a **Odpočet**. **F11** zvětší stav a číslo taktu pro hráče za bicími. Stiskni **R**, po čtyřech dobách nahraj osm taktů a dalším **R** zastav. **F11** tě vrátí na časovou osu. Mezera přehrává a zastavuje.
 4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. Při přehrávání použije kytarová stopa vlastní nastavení aparátu.
 5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
+
+## Jak zopakovat refrén
+
+1. Otevři skladbu se šestnácti takty a stiskni **2 Stříhej**. Oddal pohled tak, abys viděl alespoň 24 taktů.
+2. Klikni na barevnou pásku **Díly** nad hranicí mezi takty 8 a 9 a zvol **Rozdělit díl zde**. Uvidíš Sloku a Refrén. Ve spodní desce můžeš změnit název i barvu pásky.
+3. Vyber pásku Refrén a stiskni **D**. Druhý refrén ponese značku **⧉**. Podržením Ctrl při tažení pásky také vložíš spojený výskyt. Tažení za střed bez Ctrl přesune díl v pořadí.
+4. Chyť pravý okraj druhého refrénu a táhni ho o dva takty doleva. Uvidíš **6 z 8**, za hranou šrafovaný konec. První refrén má stále osm taktů. Následující díly se posunou o dva takty blíž.
+5. Délku vrátíš přes **Ctrl+Z**, tažením okraje zpět nebo pravým tlačítkem na pásku a volbou **Obnovit celou délku**.
+6. Na pravítku vyber takt ve spojeném refrénu a stiskni **P**. **Opravit oba** použije nové hraní v obou refrénech. **Jen tento výskyt** vytvoří samostatný refrén. [Snímek pásu Díly](docs/zkousky/E6/dily.png)
 
 ## Jak opravit jediný takt
 

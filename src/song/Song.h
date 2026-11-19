@@ -48,6 +48,18 @@ struct Asset {
     Frame length = 0;
     int channels = 1;
 };
+struct Section {
+    bool operator==(const Section&) const = default;
+    juce::String id, name, colour;
+    int bars = 1;
+    std::vector<Clip> clips;
+    std::vector<TakeGroup> groups;
+};
+struct Occurrence {
+    bool operator==(const Occurrence&) const = default;
+    juce::String id, section;
+    int crop = 0, length = 1;
+};
 struct Song {
     bool operator==(const Song&) const = default;
     juce::String title, tuning = "Standard";
@@ -57,9 +69,25 @@ struct Song {
     std::vector<Asset> assets;
     std::vector<TakeGroup> groups;
     TakeGroup* groupAt(const juce::String& track, Frame from, Frame to);
-    bool addAttempt(Clip pass, Frame from, Frame to, Frame created);
+    bool addAttempt(Clip pass, Frame from, Frame to, Frame created, bool discarded = false);
     std::vector<Frame> dropouts;
     int bars = 8;
+    std::map<juce::String, Section> sections;
+    std::vector<Occurrence> order;
+    Frame barFrame(int bar) const { return grid.beat(Frame(bar) * grid.beats); }
+    Frame translate(Frame value, int fromBar, int toBar) const;
+    int startBar(int index) const;
+    int occurrenceAt(int bar) const;
+    bool linked(int index) const;
+    void initOrder();
+    void projectOrder();
+    bool splitSection(int bar);
+    bool repeatSection(int index, int insert);
+    bool detachSection(int index);
+    bool resizeOccurrence(int index, int length);
+    void commitClips();
+    void commitGroup(const TakeGroup&);
+    void extendOrder(Frame);
     Frame end() const;
     juce::var json() const;
     static std::optional<Song> parse(const juce::var&, bool& damaged);

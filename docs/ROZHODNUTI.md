@@ -70,3 +70,11 @@ Každý průchod má vlastní čistý WAV. Koš je příznak u pokusu ve skladb�
 Ovladač může dodat poslední vzorky vstupu se zpožděním. Zapisovač proto doběhne ještě o nastavenou kompenzaci. Po posunu má průchod přesnou délku od předstihu do konce dohry. Při přerušení před koncem opravovaného úseku se čitelná část uloží mezi zahozené pokusy v místě skutečného záznamu. Přerušený záznam tak automaticky nepřekryje původní hraní.
 
 Prolnutí mezi původním zahráním a opravou trvá 10 ms na každém okraji. U úseku kratšího než 20 ms se oba okraje vejdou do zvolené délky. Přepnutí během poslechu také používá krátké prolnutí. Stále běží stejný aparát dané stopy.
+
+## E6 · díl a jeho výskyty
+
+Zvuky a pokusy jsou uložené jednou u dílu. Každý výskyt si pamatuje svůj začátek v dílu a počet hraných taktů. Osamostatnění zkopíruje popis dílu a odkazy na WAV. Při rozdělení uvnitř spojeného výskytu vzniknou dva díly pro tento výskyt, ostatní výskyty si ponechají společný zdroj.
+
+Konec zkráceného výskytu se ztišuje posledních 5 ms. První vzorek po hraně začíná na nule a zvuk následujícího dílu nabíhá 5 ms. Na hraně se vyčistí dozvuk aparátu, poloha dalšího taktu zůstane přesná. Prolnutí pokusů uvnitř dílu má nadále 10 ms.
+
+Při tempu s necelou délkou doby ve vzorcích se poloha na době převádí přes číslo doby a zaokrouhlí se až v cílovém výskytu. Prosté sčítání dvou zaokrouhlených vzdáleností by mohlo posunout opravu o jeden vzorek.

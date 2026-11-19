@@ -85,6 +85,8 @@ void Studio::openProject(File dir) {
         return;
     }
     finishProject();
+    selectedOccurrence = -1;
+    askingRepair = false;
     const bool sameProject = projectDir == dir;
     projectDir = dir;
     comparing = false;
@@ -134,7 +136,7 @@ void Studio::field(const String& label, Rect r, String& value) {
     controls.add(edit);
     addAndMakeVisible(edit);
     edit->setName(label);
-    edit->setBounds(r.withWidth(s::fieldWidth));
+    edit->setBounds(r.withWidth(std::min(r.getWidth(), s::fieldWidth)));
     edit->setFont(skin.font(s::body));
     edit->setInputRestrictions(64);
     edit->setText(value, false);
@@ -471,6 +473,7 @@ void Studio::projectPage(Rect area) {
                     song.grid.bpm = bpm;
                     song.grid.beats = draftBeats;
                     song.grid.unit = draftUnit;
+                    song.projectOrder();
                 } else {
                     if (draftTrack.trim().isEmpty())
                         return;
@@ -660,8 +663,10 @@ void Studio::projectPage(Rect area) {
              " h",
          disk, s::caption, s::muted, true, false, true);
     text(message, notice, s::caption, s::warning);
+    sectionStrip = row(area);
+    text(cs::sections, sectionStrip.withWidth(s::trackHead), s::body, s::muted);
     ruler = row(area);
-    text(cs::verse + "   /   " + cs::bars, ruler.withWidth(s::trackHead), s::body, s::guitar);
+    text(cs::bars, ruler.withWidth(s::trackHead), s::body, s::guitar);
     auto trackCommands = area.removeFromBottom(s::button);
     timelineArea = area;
     lanes.clear();
@@ -800,6 +805,7 @@ void Studio::paintProject(Graphics& g) {
         g.fillRect(barArea.withWidth(
             roundToInt(barArea.getWidth() * std::clamp((decibels(peak) + 60.f) / 60.f, 0.f, 1.f))));
     }
+    drawSections(g);
     const Frame first = firstBar();
     const int bars = visibleBars();
     auto axis = ruler.withTrimmedLeft(s::trackHead);
@@ -891,7 +897,15 @@ void Studio::paintProject(Graphics& g) {
 void Studio::mouseDown(const MouseEvent& event) {
     if (page != Page::project || performance || view.distant)
         return;
+    if (sectionStrip.withTrimmedLeft(s::trackHead).contains(event.getPosition())) {
+        if (!view.editing)
+            editMode(true);
+        sectionDown(event);
+        return;
+    }
     if (view.editing) {
+        selectedOccurrence = -1;
+        askingRepair = false;
         editMouseDown(event);
         return;
     }
