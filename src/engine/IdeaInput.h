@@ -7,17 +7,17 @@ namespace rocker {
 // The audio thread owns the write cursor. Readers can copy an earlier interval without pausing it.
 class IdeaInput {
   public:
-    explicit IdeaInput(int rate);
+    explicit IdeaInput(int rate,bool insurance=true);
     void push(const float*,int) noexcept;
     Frame end() const { return published.load(); }
-    Frame earliest() const { return std::max(resetAt.load(),end()-Frame(rate)*(history.load()?120:2)); }
-    void setHistory(bool enabled) { if(history.exchange(enabled)!=enabled) forget(); }
+    Frame earliest() const { return std::max(resetAt.load(),end()-Frame(rate)*(history?120:2)); }
+    bool hasHistory() const {return history;}
     void forget() { resetAt.store(end()); }
     bool write(juce::AudioFormatWriter&,Frame from,Frame to) const;
     const int rate;
   private:
     const int capacity;
-    std::atomic<bool> history{true};
+    const bool history;
     std::unique_ptr<std::atomic<float>[]> ring;
     std::atomic<Frame> published{0}, writingTo{0}, resetAt{0};
 };

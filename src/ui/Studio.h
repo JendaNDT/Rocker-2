@@ -70,6 +70,17 @@ class Studio final : public juce::Component, public juce::FileDragAndDropTarget,
     std::unique_ptr<Performance> ideaPreview;
     AudioLibrary ideaAudio;
     juce::File previewCache;
+    struct PreviewSource {
+        Song song;
+        AudioLibrary audio;
+        juce::File temp;
+        juce::String id;
+        int rate=0;
+        bool ok=false, tap=false;
+    };
+    std::future<PreviewSource> preparingPreview;
+    bool acceptPreview=false;
+    void finishPreview();
     juce::String ideaId,ideaFilter,ideaNote;
     Idea capturedIdea;
     bool starsOnly=false,tapping=false,ideaClick=false;

@@ -798,14 +798,15 @@ TEST_CASE("A-17 E8 an idea becomes a starred riff and a song with an imported ba
     auto play=[&](int samples) {
         while(samples>0) {
             int n=std::min(512,samples); std::vector<float> signal(n);
-            for(auto& x:signal) x=.12f*std::sin(step++*.05f);
+            for(auto& x:signal) {x=float(.8*std::exp(-(step%12000)/4800.)*std::sin(step*.05));++step;}
             device.process({signal},n);samples-=n;
         }
     };
     auto key=[&](int code,int mods=0){REQUIRE(view.keyPressed(KeyPress(code,ModifierKeys(mods),0)));view.resized();};
     play(3*48000);
     key('R');REQUIRE(view.currentPage()==Page::ideas);
-    play(48000*4);tick();view.resized();fits(view);
+    for(int i=0;i<40;++i){play(4800);tick();}
+    view.resized();fits(view);
     for(int pixels:{1280,1920})snapshot(view,"20-nahravam-napad",pixels);
     key(KeyPress::spaceKey);
     for(int i=0;i<150 && !find<Button>(view,cs::ideaStar);++i) {tick();view.resized();}
@@ -814,6 +815,8 @@ TEST_CASE("A-17 E8 an idea becomes a starred riff and a song with an imported ba
     note->setText(String::fromUTF8("Riff na zítřek"),true);click(view,cs::saveNote);
     click(view,cs::starredOnly);
     click(view,cs::tapIdea);
+    for(int i=0;i<100 && !find<Button>(view,cs::tap+" 0 / 8");++i){tick();view.resized();}
+    REQUIRE(find<Button>(view,cs::tap+" 0 / 8"));
     for(int i=0;i<8;++i) {play(i==0?2400:24000);key(KeyPress::spaceKey);}
     auto catalog=Ideas(temp.dir.getChildFile("Napady"));REQUIRE(catalog.all().size()==1);
     const auto& idea=catalog.all().front();CHECK(idea.star);CHECK(idea.length==6*48000);CHECK(idea.bpm==120);CHECK(idea.note.isNotEmpty());

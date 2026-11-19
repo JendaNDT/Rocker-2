@@ -2,7 +2,7 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
-inline const juce::String ideaTitle=u8"Nápad ", insurance=u8"Pojistka", insuranceOn=u8"Pojistka · 2:00", insuranceOff=u8"Pojistka vypnutá",
+inline const juce::String totalIdeas=u8"celkem", ideaTitle=u8"Nápad ", insurance=u8"Pojistka", insuranceOn=u8"Pojistka · 2:00", insuranceOff=u8"Pojistka vypnutá",
     keepHistory=u8"Ulož, co jsem hrál", emptyHistory=u8"Zatím není co uložit. Zahraj několik tónů.",
     ideaRecording=u8"NAHRÁVÁM NÁPAD", savingIdea=u8"Ukládám nápad…", ideaSaved=u8"Uloženo jako ",
     ideaStar=u8"★ Povedené", starredOnly=u8"Jen ★", allIdeas=u8"Všechny", note=u8"Poznámka", saveNote=u8"Uložit poznámku",

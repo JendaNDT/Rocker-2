@@ -3,7 +3,7 @@
 
 namespace rocker {
 static_assert(std::atomic<float>::is_always_lock_free);
-IdeaInput::IdeaInput(int sampleRate) : rate(sampleRate), capacity(sampleRate*125),
+IdeaInput::IdeaInput(int sampleRate,bool insurance) : rate(sampleRate), capacity(sampleRate*(insurance?125:7)),history(insurance),
     ring(std::make_unique<std::atomic<float>[]>(capacity)) {}
 void IdeaInput::push(const float* values,int count) noexcept {
     if(!values || count<=0) return;

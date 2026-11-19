@@ -1,4 +1,4 @@
-#include "engine/IdeaInput.h"
+#include "engine/Audio.h"
 #include "engine/Import.h"
 #include "storage/Ideas.h"
 #include <catch2/catch_test_macros.hpp>
@@ -53,9 +53,9 @@ TEST_CASE("A-18 three minutes of input retain exactly the last two minutes and a
     auto song=next.toSong(saved,temp.dir.getChildFile("Song"),"Idea","Guitar");
     REQUIRE(song); CHECK(song->tuning=="Drop D"); CHECK((song->clips.front().position+saved.firstBeat)%song->barFrame(1)==0);
     MemoryBlock a,b; REQUIRE(ideas.wave(x.id).loadFileAsData(a));REQUIRE(temp.dir.getChildFile("Song/"+song->assets[0].path).loadFileAsData(b));CHECK(a==b);
-    input->setHistory(false); CHECK(input->earliest()==input->end());
+    Audio device;device.prepare(1,rate);device.setInsurance(false);input=device.ideaInput;CHECK_FALSE(input->hasHistory()); CHECK(input->earliest()==input->end());
     play(3*rate);CHECK(input->end()-input->earliest()==2*rate);
-    input->setHistory(true); CHECK(input->earliest()==input->end());
+    device.setInsurance(true); input=device.ideaInput; CHECK(input->hasHistory()); CHECK(input->earliest()==input->end());
 }
 TEST_CASE("Eight taps anchor a free riff on its first downbeat") {
     std::vector<Frame> taps; for(int i=0;i<8;++i)taps.push_back(1452+i*24000);
@@ -96,4 +96,18 @@ TEST_CASE("A-19 independent mono and stereo assets retain pitch and duration thr
     }
     CHECK_FALSE(importAudio(t.dir.getChildFile("broken.mp3"),t.dir,48000));
 }
+}
+
+TEST_CASE("Idea recovery reindexes a readable interrupted WAV exactly once") {
+    Temp temp;
+    Ideas catalog(temp.dir);auto id=Uuid().toString();
+    auto file=catalog.wave(id);
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer=waveWriter(file.getSiblingFile(id+".partial.wav"),44100,1); REQUIRE(writer);
+    AudioBuffer<float> material(1,2048);material.clear();material.setSample(0,120,.8);
+    REQUIRE(writer->writeFromAudioSampleBuffer(material,0,2048));writer.reset();
+    REQUIRE(temp.dir.getChildFile("napady.json").replaceWithText("{"));
+    catalog.recover();catalog.recover();
+    REQUIRE(catalog.all().size()==1);CHECK(catalog.all()[0].id==id);CHECK(catalog.all()[0].length==2048);
+    CHECK(file.existsAsFile());CHECK(temp.dir.findChildFiles(File::findFiles,false,"napady-zaloha*.json").size()==1);
 }

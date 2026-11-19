@@ -29,7 +29,7 @@ void Studio::chooseIdea(const Idea& idea) {
 void Studio::enableInsurance() {
     if(ideaRecording) return;
     settings.insurance=!settings.insurance;
-    if(link.audio.ideaInput) link.audio.ideaInput->setHistory(settings.insurance);
+    link.audio.setInsurance(settings.insurance);
     persist();triggerAsyncUpdate();
 }
 void Studio::startIdea(bool retrospective) {
@@ -70,7 +70,7 @@ void Studio::stopIdea() {
 }
 void Studio::stopPreview() {
     if(ideaPreview) {link.audio.timeline.detach();ideaPreview.reset();}
-    tapping=false;taps.clear();ideaAudio.data.clear();
+    acceptPreview=false; tapping=false;taps.clear();ideaAudio.data.clear();
     if(previewCache!=File{}) {previewCache.deleteRecursively();previewCache=File{};}
 }
 void Studio::playIdea(bool tap) {
@@ -78,23 +78,42 @@ void Studio::playIdea(bool tap) {
     if(ideaPreview) {stopPreview();triggerAsyncUpdate();if(!tap) return;}
     auto* x=pickedIdea();
     if(!x || !link.online || link.caps.outputChannels==0) {status(cs::noDeviceSong);return;}
-    Song previewSong;
-    previewSong.grid.rate=link.current.rate;previewSong.bars=0;
-    auto dir=libraryRoot.getSiblingFile("Napady");
-    Asset asset{x->id,"Zvuk/"+x->id+".wav",x->length,1};
-    if(link.current.rate!=x->rate) {
-        previewCache=File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("Rocker2-preview","",false);
-        auto a=importAudio(ideas->wave(x->id),previewCache,link.current.rate);
-        if(!a) {stopPreview();status(cs::previewRate);return;}
-        asset=*a;dir=previewCache;
+    if(preparingPreview.valid()) return;
+    acceptPreview=true;
+    auto folder=libraryRoot.getSiblingFile("Napady");
+    auto original=ideas->wave(x->id);
+    preparingPreview=std::async(std::launch::async,[item=*x,folder,original,rate=link.current.rate,tap,amp=sound]{
+        PreviewSource result;result.id=item.id;result.tap=tap;result.rate=rate;
+        result.song.grid.rate=rate;result.song.bars=0;
+        auto dir=folder;
+        Asset asset{item.id,"Zvuk/"+item.id+".wav",item.length,1};
+        if(rate!=item.rate) {
+            result.temp=File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("Rocker2-preview","",false);
+            auto a=importAudio(original,result.temp,rate);
+            if(!a) return result;
+            asset=*a;dir=result.temp;
+        }
+        Track t;t.id="idea";t.kind="kytara";t.amp.values=amp;t.amp.enabled=true;
+        result.song.tracks={t};result.song.assets={asset};result.song.clips={{"riff",t.id,asset.id,0,0,asset.length}};
+        result.ok=result.audio.load(result.song,dir);
+        return result;
+    });
+    triggerAsyncUpdate();
+}
+void Studio::finishPreview() {
+    PreviewSource result;
+    try {result=preparingPreview.get();}catch(const std::exception&) {}
+    bool current=acceptPreview && page==Page::ideas && result.id==ideaId && result.rate==link.current.rate && link.online;
+    if(!current || !result.ok) {
+        result.audio.data.clear(); if(result.temp!=File{})result.temp.deleteRecursively();
+        if(current) status(cs::previewRate);
+        return;
     }
-    Track t;t.id="idea";t.kind="kytara";t.amp.values=sound;t.amp.enabled=true;
-    previewSong.tracks={t};previewSong.assets={asset};previewSong.clips={{"riff",t.id,asset.id,0,0,asset.length}};
-    if(!ideaAudio.load(previewSong,dir)) {stopPreview();status(cs::previewRate);return;}
-    ideaPreview=std::make_unique<Performance>(previewSong,ideaAudio,0,false,false,0);
-    tapping=tap;taps.clear();
+    previewCache=result.temp;ideaAudio=std::move(result.audio);
+    ideaPreview=std::make_unique<Performance>(result.song,ideaAudio,0,false,false,0);
+    tapping=result.tap;taps.clear();
     link.audio.timeline.attach(*ideaPreview);
-    status(tap?cs::tapHint:String{});
+    status(tapping?cs::tapHint:String{});
 }
 void Studio::tapIdea() {
     if(!ideaPreview || !tapping || !pickedIdea()) return;
@@ -115,6 +134,7 @@ void Studio::makeIdeaSong() {
     if(x->bpm<=0) status(cs::freeTempo);
 }
 void Studio::ideaTick() {
+    if(ready(preparingPreview)) finishPreview();
     if(ready(savingIdea)) {
         bool saved=false;
         try {saved=savingIdea.get();} catch(const std::exception&) {}
@@ -143,7 +163,8 @@ void Studio::ideaHome(Rect area) {
             for(const auto& x:ideas->all()) if(x.id==id) {chooseIdea(x);break;}
         });
         text(duration(idea.length,idea.rate),cell(r,s::scaleWidth),s::body,s::muted,true);
-        ideaWaves[idea.id]=r.withWidth(std::min(r.getWidth(),s::fieldWidth));
+        ideaWaves[idea.id]=cell(r,s::nameWidth);
+        text(limit(skin.font(s::body),idea.note,r.getWidth()),r,s::body,s::muted);
     }
 }
 void Studio::ideaPage(Rect area) {
@@ -188,6 +209,11 @@ void Studio::ideaPage(Rect area) {
         text(limit(skin.font(s::body),x.note,r.getWidth()),r);
     }
     auto* x=pickedIdea();
+    if(!x || std::find(matches.begin(),matches.end(),x)==matches.end()) {
+        auto* next=matches.empty()?nullptr:matches.front();
+        if(x!=next) {stopPreview();ideaId=next?next->id:String{};ideaNote=next?next->note:String{};}
+        x=next;
+    }
     if(x && !savingIdea.valid()) {
         auto buttons=row(details);
         button(ideaPreview?cs::stopSong:cs::playSong,cell(buttons,s::levelWidth),[this]{playIdea(false);});

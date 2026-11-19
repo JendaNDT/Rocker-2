@@ -24,6 +24,7 @@ class Audio {
     std::atomic<int> ideaPort{0};
     Timeline timeline;
     void prepare(int inputs, int sampleRate);
+    void setInsurance(bool);
     void playTone() noexcept { command.store(1); }
     void stopTone() noexcept { command.store(-1); }
     Reading read(int channel) const noexcept;
@@ -32,6 +33,9 @@ class Audio {
                  int frames) noexcept;
 
   private:
+    std::atomic<IdeaInput*> rolling{nullptr};
+    std::atomic<bool> writingIdea{false};
+    bool insuranceEnabled=true;
     struct Meter {
         float hold = 0;
         int remaining = 0;

@@ -16,10 +16,20 @@ void Audio::prepare(int inputs, int sampleRate) {
     count = inputs;
     rate = sampleRate;
     live.prepare(rate);
-    ideaInput=inputs>0 ? std::make_shared<IdeaInput>(rate) : nullptr;
+    ideaInput=inputs>0 ? std::make_shared<IdeaInput>(rate,insuranceEnabled) : nullptr;
+    rolling.store(ideaInput.get());
     position = -1;
     command = 0;
     meters = std::make_unique<Meter[]>(count);
+}
+void Audio::setInsurance(bool enabled) {
+    if(enabled==insuranceEnabled) return;
+    insuranceEnabled=enabled;
+    auto next=count>0 ? std::make_shared<IdeaInput>(rate,enabled):nullptr;
+    rolling.store(nullptr);
+    while(writingIdea.load()) std::this_thread::yield();
+    ideaInput=std::move(next);
+    rolling.store(ideaInput.get());
 }
 Reading Audio::read(int channel) const noexcept {
     if (channel < 0 || channel >= count)
@@ -56,7 +66,9 @@ void Audio::process(const float* const* inputs, int inputCount, float* const* ou
             m.clipped.store(true); // 10^(-0.1/20)
     }
     int port=ideaPort.load();
-    if(ideaInput && port>=0 && port<inputCount) ideaInput->push(inputs[port],frames);
+    writingIdea.store(true);
+    if(auto* buffer=rolling.load();buffer && port>=0 && port<inputCount) buffer->push(inputs[port],frames);
+    writingIdea.store(false);
     const auto action = command.exchange(0);
     if (action != 0)
         position = action > 0 ? 0 : -1;

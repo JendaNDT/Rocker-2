@@ -239,6 +239,7 @@ Studio::Studio(DeviceSystem& sys, File path, File root)
 Studio::~Studio() {
     stopTimer();
     stopPreview(); stopIdea();
+    if(preparingPreview.valid()) {preparingPreview.wait();finishPreview();}
     if(savingIdea.valid()) savingIdea.wait();
     if(importing.valid()) { stopProject(); importing.wait(); finishImport(); }
     finishProject();
@@ -555,7 +556,9 @@ void Studio::makeHome(Rect area) {
         panels.push_back(p);
         p.reduce(s::gutter, s::inset);
         auto h = p.removeFromTop(s::transport);
-        text(String(i ? cs::ideas : cs::resume).toUpperCase(), h, s::section, s::muted, false, true);
+        auto heading=String(i ? cs::ideas : cs::resume).toUpperCase();
+        if(i && !ideas->all().empty()) heading+="   ★ "+String(int(std::count_if(ideas->all().begin(),ideas->all().end(),[](auto& x){return x.star;})))+" · "+cs::totalIdeas+" "+String(int(ideas->all().size()));
+        text(heading, h, s::section, s::muted, false, true);
         auto b = h.removeFromRight(s::nameWidth).withSizeKeepingCentre(s::nameWidth, s::button);
         if (i)
             button(cs::library, b, [this] { show(Page::ideas); });
@@ -563,22 +566,29 @@ void Studio::makeHome(Rect area) {
             button(cs::resume, b, [this] { openProject(File(settings.lastSong)); }, plain, "Enter");
         if (!i && libraryRoot.isDirectory()) {
             auto projects = libraryRoot.findChildFiles(File::findDirectories, false);
-            StringArray names;
-            int selected = 0;
-            for (auto& dir : projects)
-                if (dir.getChildFile("skladba.json").existsAsFile() ||
-                    Song::latestVersion(dir) != File{}) {
-                    if (dir.getFullPathName() == settings.lastSong)
-                        selected = names.size();
-                    names.add(dir.getFileName());
+            std::vector<File> recent;
+            for(auto& dir:projects) if(dir.getChildFile("skladba.json").existsAsFile() || Song::latestVersion(dir)!=File{}) recent.push_back(dir);
+            std::stable_sort(recent.begin(),recent.end(),[this](const auto& a,const auto& b){
+                if(a==b)return false;
+                if(a.getFullPathName()==settings.lastSong)return true;
+                if(b.getFullPathName()==settings.lastSong)return false;
+                return a.getChildFile("skladba.json").getLastModificationTime()>b.getChildFile("skladba.json").getLastModificationTime();
+            });
+            if(!recent.empty()) {
+                if(settings.lastSong.isEmpty()) settings.lastSong=recent.front().getFullPathName();
+                for(auto& dir:recent) {
+                    if(p.getHeight()<s::button)break;
+                    auto line=p.removeFromTop(s::button);p.removeFromTop(s::grid);
+                    bool bad=false;auto project=Song::load(dir,bad);
+                    auto label=project?project->title:dir.getFileName();
+                    button(limit(skin.font(s::body,false,true),label,s::nameWidth-2*s::inset),line.removeFromLeft(s::nameWidth),[this,dir]{openProject(dir);});
+                    line.removeFromLeft(s::gap);
+                    if(project) {
+                        auto pos=ViewState::load(dir).cursor;
+                        auto info=dir.getChildFile("skladba.json").getLastModificationTime().formatted("%d. %m. %H:%M")+" · "+cs::bar+" "+String(project->grid.beatAt(pos)/project->grid.beats+1)+" · "+project->tuning+" · "+String(project->grid.bpm,1)+" BPM";
+                        text(limit(skin.font(s::body),info,line.getWidth()),line,s::body,s::muted);
+                    }
                 }
-            if (!names.isEmpty()) {
-                if (settings.lastSong.isEmpty())
-                    settings.lastSong = libraryRoot.getChildFile(names[selected]).getFullPathName();
-                combo(cs::chooseSong, p.removeFromTop(s::button), names, selected, [this, names](int i) {
-                    settings.lastSong = libraryRoot.getChildFile(names[i]).getFullPathName();
-                    persist();
-                });
                 continue;
             }
         }
@@ -758,6 +768,7 @@ void Studio::inputPage(Rect area) {
             show(Page::live);
         });
     }
+    button(settings.insurance?cs::insuranceOn:cs::insuranceOff,options.removeFromRight(s::clipWidth),[this]{enableInsurance();});
     text(cs::clipHelp, options, s::caption, s::muted);
     if (link.caps.inputs.isEmpty()) {
         text(cs::noInputs, area, s::body, s::warning);
