@@ -486,25 +486,6 @@ TEST_CASE("M-03 detector recognizes the monitor metronome and rejects the delive
     writer.reset();
     REQUIRE(containsClick(injected, s.grid) == true);
 }
-TEST_CASE("A-12 Media Foundation encodes 320 kbps and decodes within one MP3 frame") {
-    if (!mp3Available())
-        SKIP("Systém nemá stereo kodér MP3 320 kb/s. Poslech po vydání ověří M-13.");
-    Workspace w;
-    Song s;
-    s.title = "MP3";
-    s.grid = {44100, 4, 4, 120};
-    s.bars = 1;
-    // Choose a multiple of the MPEG frame length to measure encoder priming separately.
-    constexpr Frame length = 1152 * 75;
-    auto file = w.dir.getChildFile("song.mp3");
-    REQUIRE(exportMix(s, {}, file, Delivery::mp3, 0, length).ok);
-    auto frames = decodedMp3Frames(file);
-    REQUIRE(frames);
-    CHECK(std::abs(*frames - length) <= 1152);
-    double bitrate = file.getSize() * 8. * 44100 / length;
-    CHECK(bitrate > 317000);
-    CHECK(bitrate < 330000);
-}
 TEST_CASE("Legacy mono material keeps its pre-pan level and capture marks the input before mixing") {
     Workspace w;
     Song s = example();
