@@ -10,7 +10,7 @@ using namespace juce;
 namespace {
 struct Temp {
     File dir =
-        File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("rocker-test", "", true);
+        File::getSpecialLocation(File::tempDirectory).getChildFile("rocker-test-" + Uuid().toString());
     File file = dir.getChildFile("nastaveni.json");
     ~Temp() { dir.deleteRecursively(); }
 };

@@ -7,7 +7,7 @@ using namespace rocker;
 using namespace juce;
 struct Workspace {
     File dir =
-        File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("rocker-song", "", true);
+        File::getSpecialLocation(File::tempDirectory).getChildFile("rocker-song-" + Uuid().toString());
     Workspace() { REQUIRE(dir.createDirectory().wasOk()); }
     ~Workspace() { dir.deleteRecursively(); }
 };

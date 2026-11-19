@@ -18,7 +18,7 @@ void playbackBlock(Audio& device, float* const* out, int count)
 
 struct Session {
     File dir =
-        File::getSpecialLocation(File::tempDirectory).getNonexistentChildFile("rocker-amp", "", true);
+        File::getSpecialLocation(File::tempDirectory).getChildFile("rocker-amp-" + Uuid().toString());
     Song song;
     AudioLibrary library;
     AudioBuffer<float> source{2, 9600};
