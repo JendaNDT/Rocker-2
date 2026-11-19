@@ -6,7 +6,7 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 
 ## Stažení a spuštění
 
-1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-4**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E4](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-4)
+1. Na GitHubu otevři poslední zelený běh **Rocker 2** pro větev **etapa-5**. Dole najdeš **Artifacts**. Pro stažení z GitHub Actions se přihlas ke GitHubu. [Běhy pro E5](https://github.com/JendaNDT/Rocker-2/actions/workflows/ci.yml?query=branch%3Aetapa-5)
 2. Ve Windows s procesorem Intel nebo AMD stáhni **Rocker2-Windows-x64**. Pro Snapdragon nebo jiný procesor Windows na ARM vyber **Rocker2-Windows-ARM64**. Typ najdeš v **Nastavení → Systém → O systému → Typ systému**.
 3. Rozbal stažený ZIP. Pokud je uvnitř další ZIP, rozbal i ten. Spusť **Rocker 2.exe**. Když se u tohoto sestavení objeví SmartScreen, klikni na **Další informace → Přesto spustit**.
 4. Na Macu s čipem Apple stáhni **Rocker2-Mac**, rozbal balík a přesuň **Rocker 2.app** do Aplikací. Spusť ji a povol vstup z mikrofonu, aby fungovaly měřiče. Pokud macOS zastaví první otevření stažené aplikace, po pokusu o spuštění otevři **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** a potvrď otevření.
@@ -19,6 +19,14 @@ Ruční zkoušky podle níže uvedených postupů proběhnou až po vydání hot
 3. Zapni **Klik** a **Odpočet**. **F11** zvětší stav a číslo taktu pro hráče za bicími. Stiskni **R**, po čtyřech dobách nahraj osm taktů a dalším **R** zastav. **F11** tě vrátí na časovou osu. Mezera přehrává a zastavuje.
 4. U bicích vypni **Připraveno**, zvol **Na začátek** a vyber **Kytara**. Nastav její vstup, připrav ji a zvol odposlech **Se zvukem**. S drátovými sluchátky ve zvukovce a přímým odposlechem přepnutým na USB/Playback stiskni **R**. Uslyšíš bicí a živý aparát. Do nové stopy se uloží čistá kytara. Při přehrávání použije kytarová stopa vlastní nastavení aparátu.
 5. Kliknutím do pravítka umístíš ukazatel. Šipky vlevo/vpravo přejdou na sousední takt, **+** a **−** mění přiblížení. Vyzkoušej **Ztlumit** a **Sólo**. Uložení probíhá automaticky. Po zavření otevři **Pokračovat** a ověř polohu i výběr stopy. Každá skladba má vlastní složku v **Rocker 2/Skladby** v domovské složce počítače.
+
+## Jak opravit jediný takt
+
+1. V otevřené skladbě vyber kytarovou stopu a její vstup, potom stiskni **2 Stříhej**. Klikni na číslo **6** na pravítku. Ve spodní části můžeš změnit **Předstih** a **Dohru**.
+2. Stiskni **P**. Při výchozím nastavení začne skladba hrát od taktu 4. Po zapnutém odpočtu hraj s nahrávkou a oprav chybu v taktu 6. Taktem 7 průchod končí.
+3. Rocker přehraje takty 5–7 s opravou. **Tab** přepíná mezi původním hraním a opravou za běhu. Další **P** přidá další pokus. **Enter** ponechá právě poslouchaný pokus.
+4. Ke všem pokusům se dostaneš přes štítek nad opraveným taktem. Jeho levý nebo pravý okraj můžeš přetáhnout. Se stisknutým **Alt** se pohybuje volně. **Zahodit pokus** jej přesune do koše. Po zastavení jej vrátí **Vrátit z koše**.
+5. Při H-04 po vydání změř, kolik času uběhne od objevení chyby po výběr opravy. Cíl je do jedné minuty. Poslechni si oba okraje opravy i doznívání zkreslené kytary. [Snímek Pokusů](docs/zkousky/E5/pokusy.png)
 
 ## Jak vystřihnout a přesunout dva takty
 

@@ -1,5 +1,13 @@
 # Stav Rockeru 2
 
+## E5 · oprava jednoho taktu
+
+Klávesa P pořídí celý čistý průchod s předstihem a dohrou. Ve výběru zní aktivní pokus. Při přepnutí klávesou Tab dál běží čas i aparát stopy. Enter uloží výběr. [PR, sestavení a snímky](https://github.com/JendaNDT/Rocker-2/pull/6)
+
+- **A-21** srovnává každý vzorek opraveného úseku se spočteným desetimiliskundovým prolnutím dvou sinusovek s opačnou fází. Dále zkouší změnu volby během přehrávání.
+- **Ovládání a uložení** ověřuje dva nové pokusy v taktu 6, návrat k původnímu, kompenzaci 373 vzorků, přesnou délku celého WAV, zahození, obnovení, Zpět a znovuotevření skladby. [Pokusy](zkousky/E5/pokusy.png)
+- **H-04 čeká na ruční zkoušku po vydání.** [Postup pro hráče](../README.md#jak-opravit-jediný-takt)
+
 ## E4 · střih, vracení úprav a verze
 
 V režimu Stříhej je rozsah vidět přes všechny stopy. Střih, přesun, opakování, vložení, zkrácení a smazání mění odkazy vybrané stopy na zvukové soubory. Zpět a Znovu vracejí snímky skladby. Nabídka Soubor umožňuje vybrat uloženou verzi podle data a času. [Návrh E4 s výsledky a sestaveními](https://github.com/JendaNDT/Rocker-2/pull/5)
