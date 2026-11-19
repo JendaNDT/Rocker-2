@@ -2,7 +2,8 @@
 #include "engine/Devices.h"
 #include "song/SectionLabels.h"
 namespace rocker::cs {
-inline const juce::String insertKit=u8"Přidat nastavené bicí";
+inline const juce::String kitPort = u8"Vstup zvukovky", kitStrip = u8"Část soupravy";
+inline const juce::String insertKit = u8"Přidat nastavené bicí";
 inline const juce::String
     drumTest = u8"Zahraj na bicí",
     hitPrompt = u8"Udeř postupně do každého bubnu tak silně, jak budeš hrát.",

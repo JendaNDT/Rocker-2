@@ -117,13 +117,15 @@ void Studio::drumPage(Rect area) {
              line());
         StringArray labels;
         for (int i = 0; i < drumDraft.ports.size(); ++i)
-            labels.add(String(i + 1) + " · " + drumDraft.ports[i]);
+            labels.add(String(i + 1) + cs::divider +
+                       (drumDraft.stereo ? (i ? cs::rightShort : cs::leftShort) : drumDraft.names[i]));
         auto routes = line();
-        combo(cs::input, routes.removeFromLeft(s::fieldWidth), labels, drumIndex, [this](int i) {
+        combo(cs::kitStrip, routes.removeFromLeft(s::fieldWidth), labels, drumIndex, [this](int i) {
             drumIndex = i;
             triggerAsyncUpdate();
         });
-        combo(cs::source, routes.removeFromLeft(s::fieldWidth), hitPorts,
+        routes.removeFromLeft(s::gutter);
+        combo(cs::kitPort, routes.removeFromLeft(s::fieldWidth), hitPorts,
               hitPorts.indexOf(drumDraft.ports[drumIndex]), [this](int i) {
                   int other = drumDraft.ports.indexOf(hitPorts[i]);
                   std::swap(drumDraft.ports.getReference(drumIndex), drumDraft.ports.getReference(other));

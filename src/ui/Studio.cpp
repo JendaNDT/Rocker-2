@@ -893,8 +893,11 @@ bool Studio::keyPressed(const KeyPress& key) {
             return true;
         }
         const bool pedal = settings.pedalKey != 0 && code == settings.pedalKey;
-        bool projectRecord =
-            page == Page::project && (pedal || (code == KeyPress::returnKey && !comparing));
+        const bool keepAttempt =
+            page == Page::project && view.editing && !view.distant &&
+            (comparing || song.groupAt(selectedTrack(), selection().from, selection().to));
+        const bool projectRecord =
+            page == Page::project && (pedal || (code == KeyPress::returnKey && !keepAttempt));
         if (projectRecord || (page == Page::project && code == KeyPress::numberPad0) ||
             (pedal && (page == Page::home || page == Page::ideas))) {
             if (heldTransportKey == code && KeyPress::isKeyCurrentlyDown(code))

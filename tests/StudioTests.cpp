@@ -959,6 +959,11 @@ TEST_CASE("A-24 acoustic and electronic drums use only the microphones that resp
         REQUIRE(song);
         for (auto& t : song->tracks)
             CHECK(t.armed == (t.kind == "bici"));
+        if (count == 8) {
+            click(view, cs::distantView);
+            chooseItem(view, cs::farTarget, 2);
+            click(view, cs::normal);
+        }
         REQUIRE(view.keyPressed(KeyPress('J')));
         view.resized();
         click(view, cs::farOffer);
@@ -967,36 +972,48 @@ TEST_CASE("A-24 acoustic and electronic drums use only the microphones that resp
         for (int px : {1280, 1920})
             if (count == 8)
                 snapshot(view, "24-odpocet", px);
-        test::FakeDevice::Block audio(count,std::vector<float>(512));
-        for(int channel=0;channel<count;++channel)
-            std::fill(audio[channel].begin(),audio[channel].end(),float(channel+1)/32);
-        for(Frame pos=0;pos<song->barFrame(2);pos+=512) fake.process(audio,512);
-        if(count==8) for(int px:{1280,1920}) snapshot(view,"25-zaznam-bicich",px);
+        test::FakeDevice::Block audio(count, std::vector<float>(512));
+        for (int channel = 0; channel < count; ++channel)
+            std::fill(audio[channel].begin(), audio[channel].end(), float(channel + 1) / 32);
+        for (Frame pos = 0; pos < song->barFrame(count == 8 ? 5 : 2); pos += 512)
+            fake.process(audio, 512);
+        if (count == 8)
+            for (int px : {1280, 1920})
+                snapshot(view, "25-zaznam-bicich", px);
         REQUIRE(view.keyPressed(KeyPress(KeyPress::escapeKey)));
         view.resized();
         REQUIRE(find<Button>(view, cs::stopSong));
         REQUIRE(view.keyPressed(KeyPress(KeyPress::returnKey)));
         view.resized();
-        song=Song::load(dir,bad);
+        song = Song::load(dir, bad);
         REQUIRE(song);
-        REQUIRE(song->assets.size()==(size_t)(count==2?1:active));
-        for(size_t i=0;i<song->assets.size();++i){
-            auto wav=waveReader(dir.getChildFile(song->assets[i].path));
+        REQUIRE(song->assets.size() == (size_t)(count == 2 ? 1 : active));
+        for (size_t i = 0; i < song->assets.size(); ++i) {
+            auto wav = waveReader(dir.getChildFile(song->assets[i].path));
             REQUIRE(wav);
-            AudioBuffer<float> block((int)wav->numChannels,1);
-            REQUIRE(wav->read(&block,0,1,512,true,true));
-            CHECK(block.getSample(0,0)==float(i+1)/32);
-            if(count==2) CHECK(block.getSample(1,0)==2.f/32);
+            AudioBuffer<float> block((int)wav->numChannels, 1);
+            REQUIRE(wav->read(&block, 0, 1, 512, true, true));
+            CHECK(block.getSample(0, 0) == float(i + 1) / 32);
+            if (count == 2)
+                CHECK(block.getSample(1, 0) == 2.f / 32);
         }
-        if(count==8){
-            click(view,cs::mixMode);
-            auto* gain=find<Slider>(view,cs::kitGain);
-            REQUIRE(gain);gain->setValue(-6,sendNotificationSync);
-            for(int poll=0;poll<10;++poll) tick();
-            click(view,cs::playMode);
-            song=Song::load(dir,bad);
+        if (count == 8) {
+            click(view, cs::distantView);
+            for (int px : {1280, 1920})
+                snapshot(view, "26-ulozene-bici", px);
+            click(view, cs::normal);
+            click(view, cs::mixMode);
+            auto* gain = find<Slider>(view, cs::kitGain);
+            REQUIRE(gain);
+            gain->setValue(-6, sendNotificationSync);
+            for (int poll = 0; poll < 10; ++poll)
+                tick();
+            click(view, cs::playMode);
+            song = Song::load(dir, bad);
             REQUIRE(song);
-            for(auto& t:song->tracks) if(t.kind=="bici")CHECK(t.groupDb==-6);
+            for (auto& t : song->tracks)
+                if (t.kind == "bici")
+                    CHECK(t.groupDb == -6);
         }
         REQUIRE(view.keyPressed(KeyPress(KeyPress::numberPad0)));
         REQUIRE(view.keyPressed(KeyPress(KeyPress::numberPad0)));

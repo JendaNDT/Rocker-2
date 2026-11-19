@@ -138,7 +138,7 @@ class Studio final : public juce::Component,
     juce::StringArray hitPorts;
     std::vector<float> hitLevels;
     bool hitMeasured = false, pedalLearning = false;
-    int drumIndex = 0, distantTake = 0;
+    int drumIndex = 0;
     bool offerDistant = false, wasFullscreen = false;
     int heldTransportKey = 0;
     bool keyStateChanged(bool) override;

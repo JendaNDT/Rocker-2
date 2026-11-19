@@ -122,7 +122,6 @@ void Studio::openProject(File dir) {
     view.cursor = std::min(view.cursor, song.end());
     normalizeSelection();
     defaultMonitor();
-    distantTake = 0;
     settings.lastSong = dir.getFullPathName();
     persist();
     lastArchive = Time::getMillisecondCounterHiRes();
@@ -321,7 +320,7 @@ void Studio::stopProject(bool automatic) {
             status(cs::writeError);
         else {
             if (p->drop < 0 && song.assets.size() > before)
-                ++distantTake;
+                ++view.savedTakes;
             complete = p->finished && !p->failed && p->drop < 0;
             status(p->drop >= 0 ? cs::dropout : cs::savedSong);
         }
@@ -432,12 +431,16 @@ void Studio::projectPage(Rect area) {
             if (editingTempo && !song.clips.empty())
                 text(cs::editTempoWarning, row(area), s::body, s::warning);
         } else {
-            if(view.selected==(int)song.tracks.size() && !drumTracks().empty())
-                button(cs::insertKit,row(area).withWidth(s::labelWidth),[this]{
-                    auto tracks=drumTracks();
-                    if(tracks.empty())return;
-                    song.tracks.insert(song.tracks.end(),tracks.begin(),tracks.end());
-                    defaultMonitor();saveSong();view.save(projectDir);show(Page::project);
+            if (view.selected == (int)song.tracks.size() && !drumTracks().empty())
+                button(cs::insertKit, row(area).withWidth(s::labelWidth), [this] {
+                    auto tracks = drumTracks();
+                    if (tracks.empty())
+                        return;
+                    song.tracks.insert(song.tracks.end(), tracks.begin(), tracks.end());
+                    defaultMonitor();
+                    saveSong();
+                    view.save(projectDir);
+                    show(Page::project);
                 });
             combo(cs::trackKind, row(area), cs::trackKinds, draftKind, [this](int i) { draftKind = i; });
             if (!link.caps.inputs.isEmpty()) {
@@ -850,7 +853,7 @@ void Studio::paintProject(Graphics& g) {
                  : String(beat / song.grid.beats + 1) + "." + String(beat % song.grid.beats + 1);
     if (view.distant) {
         auto r = getLocalBounds().withTrimmedBottom(s::footer + s::inset);
-        const bool saved = !performance && distantTake > 0 && message == cs::savedSong;
+        const bool saved = !performance && view.savedTakes > 0 && message == cs::savedSong;
         g.setColour(counting ? s::warning : rec ? s::recording : saved ? s::ready : s::panel);
         g.fillRect(r);
         g.setColour(counting || saved ? s::background : s::chalk);
@@ -864,7 +867,8 @@ void Studio::paintProject(Graphics& g) {
         String track = isPositiveAndBelow(view.selected, (int)song.tracks.size())
                            ? song.tracks[view.selected].name
                            : String{};
-        g.drawText(track + cs::divider + cs::attemptLabel + " " + String(distantTake + (saved ? 0 : 1)),
+        g.drawText(track + cs::divider + cs::attemptLabel + " " +
+                       String(view.savedTakes + (saved ? 0 : 1)),
                    note, Justification::centred);
         g.setFont(skin.font(s::distantBar, true));
         String bar = counting ? clock : String(beat / song.grid.beats + 1);

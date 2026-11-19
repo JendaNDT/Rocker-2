@@ -113,7 +113,7 @@ struct ViewState {
     juce::String selectedClip;
     int leadBars = 2, tailBars = 1;
     bool mixing = false;
-    int targetBars = 0;
+    int targetBars = 0, savedTakes = 0;
     bool save(const juce::File&) const;
     static ViewState load(const juce::File&);
 };
