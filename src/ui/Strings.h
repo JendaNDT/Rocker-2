@@ -2,14 +2,21 @@
 #include "engine/Devices.h"
 namespace rocker::cs {
 inline const juce::String editMode = u8"2 Stříhej", playMode = u8"1 Hraj", fileMenu = u8"Soubor",
-    versions = u8"Vrátit skladbu do stavu z…", versionTime = u8"Uložená verze", applyVersion = u8"Obnovit tuto verzi",
-    noVersions = u8"Zatím tu není uložená verze.", versionError = u8"Verzi se všemi nahrávkami se nepodařilo načíst.",
-    undo = u8"Zpět", redo = u8"Znovu", selectionTitle = u8"Výběr", rangeHint = u8"Klikni na číslo taktu. Shift + klik přidá další takty.",
-    split = u8"Rozstřihnout", copy = u8"Kopírovat", paste = u8"Vložit", erase = u8"Smazat", repeat = u8"Zopakovat",
-    move = u8"Přesunout", trim = u8"Okraj klipu", edited = u8"Úprava skladby", copied = u8"Výběr je zkopírovaný.",
-    magnifier = u8"Lupa ×4", beforeBars = u8"Předchozí takty", afterBars = u8"Další takty",
-    zoomIn = u8"Přiblížit", zoomOut = u8"Oddálit", editHint = u8"Táhni výběr po mřížce. Alt uvolní přichycení.",
-    noAudio = u8"Na tomto místě není vybraný zvuk.", versionRestored = u8"Obnovení verze", newTake = u8"Nahrávání";
+                          versions = u8"Vrátit skladbu do stavu z…", versionTime = u8"Uložená verze",
+                          applyVersion = u8"Obnovit tuto verzi",
+                          noVersions = u8"Zatím tu není uložená verze.",
+                          versionError = u8"Verzi se všemi nahrávkami se nepodařilo načíst.",
+                          undo = u8"Zpět", redo = u8"Znovu", selectionTitle = u8"Výběr",
+                          rangeHint = u8"Klikni na číslo taktu. Shift + klik přidá další takty.",
+                          split = u8"Rozstřihnout", copy = u8"Kopírovat", paste = u8"Vložit",
+                          erase = u8"Smazat", repeat = u8"Zopakovat", move = u8"Přesunout",
+                          trim = u8"Okraj klipu", edited = u8"Úprava skladby",
+                          copied = u8"Výběr je zkopírovaný.", magnifier = u8"Lupa ×4",
+                          beforeBars = u8"Předchozí takty", afterBars = u8"Další takty",
+                          zoomIn = u8"Přiblížit", zoomOut = u8"Oddálit",
+                          editHint = u8"Táhni výběr po mřížce. Alt uvolní přichycení.",
+                          noAudio = u8"Na tomto místě není vybraný zvuk.",
+                          versionRestored = u8"Obnovení verze", newTake = u8"Nahrávání";
 inline const juce::String
     app = "Rocker 2",
     brand = "ROCKER", version = "2", setup = u8"Zapojení a zvukovka", record = u8"Nahrát nápad",

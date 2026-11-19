@@ -137,7 +137,7 @@ class Studio final : public juce::Component, private juce::Timer, private juce::
     bool dragged = false;
     double lastPan = 0;
     enum class EditOp { split, copy, paste, erase, repeat, move, trimLeft, trimRight };
-    Span selection() const { return {view.selectionStart,view.selectionEnd}; }
+    Span selection() const { return {view.selectionStart, view.selectionEnd}; }
     void pick(Span, juce::String clip = {});
     void editMode(bool);
     void editOp(EditOp);

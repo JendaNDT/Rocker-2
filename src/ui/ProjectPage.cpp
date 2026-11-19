@@ -62,7 +62,8 @@ void Studio::newProject() {
     show(Page::newProject);
 }
 void Studio::saveSong(String action) {
-    if (projectDir != File{} && !song.title.isEmpty()) history.remember(song,action.isEmpty() ? cs::edited : action);
+    if (projectDir != File{} && !song.title.isEmpty())
+        history.remember(song, action.isEmpty() ? cs::edited : action);
     pendingSoundSave = 0;
     if (projectDir != File{} && !song.save(projectDir))
         status(cs::writeError);
@@ -88,7 +89,8 @@ void Studio::openProject(File dir) {
     projectDir = dir;
     browsingVersions = false;
     drag = Drag::none;
-    if (!sameProject) clipboard = {};
+    if (!sameProject)
+        clipboard = {};
 
     library.data.clear();
     bool damaged = false;
@@ -99,7 +101,8 @@ void Studio::openProject(File dir) {
         return;
     }
     song = *loaded;
-    if (!sameProject || !history.matches(song)) history.reset(song);
+    if (!sameProject || !history.matches(song))
+        history.reset(song);
     for (int i = 0; i < (int)tunings.size(); ++i)
         if (tunings[i].name == song.tuning) {
             tuningIndex = i;
@@ -260,7 +263,8 @@ void Studio::stopProject() {
         else
             status(p->drop >= 0 ? cs::dropout : cs::savedSong);
     }
-    if (p->recording) history.remember(song,cs::newTake);
+    if (p->recording)
+        history.remember(song, cs::newTake);
     if (!view.save(projectDir))
         status(cs::writeError);
     triggerAsyncUpdate();
@@ -477,14 +481,25 @@ void Studio::projectPage(Rect area) {
         });
     }
     auto modes = row(area);
-    button(cs::playMode, cell(modes,s::compactButton),[this]{ editMode(false); },view.editing ? 0 : 1);
-    button(cs::editMode, cell(modes,s::compactButton),[this]{ editMode(true); },view.editing ? 1 : 0);
-    if (!performance) button(cs::fileMenu,cell(modes,s::compactButton),[this]{showVersions();});
+    button(
+        cs::playMode, cell(modes, s::compactButton), [this] { editMode(false); }, view.editing ? 0 : 1);
+    button(
+        cs::editMode, cell(modes, s::compactButton), [this] { editMode(true); }, view.editing ? 1 : 0);
+    if (!performance)
+        button(cs::fileMenu, cell(modes, s::compactButton), [this] { showVersions(); });
     if (view.editing) {
-        button(cs::beforeBars,cell(modes,s::clipWidth),[this]{view.firstBar=std::max<Frame>(0,view.firstBar-visibleBars());view.save(projectDir);repaint();});
-        button(cs::afterBars,cell(modes,s::clipWidth),[this]{view.firstBar=std::min<Frame>(999999,view.firstBar+visibleBars());view.save(projectDir);repaint();});
-        button(cs::zoomIn,cell(modes,s::compactButton),[this]{editKey(KeyPress('+'));});
-        button(cs::zoomOut,cell(modes,s::compactButton),[this]{editKey(KeyPress('-'));});
+        button(cs::beforeBars, cell(modes, s::clipWidth), [this] {
+            view.firstBar = std::max<Frame>(0, view.firstBar - visibleBars());
+            view.save(projectDir);
+            repaint();
+        });
+        button(cs::afterBars, cell(modes, s::clipWidth), [this] {
+            view.firstBar = std::min<Frame>(999999, view.firstBar + visibleBars());
+            view.save(projectDir);
+            repaint();
+        });
+        button(cs::zoomIn, cell(modes, s::compactButton), [this] { editKey(KeyPress('+')); });
+        button(cs::zoomOut, cell(modes, s::compactButton), [this] { editKey(KeyPress('-')); });
     }
     auto tools = row(area);
     button(cs::distantView, cell(tools, s::compactButton), [this] { toggleDistant(); });
@@ -797,7 +812,8 @@ void Studio::paintProject(Graphics& g) {
                 }
         }
     }
-    if(view.editing) paintEditOverlay(g);
+    if (view.editing)
+        paintEditOverlay(g);
     for (auto mark : song.dropouts)
         if (mark >= begin && mark < last) {
             g.setColour(s::warning);
@@ -811,7 +827,10 @@ void Studio::paintProject(Graphics& g) {
 void Studio::mouseDown(const MouseEvent& event) {
     if (page != Page::project || performance || view.distant)
         return;
-    if (view.editing) { editMouseDown(event); return; }
+    if (view.editing) {
+        editMouseDown(event);
+        return;
+    }
     auto axis = ruler.withTrimmedLeft(s::trackHead);
     if (event.x < axis.getX() || event.x >= axis.getRight() || event.y < axis.getY() ||
         event.y >= timelineArea.getBottom())

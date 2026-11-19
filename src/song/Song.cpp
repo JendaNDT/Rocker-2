@@ -161,7 +161,7 @@ File Song::latestVersion(const File& dir) {
     files.sort();
     for (int i = files.size(); --i >= 0;) {
         bool bad = false;
-        if (parse(JSON::parse(files[i]), bad))
+        if (parse(JSON::parse(files[i]), bad) && !bad)
             return files[i];
     }
     return {};
@@ -183,7 +183,12 @@ bool ViewState::save(const File& d) const {
                                                                 {"takty", zoom},
                                                                 {"zdalky", distant},
                                                                 {"klik", click},
-                                                                {"odpocet", countIn}, {"strihej", editing}, {"vyberOd", selectionStart}, {"vyberDo", selectionEnd}, {"prvniTakt", firstBar}, {"vybranyKlip",selectedClip}}));
+                                                                {"odpocet", countIn},
+                                                                {"strihej", editing},
+                                                                {"vyberOd", selectionStart},
+                                                                {"vyberDo", selectionEnd},
+                                                                {"prvniTakt", firstBar},
+                                                                {"vybranyKlip", selectedClip}}));
 }
 ViewState ViewState::load(const File& d) {
     auto v = JSON::parse(d.getChildFile("zobrazeni.json"));
@@ -192,7 +197,12 @@ ViewState ViewState::load(const File& d) {
             jlimit(1, 64, (int)field(v, "takty", 8)),
             field(v, "zdalky", false),
             field(v, "klik", true),
-            field(v, "odpocet", true), field(v,"strihej",false), std::max<Frame>(0,field(v,"vyberOd")),std::max<Frame>(0,field(v,"vyberDo")),juce::jlimit<Frame>(0,999999,field(v,"prvniTakt")),field(v,"vybranyKlip").toString()};
+            field(v, "odpocet", true),
+            field(v, "strihej", false),
+            std::max<Frame>(0, field(v, "vyberOd")),
+            std::max<Frame>(0, field(v, "vyberDo")),
+            juce::jlimit<Frame>(0, 999999, field(v, "prvniTakt")),
+            field(v, "vybranyKlip").toString()};
 }
 std::unique_ptr<AudioFormatWriter> waveWriter(const File& file, int rate, int channels) {
     std::unique_ptr<OutputStream> stream = file.createOutputStream();

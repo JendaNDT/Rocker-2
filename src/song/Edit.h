@@ -26,8 +26,12 @@ class EditHistory {
     juce::String step(Song&, bool forward);
     bool canStep(bool forward) const;
     bool matches(const Song& s) const { return !states.empty() && states[index].song == s; }
+
   private:
-    struct State { Song song; juce::String action; };
+    struct State {
+        Song song;
+        juce::String action;
+    };
     std::vector<State> states;
     size_t index = 0;
 };

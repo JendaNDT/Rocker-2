@@ -423,3 +423,117 @@ TEST_CASE("E2 player records eight bars of drums, overdubs dry guitar and resume
     CHECK(v.cursor == 4096);
     CHECK(v.selected == 1);
 }
+TEST_CASE("A-17 edit bars five and six, move to nine, repeat, undo and restore a dated version") {
+    ScopedJuceInitialiser_GUI gui;
+    Temp temp;
+    test::FakeDevice fake;
+    auto folder = temp.dir.getChildFile("Song");
+    Song initial;
+    initial.title = String(u8"Zkušebna");
+    initial.grid.bpm = 240;
+    initial.tracks = {{"d", cs::trackKinds[0], "bici"}, {"g", cs::guitar, "kytara"}};
+    Frame length = initial.grid.beat(32);
+    initial.assets = {{"a", "Zvuk/riff.wav", length, 1}};
+    initial.clips = {{"one", "d", "a", 0, 0, length}, {"two", "g", "a", 0, 0, length}};
+    auto file = folder.getChildFile("Zvuk/riff.wav");
+    REQUIRE(file.getParentDirectory().createDirectory().wasOk());
+    auto writer = waveWriter(file, 48000, 1);
+    REQUIRE(writer);
+    AudioBuffer<float> block(1, 12000);
+    for (int i = 0; i < 12000; ++i)
+        block.setSample(0, i, 0.7f * std::sin(i * 0.07f) * std::exp(-i / 2900.f));
+    for (int i = 0; i < 32; ++i)
+        REQUIRE(writer->writeFromAudioSampleBuffer(block, 0, 12000));
+    writer.reset();
+    MemoryBlock before;
+    REQUIRE(file.loadFileAsData(before));
+    auto archived = initial;
+    archived.title = "Archive";
+    REQUIRE(archived.archive(folder));
+    REQUIRE(initial.save(folder));
+    Settings settings;
+    settings.visited = true;
+    settings.lastSong = folder.getFullPathName();
+    REQUIRE(settings.save(temp.file));
+    Studio view(fake, temp.file);
+    click(view, cs::resume);
+    click(view, cs::editMode);
+    click(view, cs::zoomOut);
+    click(view, cs::guitar);
+    auto* head = find<Button>(view, cs::trackKinds[0]);
+    REQUIRE(head);
+    const int x0 = head->getX() - style::grid + style::trackHead;
+    const int width = view.getWidth() - style::margin - x0;
+    auto x = [&](double bar) { return float(x0 + bar * width / 16); };
+    const int axisY = head->getY() - style::grid - style::gap - style::button / 2;
+    auto* guitar = find<Button>(view, cs::guitar);
+    REQUIRE(guitar);
+    const int laneY = guitar->getBounds().getCentreY();
+    auto mouse = [&](Point<float> here, Point<float> down, int mods, bool dragging = false) {
+        return MouseEvent(Desktop::getInstance().getMainMouseSource(), here, ModifierKeys(mods), 0, 0, 0,
+                          0, 0, &view, &view, Time::getCurrentTime(), down, Time::getCurrentTime(), 1,
+                          dragging);
+    };
+    auto tap = [&](float at, int y, int mods) {
+        Point<float> pt(at, (float)y);
+        auto e = mouse(pt, pt, mods);
+        view.mouseDown(e);
+        view.mouseUp(e);
+        view.resized();
+    };
+    tap(x(4.12), axisY, 0);
+    tap(x(5.12), axisY, ModifierKeys::shiftModifier);
+    auto v = ViewState::load(folder);
+    REQUIRE(v.selectionStart == initial.grid.beat(16));
+    REQUIRE(v.selectionEnd == initial.grid.beat(24));
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "13-strihej", pixels);
+    Point<float> down(x(4.45), (float)laneY), up(x(8.45), (float)laneY);
+    view.mouseDown(mouse(down, down, 0));
+    view.mouseDrag(mouse(up, down, 0, true));
+    view.mouseUp(mouse(up, down, 0, true));
+    view.resized();
+    auto key = [&](int code, int mods = 0) {
+        REQUIRE(view.keyPressed(KeyPress(code, ModifierKeys(mods), 0)));
+        view.resized();
+    };
+    key('D');
+    key('S', ModifierKeys::ctrlModifier);
+    bool bad = false;
+    auto result = Song::load(folder, bad);
+    REQUIRE(result);
+    REQUIRE_FALSE(bad);
+    REQUIRE(result->clips.size() == 5);
+    CHECK(result->clips.back().position == initial.grid.beat(40));
+    CHECK(result->clips.back().offset == initial.grid.beat(16));
+    key('Z', ModifierKeys::ctrlModifier);
+    key('Z', ModifierKeys::ctrlModifier);
+    REQUIRE(Song::load(folder, bad) == initial);
+    key('Y', ModifierKeys::ctrlModifier);
+    key('Y', ModifierKeys::ctrlModifier);
+    REQUIRE(Song::load(folder, bad) == result);
+    Point<float> edge(x(8.02), (float)laneY), trim(x(8.32), (float)laneY);
+    view.mouseDown(mouse(edge, edge, 0));
+    view.mouseDrag(mouse(trim, edge, ModifierKeys::altModifier, true));
+    view.resized();
+    fits(view);
+    for (int pixels : {1280, 1920})
+        snapshot(view, "14-lupa", pixels);
+    view.mouseUp(mouse(trim, edge, ModifierKeys::altModifier, true));
+    key('S', ModifierKeys::ctrlModifier);
+    auto trimmed = Song::load(folder, bad);
+    REQUIRE(trimmed);
+    REQUIRE(trimmed != result);
+    auto freeEdge = ViewState::load(folder).selectionStart;
+    CHECK(freeEdge != snapBeat(initial.grid, freeEdge));
+    click(view, cs::fileMenu);
+    fits(view);
+    click(view, cs::applyVersion);
+    REQUIRE(Song::load(folder, bad) == archived);
+    key('Z', ModifierKeys::ctrlModifier);
+    REQUIRE(Song::load(folder, bad) == trimmed);
+    MemoryBlock after;
+    REQUIRE(file.loadFileAsData(after));
+    REQUIRE(after == before);
+}
